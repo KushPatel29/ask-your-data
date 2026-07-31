@@ -162,9 +162,14 @@ needs an API key, so it runs on demand rather than in CI.
   ~5K-token schema catalog carries a cache marker, so from the second question
   in a session it bills at roughly a tenth of the price, and the UI *shows* the
   cache hit rather than asserting it in a README.
-- **It degrades gracefully.** Clone the repo with no API key and the warehouse,
-  the tests, and the UI all work — questions produce a clear "set
-  `ANTHROPIC_API_KEY`" message instead of a stack trace.
+- **It degrades gracefully, and usefully.** With no API key there is no model,
+  so the app falls back to **demo mode**: it serves the questions from the
+  accuracy contract, executing each one's committed reference SQL live against
+  DuckDB and showing the query, the rows, and whether the result still matches
+  the value CI asserts. That is a genuinely different thing from the model
+  writing the SQL, and the page says so on every answer rather than blurring the
+  two. It is also why the public demo costs nothing to run and cannot be made to
+  spend anyone's API credits.
 - **Conversations are real.** The Streamlit app keeps per-session history and
   renders the full transcript; the shared warehouse is stateless behind it.
 
@@ -195,7 +200,9 @@ pytest tests/ -v
 # 2. Ask questions (needs ANTHROPIC_API_KEY — see .env.example)
 python -m app.cli "which department has the most flight-risk employees?"
 
-# 3. The chat UI — follow-up questions welcome
+# 3. The chat UI — follow-up questions welcome.
+#    With no key this starts in demo mode: the contract's questions, answered
+#    by running their reference SQL live. No model, no cost.
 streamlit run app/streamlit_app.py
 
 # 4. Grade the model end-to-end: accuracy + safety

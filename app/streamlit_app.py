@@ -6,7 +6,13 @@ Ask-Your-Data chat UI.
 A real conversation: follow-up questions ("and by region?") carry the earlier
 turns as context. Every answer shows the plain-English result, the SQL the model
 wrote, and the returned rows — so a reader can always check the number against
-the query. Needs ANTHROPIC_API_KEY in the environment.
+the query.
+
+With ANTHROPIC_API_KEY set, that is what runs. Without one there is no model, so
+the app falls back to DEMO MODE: the questions from the project's accuracy
+contract, each executing its reference SQL live against DuckDB. That is a
+genuinely different thing from the model writing SQL, and the UI says so rather
+than blurring the two.
 """
 
 import sys
@@ -19,27 +25,31 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from data_manifest import DOMAINS  # noqa: E402
-from engine.assistant import Assistant, AssistantUnavailable  # noqa: E402
+from engine import demo_mode  # noqa: E402
 from engine.warehouse import build_warehouse, table_names  # noqa: E402
 
 st.set_page_config(page_title="Ask Your Data", page_icon="💬", layout="wide")
 
-import os  # noqa: E402
-
-if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
-    st.warning("No `ANTHROPIC_API_KEY` detected — the warehouse and UI work, but "
-               "questions need a key. Set it in your environment and restart.")
+LIVE_MODE = demo_mode.has_api_key()
 
 
 @st.cache_resource
-def get_assistant():
-    # Shared across sessions: the Assistant is stateless and queries run on
-    # isolated cursors. Per-user conversation state lives in st.session_state.
-    con = build_warehouse()
-    return Assistant(con), con
+def get_connection():
+    # Shared across sessions; queries run on isolated cursors.
+    return build_warehouse()
 
 
-assistant, con = get_assistant()
+@st.cache_resource
+def get_assistant(_con):
+    # Imported and constructed only in live mode, so demo mode never depends on
+    # the anthropic client being usable.
+    from engine.assistant import Assistant
+
+    return Assistant(_con)
+
+
+con = get_connection()
+assistant = get_assistant(con) if LIVE_MODE else None
 st.session_state.setdefault("turns", [])      # engine context (Turn objects)
 st.session_state.setdefault("transcript", [])  # everything we rendered, incl. refusals
 
@@ -66,6 +76,83 @@ EXAMPLES = [
     "Who is the top wholesale customer by revenue?",
     "How many migration artifacts passed parallel-run validation?",
 ]
+
+
+def render_demo_mode(connection) -> None:
+    """
+    No key, no model. Serve the accuracy contract instead of a broken chat box.
+
+    Each question executes the reference SQL committed alongside it, so the
+    numbers on screen are the ones CI asserts on every push.
+    """
+    st.info(demo_mode.DEMO_NOTICE, icon=":material/science:")
+
+    cases = demo_mode.load_golden_questions()
+    grouped = demo_mode.questions_by_domain(cases)
+    st.caption(
+        f"{len(cases)} pre-registered questions across {len(grouped)} domains, "
+        "each with reference SQL under test."
+    )
+
+    labels = {f"[{c['domain']}]  {c['question']}": c for c in cases}
+    choice = st.selectbox(
+        "Pick a question", list(labels), index=0,
+        help="Runs the reference SQL for this question against the warehouse now.",
+    )
+    case = labels[choice]
+
+    if st.button("Run this query", type="primary"):
+        st.session_state["demo_case_id"] = case["id"]
+
+    if st.session_state.get("demo_case_id"):
+        active = next(c for c in cases if c["id"] == st.session_state["demo_case_id"])
+        result = demo_mode.answer(connection, active)
+
+        st.chat_message("user").write(active["question"])
+        with st.chat_message("assistant"):
+            if not result.ok:
+                st.error(f"Reference SQL failed: {result.result.error}")
+            else:
+                st.markdown(f"## {result.headline}")
+                if result.matches_contract:
+                    st.caption(
+                        "Matches the value asserted in `evals/golden_questions.yaml`, "
+                        "which CI re-checks on every push."
+                    )
+                else:
+                    st.warning(
+                        "This does not match the contract's expected value — the "
+                        "vendored data has drifted and the golden test should be red."
+                    )
+                st.code(result.sql, language="sql")
+                st.dataframe(
+                    pd.DataFrame(result.result.rows, columns=result.result.columns),
+                    use_container_width=True, hide_index=True,
+                )
+                st.caption(
+                    "Reference SQL, executed live — not written by the model. "
+                    "The model-authored path is what the API key unlocks."
+                )
+
+    st.divider()
+    st.subheader("What the live mode adds")
+    st.markdown(
+        "With a key, the box below becomes a real chat: you ask anything in "
+        "plain English, the model writes the SQL, a read-only guard validates "
+        "it before execution, failed queries are fed their own error back for "
+        "up to three attempts, and out-of-scope questions are refused rather "
+        "than guessed at. Every answer still shows its SQL."
+    )
+    st.chat_input("Ask a question about the data...", disabled=True)
+    st.caption("Disabled in demo mode — no model is configured.")
+
+
+if not LIVE_MODE:
+    render_demo_mode(con)
+    st.stop()
+
+# Live mode only, so demo mode never imports the anthropic client.
+from engine.assistant import AssistantUnavailable  # noqa: E402
 
 if not st.session_state.transcript:
     st.write("Try one of these, or type your own:")
