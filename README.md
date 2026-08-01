@@ -2,7 +2,7 @@
 
 ### *This repo used to be a Raspberry Pi voice assistant. Now it's the capstone of my analytics portfolio. Both of those things are true, and the git history proves it.*
 
-[![CI](https://github.com/KushPatel29/IVA/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/IVA/actions/workflows/ci.yml)
+[![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-99%20%C2%B7%2098%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
