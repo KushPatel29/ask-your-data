@@ -2,14 +2,25 @@
 
 ### *This repo used to be a Raspberry Pi voice assistant. Now it's the capstone of my analytics portfolio. Both of those things are true, and the git history proves it.*
 
+[![CI](https://github.com/KushPatel29/IVA/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/IVA/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![CI](https://github.com/KushPatel29/IVA/actions/workflows/ci.yml/badge.svg)
-![Tests](https://img.shields.io/badge/tests-64%20%C2%B7%2063%20run%20without%20an%20API%20key-2ea44f)
+![Tests](https://img.shields.io/badge/tests-99%20%C2%B7%2098%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
+**▶ Live demo: [ask-your-data-kp.streamlit.app](https://ask-your-data-kp.streamlit.app)** —
+runs without an API key. It answers the golden-question contract by executing
+each question's committed reference SQL live against DuckDB, and labels every
+answer as reference SQL rather than passing it off as the model's work.
+
 Ask a plain-English question about any of my portfolio datasets and get a real
 answer — with the SQL that produced it shown right next to the number.
+
+![Ask Your Data running in keyless demo mode: the question, the headline answer, the reference SQL, and the returned rows](docs/demo_mode.png)
+
+*Demo mode, exactly as deployed. The answer, the SQL that produced it, and the
+returned rows — plus a note saying this particular number came from committed
+reference SQL rather than from the model.*
 
 ---
 
@@ -21,10 +32,11 @@ song, made a joke. I was proud of it. It was also, let's be honest, a hobby
 project.
 
 Then I spent a career break building an analytics portfolio with one
-non-negotiable rule: **nothing ships unless a test proves it.** Seven repos —
-hospital revenue cycle, workforce attrition, GL reconciliation, cold-chain
-supply chain, wholesale recommendations, a legacy-to-Fabric migration — every
-dashboard number reproducible from the command line, every claim locked in CI.
+non-negotiable rule: **nothing ships unless a test proves it.** Hospital revenue
+cycle, workforce attrition, GL reconciliation, cold-chain supply chain,
+wholesale recommendations, a legacy-to-Fabric migration — every dashboard number
+reproducible from the command line, every claim locked in CI. This assistant
+reads the datasets from **seven** of those repos.
 
 When I looked back at IVA sitting next to them, I had two options: delete it, or
 rebuild it into something that belonged. I rebuilt it. The voice-assistant code
@@ -34,7 +46,7 @@ fully formed are lying. This one shows the pivot.
 
 ## The question every dashboard can't answer
 
-Each of my seven projects ends in a dashboard, and every dashboard answers the
+Each of those projects ends in a dashboard, and every dashboard answers the
 questions somebody *anticipated*. Denial rate by payer? Page one. AR aging?
 Page three. But the question an executive actually asks on a Tuesday afternoon
 is the one nobody anticipated:
@@ -147,7 +159,7 @@ defend in an interview:
   along in the live evaluation: every one must end in a refusal or read-only SQL.
 
 ```
-64 tests — 63 run keyless in CI across three jobs (ruff lint, suite, suite-in-Docker);
+99 tests — 98 run keyless in CI across three jobs (ruff lint, suite, suite-in-Docker);
 1 live model test skips without a key.
 ```
 

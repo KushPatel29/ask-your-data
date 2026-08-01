@@ -95,44 +95,40 @@ def render_demo_mode(connection) -> None:
     )
 
     labels = {f"[{c['domain']}]  {c['question']}": c for c in cases}
+    # Answer on selection rather than behind a button press: a visitor who has
+    # never seen this app should land on a worked example, not an empty panel.
     choice = st.selectbox(
         "Pick a question", list(labels), index=0,
         help="Runs the reference SQL for this question against the warehouse now.",
     )
-    case = labels[choice]
+    active = labels[choice]
+    result = demo_mode.answer(connection, active)
 
-    if st.button("Run this query", type="primary"):
-        st.session_state["demo_case_id"] = case["id"]
-
-    if st.session_state.get("demo_case_id"):
-        active = next(c for c in cases if c["id"] == st.session_state["demo_case_id"])
-        result = demo_mode.answer(connection, active)
-
-        st.chat_message("user").write(active["question"])
-        with st.chat_message("assistant"):
-            if not result.ok:
-                st.error(f"Reference SQL failed: {result.result.error}")
-            else:
-                st.markdown(f"## {result.headline}")
-                if result.matches_contract:
-                    st.caption(
-                        "Matches the value asserted in `evals/golden_questions.yaml`, "
-                        "which CI re-checks on every push."
-                    )
-                else:
-                    st.warning(
-                        "This does not match the contract's expected value — the "
-                        "vendored data has drifted and the golden test should be red."
-                    )
-                st.code(result.sql, language="sql")
-                st.dataframe(
-                    pd.DataFrame(result.result.rows, columns=result.result.columns),
-                    use_container_width=True, hide_index=True,
-                )
+    st.chat_message("user").write(active["question"])
+    with st.chat_message("assistant"):
+        if not result.ok:
+            st.error(f"Reference SQL failed: {result.result.error}")
+        else:
+            st.markdown(f"## {result.headline}")
+            if result.matches_contract:
                 st.caption(
-                    "Reference SQL, executed live — not written by the model. "
-                    "The model-authored path is what the API key unlocks."
+                    "Matches the value asserted in `evals/golden_questions.yaml`, "
+                    "which CI re-checks on every push."
                 )
+            else:
+                st.warning(
+                    "This does not match the contract's expected value — the "
+                    "vendored data has drifted and the golden test should be red."
+                )
+            st.code(result.sql, language="sql")
+            st.dataframe(
+                pd.DataFrame(result.result.rows, columns=result.result.columns),
+                use_container_width=True, hide_index=True,
+            )
+            st.caption(
+                "Reference SQL, executed live — not written by the model. "
+                "The model-authored path is what the API key unlocks."
+            )
 
     st.divider()
     st.subheader("What the live mode adds")
