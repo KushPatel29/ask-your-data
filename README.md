@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-99%20%C2%B7%2098%20run%20without%20an%20API%20key-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-103%20%C2%B7%20102%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
@@ -93,8 +93,9 @@ wholesale customers, and migration verdicts.
 
 ```mermaid
 flowchart LR
-    Q[Question in<br/>plain English] --> A[Claude]
-    C[(Schema catalog<br/>36 documented tables)] --> A
+    Q[Question in<br/>plain English] --> SR[Schema retrieval<br/>Chroma + MiniLM]
+    C[(Schema corpus<br/>36 documented tables)] --> SR
+    SR -->|top 9 tables| A[Claude]
     A -->|"writes SQL"| G{Read-only<br/>SQL guard}
     A -->|"out of scope"| R[Refuses honestly]
     G -->|"SELECT only"| W[(DuckDB warehouse<br/>vendored synthetic data)]
@@ -106,9 +107,10 @@ flowchart LR
 1. **Warehouse** — every vendored CSV loads into an in-memory DuckDB, named
    `<domain>_<table>` so the several `dim_customer` / `fact_orders` tables from
    different domains never collide.
-2. **Schema catalog** — tables, business descriptions, and real column types are
-   rendered into the prompt. Good text-to-SQL lives or dies on this catalog, so
-   it's generated from the actual loaded schema, never hand-typed.
+2. **Schema retrieval** — Chroma embeds one document per table using local,
+   keyless MiniLM ONNX embeddings, then sends only the nine best matches—with
+   business descriptions and real column types—to the model. A follow-up always
+   retains tables named in prior-turn SQL, even when the new wording is vague.
 3. **Model → SQL** — Claude returns a single SELECT (or a refusal) as a
    structured tool call. Prior turns replay as context, so follow-ups like
    *"and by region?"* just work.
@@ -149,6 +151,16 @@ defend in an interview:
   8.2%*, *1,483 active employees*, *fill rate 98.8%*, *top customer Canyon
   Charcuterie 064*...). CI runs every reference query on every push, so the
   data and the SQL can never silently drift apart.
+- **Schema retrieval is measured, not decorative.** Ground-truth tables are
+  parsed from each golden question's reference SQL. At the smallest perfect
+  cutoff, vector retrieval covers every required table while cutting the schema
+  block by 69%; the keyword baseline still misses a quarter of required tables:
+
+  | Strategy at k=9 | Questions fully covered | Tables recalled | ~tokens/turn |
+  |---|---:|---:|---:|
+  | Full catalog | 100.0% | 100.0% | 2,738 |
+  | Keyword | 78.6% | 75.0% | 500 |
+  | Vector | **100.0%** | **100.0%** | **857** |
 - **The harness suite** is my favorite trick: a *scripted fake client* stands in
   for Claude, which lets CI prove the control flow no matter what a model might
   return. The fake "model" writes a bad column → the loop feeds the real error
@@ -159,7 +171,7 @@ defend in an interview:
   along in the live evaluation: every one must end in a refusal or read-only SQL.
 
 ```
-99 tests — 98 run keyless in CI across three jobs (ruff lint, suite, suite-in-Docker);
+103 tests — 102 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
 1 live model test skips without a key.
 ```
 
@@ -170,10 +182,9 @@ needs an API key, so it runs on demand rather than in CI.
 
 ## Small things that make it production, not demo
 
-- **Every answer reports its token spend** — including prompt-cache reads. The
-  ~5K-token schema catalog carries a cache marker, so from the second question
-  in a session it bills at roughly a tenth of the price, and the UI *shows* the
-  cache hit rather than asserting it in a README.
+- **Every answer reports its token spend.** The schema cost is controlled before
+  the model call: the measured retriever sends about 857 schema tokens at its
+  perfect-recall cutoff instead of the full catalog's 2,738.
 - **It degrades gracefully, and usefully.** With no API key there is no model,
   so the app falls back to **demo mode**: it serves the questions from the
   accuracy contract, executing each one's committed reference SQL live against
@@ -219,6 +230,9 @@ streamlit run app/streamlit_app.py
 
 # 4. Grade the model end-to-end: accuracy + safety
 python scripts/run_live_eval.py
+
+# 5. Reproduce the schema-retrieval recall and token curve
+python scripts/run_retrieval_eval.py --sweep
 ```
 
 Defaults to `claude-opus-4-8`; set `ASK_YOUR_DATA_MODEL` to swap models.
@@ -232,6 +246,7 @@ engine/
   warehouse.py      builds the in-memory DuckDB + the schema catalog
   sql_guard.py      read-only validation — the safety boundary
   query.py          capped, cursor-isolated execution
+  retrieval.py      local schema index + measured keyword baseline
   assistant.py      NL -> SQL -> self-correction -> grounded answer + telemetry
 app/
   cli.py            terminal Q&A with conversation memory
@@ -240,7 +255,7 @@ evals/
   golden_questions.yaml       question -> reference SQL -> expected answer
   adversarial_questions.yaml  "delete all claims" -> must refuse or stay read-only
 tests/              guard, warehouse, golden SQL, fake-client harness suite
-scripts/            vendor_data.py, run_live_eval.py
+scripts/            vendor_data.py, run_live_eval.py, run_retrieval_eval.py
 Dockerfile          the whole offline suite runs in a container (CI builds it)
 ```
 
@@ -248,9 +263,10 @@ Dockerfile          the whole offline suite runs in a container (CI builds it)
 
 The point of a portfolio project is as much the restraint as the features:
 
-- **No vector database, no RAG.** This is a few megabytes of clean relational
-  tables. SQL over DuckDB is the correct, inspectable tool; embeddings would add
-  opacity and buy nothing here.
+- **No vector search over business data.** Chroma indexes only 36 schema
+  descriptions, where semantic matching genuinely beats keyword overlap. Every
+  business value still comes from inspectable SQL over DuckDB; embeddings never
+  retrieve claims, employees, customers, or financial rows.
 - **No agent framework.** The whole loop is ~80 lines you can read: one call to
   write SQL, one to summarize, a bounded retry. A framework would add layers to
   audit without adding capability.

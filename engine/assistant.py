@@ -17,28 +17,29 @@ Design choices that keep this honest:
   prior turns — question, the SQL used, the answer — are passed back as context.
   The caller owns the history, so the Assistant itself stays stateless and
   thread-safe.
-- **Prompt caching.** The schema catalog is the bulk of every request, and it
-  never changes within a session, so the system block carries `cache_control` —
-  from the second question on, the catalog is served from the prompt cache at a
-  fraction of the cost.
+- **Retrieved schema grounding.** A local embedding index selects the nine
+  tables most relevant to the current question instead of sending all 36 on
+  every turn. Tables used by prior-turn SQL are always retained for follow-ups.
 
 The model is asked for structured output via a tool, so we get clean SQL (or a
 refusal) rather than having to scrape it out of prose.
 """
 
 import os
+import re
 from dataclasses import dataclass, field
 
 import anthropic
 
 from engine.query import QueryResult, run_query
-from engine.warehouse import schema_catalog
+from engine.retrieval import schema_catalog_for
+from engine.warehouse import table_names
 
 MODEL = os.environ.get("ASK_YOUR_DATA_MODEL", "claude-opus-4-8")
 MAX_ATTEMPTS = 3   # 1 initial attempt + up to 2 corrections
 HISTORY_TURNS = 6  # how many prior turns are replayed as context
 
-SYSTEM = """You are a careful analytics engineer answering questions about a \
+SYSTEM_RULES = """You are a careful analytics engineer answering questions about a \
 read-only DuckDB warehouse by writing SQL.
 
 Rules:
@@ -58,8 +59,9 @@ Rules:
   and filters unless the user changes them.
 - If the question cannot be answered from these tables, call cannot_answer with a
   short reason — do not guess.
+"""
 
-SCHEMA
+SCHEMA_BLOCK = """SCHEMA
 ======
 {catalog}
 """
@@ -162,21 +164,48 @@ def _history_messages(history):
     return messages
 
 
+def _retrieval_context(question: str, history: list[Turn]) -> str:
+    """Give vague follow-ups enough language to retrieve their prior domain."""
+    parts = [question]
+    for turn in history[-2:]:
+        parts.extend((turn.question, turn.sql))
+    return "\n".join(part for part in parts if part)
+
+
+def _tables_used_by_history(history: list[Turn], known_tables: tuple[str, ...]) -> tuple[str, ...]:
+    """Find exact warehouse table names in prior SQL, preserving catalog order."""
+    sql = "\n".join(turn.sql.lower() for turn in history[-HISTORY_TURNS:] if turn.sql)
+    return tuple(
+        name
+        for name in known_tables
+        if re.search(rf"(?<!\w){re.escape(name.lower())}(?!\w)", sql)
+    )
+
+
 class Assistant:
     """Stateless NL->SQL assistant. Pass `history` (a list of Turn) to enable
     follow-up questions; the caller owns and appends to it."""
 
-    def __init__(self, con, client=None, model: str = MODEL):
+    def __init__(self, con, client=None, model: str = MODEL, catalog_builder=None):
         self.con = con
         self.client = client or anthropic.Anthropic()
         self.model = model
-        # cache_control: the catalog is identical on every request in a session,
-        # so it is served from the prompt cache after the first question.
-        self.system = [{
-            "type": "text",
-            "text": SYSTEM.format(catalog=schema_catalog(con)),
-            "cache_control": {"type": "ephemeral"},
-        }]
+        self.catalog_builder = catalog_builder or schema_catalog_for
+        self.known_tables = tuple(table_names(con))
+
+    def _system_for(self, question: str, history: list[Turn]) -> list[dict]:
+        """Stable rules plus the retrieved schema for this turn."""
+        context = _retrieval_context(question, history)
+        required = _tables_used_by_history(history, self.known_tables)
+        catalog = self.catalog_builder(
+            context,
+            self.con,
+            include_tables=required,
+        )
+        return [
+            {"type": "text", "text": SYSTEM_RULES},
+            {"type": "text", "text": SCHEMA_BLOCK.format(catalog=catalog)},
+        ]
 
     def _create(self, **kwargs):
         """One place where the SDK is called, so auth/billing/network failures
@@ -189,8 +218,10 @@ class Assistant:
             raise AssistantUnavailable(str(e)) from e
 
     def ask(self, question: str, history: list = None) -> AskResult:
-        messages = _history_messages(history or [])
+        history = history or []
+        messages = _history_messages(history)
         messages.append({"role": "user", "content": question})
+        system = self._system_for(question, history)
 
         usage, corrections = {}, []
         sql, explanation, result = "", "", None
@@ -198,7 +229,7 @@ class Assistant:
             msg = self._create(
                 model=self.model,
                 max_tokens=2048,
-                system=self.system,
+                system=system,
                 tools=TOOLS,
                 tool_choice={"type": "any"},
                 messages=messages,

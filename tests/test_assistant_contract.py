@@ -15,15 +15,20 @@ import yaml
 
 from engine.assistant import TOOLS, Assistant, _format_result
 from engine.query import run_query
+from engine.warehouse import schema_catalog
 
 ROOT = Path(__file__).resolve().parent.parent
 HAS_KEY = bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
 
 
+def full_catalog(_question, con, **_kwargs):
+    return schema_catalog(con)
+
+
 def test_system_prompt_embeds_the_schema(con):
     # a dummy client is never called — we only inspect the built prompt
-    assistant = Assistant(con, client=object())
-    prompt = assistant.system[0]["text"]
+    assistant = Assistant(con, client=object(), catalog_builder=full_catalog)
+    prompt = "\n".join(block["text"] for block in assistant._system_for("claims", []))
     assert "healthcare_fact_claims" in prompt
     assert "hr_fact_employees" in prompt
     assert "SELECT statements only" in prompt

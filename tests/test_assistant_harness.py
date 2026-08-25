@@ -16,6 +16,16 @@ import httpx
 import pytest
 
 from engine.assistant import MAX_ATTEMPTS, Assistant, AssistantUnavailable, Turn
+from engine.warehouse import schema_catalog
+
+
+def full_catalog(_question, con, **_kwargs):
+    """Keep control-flow tests local; retrieval has its own focused tests."""
+    return schema_catalog(con)
+
+
+def assistant(con, client, catalog_builder=full_catalog):
+    return Assistant(con, client=client, catalog_builder=catalog_builder)
 
 
 def tool_use(name, **input):
@@ -61,7 +71,7 @@ def test_happy_path_single_attempt(con):
         msg(tool_use("answer_with_sql", sql=GOOD_SQL, explanation="counts claims")),
         msg(text("There are 12,000 claims.")),  # the summarize call
     ])
-    res = Assistant(con, client=client).ask("how many claims?")
+    res = assistant(con, client).ask("how many claims?")
     assert res.ok and res.attempts == 1 and res.corrections == []
     assert res.result.rows[0][0] == 12000
     assert res.answer == "There are 12,000 claims."
@@ -73,7 +83,7 @@ def test_self_corrects_after_a_bad_column(con):
         msg(tool_use("answer_with_sql", sql=GOOD_SQL, explanation="")),
         msg(text("12,000.")),
     ])
-    res = Assistant(con, client=client).ask("how many claims?")
+    res = assistant(con, client).ask("how many claims?")
     assert res.ok and res.attempts == 2
     assert len(res.corrections) == 1 and "no_such_column" in res.corrections[0]
     # the retry request must carry the real database error back to the model
@@ -88,7 +98,7 @@ def test_malicious_sql_is_blocked_not_executed_then_corrected(con):
         msg(tool_use("answer_with_sql", sql=GOOD_SQL, explanation="")),
         msg(text("12,000.")),
     ])
-    res = Assistant(con, client=client).ask("drop the claims table")
+    res = assistant(con, client).ask("drop the claims table")
     assert res.ok and res.attempts == 2
     assert "guard" in res.corrections[0]
     # the table is untouched — the guard rejected the statement before execution
@@ -101,7 +111,7 @@ def test_retry_budget_is_bounded(con):
         msg(tool_use("answer_with_sql", sql=BAD_SQL, explanation=""))
         for _ in range(MAX_ATTEMPTS)
     ])
-    res = Assistant(con, client=client).ask("how many claims?")
+    res = assistant(con, client).ask("how many claims?")
     assert not res.ok
     assert res.attempts == MAX_ATTEMPTS
     assert len(res.corrections) == MAX_ATTEMPTS
@@ -110,7 +120,7 @@ def test_retry_budget_is_bounded(con):
 
 def test_refusal_passes_through(con):
     client = FakeClient([msg(tool_use("cannot_answer", reason="no weather data"))])
-    res = Assistant(con, client=client).ask("what's the weather?")
+    res = assistant(con, client).ask("what's the weather?")
     assert res.refused and res.reason == "no weather data"
     assert len(client.calls) == 1  # a refusal must not trigger retries
 
@@ -123,22 +133,35 @@ def test_history_is_replayed_for_follow_ups(con):
     history = [Turn(question="denial rate by payer?",
                     sql="SELECT payer_id, 0.1 FROM healthcare_dim_payer",
                     answer="Around 8-12% depending on payer.")]
-    Assistant(con, client=client).ask("and how many claims in total?", history=history)
+    captured = {}
+
+    def capture_catalog(question, catalog_con, **kwargs):
+        captured["question"] = question
+        captured["include_tables"] = kwargs["include_tables"]
+        return schema_catalog(catalog_con)
+
+    assistant(con, client, capture_catalog).ask(
+        "and how many claims in total?",
+        history=history,
+    )
     sent = client.calls[0]["messages"]
     assert sent[0]["content"] == "denial rate by payer?"
     assert "(SQL used)" in sent[1]["content"]
     assert sent[-1]["content"] == "and how many claims in total?"
+    assert "denial rate by payer?" in captured["question"]
+    assert "healthcare_dim_payer" in captured["include_tables"]
 
 
-def test_schema_catalog_is_cache_controlled(con):
+def test_retrieved_schema_is_sent_as_a_separate_system_block(con):
     client = FakeClient([
         msg(tool_use("answer_with_sql", sql=GOOD_SQL, explanation="")),
         msg(text("12,000.")),
     ])
-    Assistant(con, client=client).ask("how many claims?")
+    assistant(con, client).ask("how many claims?")
     system = client.calls[0]["system"]
-    assert system[0]["cache_control"] == {"type": "ephemeral"}
-    assert "healthcare_fact_claims" in system[0]["text"]
+    assert len(system) == 2
+    assert "SELECT statements only" in system[0]["text"]
+    assert "healthcare_fact_claims" in system[1]["text"]
 
 
 def test_usage_is_aggregated_across_calls(con):
@@ -147,7 +170,7 @@ def test_usage_is_aggregated_across_calls(con):
             usage=usage(inp=5000, out=100)),
         msg(text("12,000."), usage=usage(inp=200, out=40, cache_read=4800)),
     ])
-    res = Assistant(con, client=client).ask("how many claims?")
+    res = assistant(con, client).ask("how many claims?")
     assert res.usage["input_tokens"] == 5200
     assert res.usage["output_tokens"] == 140
     assert res.usage["cache_read_input_tokens"] == 4800
@@ -165,4 +188,4 @@ class DownClient:
 
 def test_api_failure_raises_a_single_friendly_error(con):
     with pytest.raises(AssistantUnavailable):
-        Assistant(con, client=DownClient()).ask("how many claims?")
+        assistant(con, DownClient()).ask("how many claims?")
