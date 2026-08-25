@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-103%20%C2%B7%20102%20run%20without%20an%20API%20key-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-99%20%C2%B7%2098%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
@@ -171,7 +171,7 @@ defend in an interview:
   along in the live evaluation: every one must end in a refusal or read-only SQL.
 
 ```
-103 tests — 102 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
+99 tests — 98 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
 1 live model test skips without a key.
 ```
 
