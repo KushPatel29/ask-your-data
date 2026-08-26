@@ -361,11 +361,20 @@ def schema_catalog_for(
     and the reader all already know how to read that shape, and a retrieval
     change should not also be a prompt-format change.
     """
-    from engine.warehouse import table_columns
+    from engine.warehouse import schema_catalog, table_columns
 
     picker = {"keyword": retrieve_keyword, "vector": retrieve,
               "hybrid": retrieve_hybrid}.get(strategy, retrieve_hybrid)
-    hits = picker(question, k=k, con=con)
+    try:
+        hits = picker(question, k=k, con=con)
+    except Exception:
+        # Retrieval is an optimisation over pasting the whole catalogue, so a
+        # failure here must cost tokens, not answers. Two real ways this fires
+        # on a hosted free tier: chromadb not installing at all, and the 79 MB
+        # all-MiniLM download failing or timing out on first use. Either way the
+        # assistant should still work, just with the bigger prompt it used
+        # before this module existed.
+        return schema_catalog(con)
 
     # A follow-up such as "and by region?" has almost no standalone retrieval
     # signal. The assistant passes tables used by prior-turn SQL here, making
@@ -390,8 +399,6 @@ def schema_catalog_for(
         )
         seen.add(name)
     if not hits:
-        from engine.warehouse import schema_catalog
-
         return schema_catalog(con)
 
     by_domain: dict[str, list[RetrievedTable]] = {}

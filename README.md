@@ -14,8 +14,9 @@ each question's committed reference SQL live against DuckDB, and labels every
 answer as reference SQL rather than passing it off as the model's work.
 
 *(First load builds the schema index, which downloads a 79 MB embedding model
-once per container — the spinner says so. The app must be set to **public** in
-Streamlit Cloud, or visitors get a sign-in page instead.)*
+once per container — the spinner says so. The header carries a `build` hash of
+the running source, so you can tell a fresh deploy from a warm container still
+serving the old one.)*
 
 Ask a plain-English question about any of my portfolio datasets and get a real
 answer — with the SQL that produced it shown right next to the number.

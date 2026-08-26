@@ -31,6 +31,7 @@ scripts/run_retrieval_eval.py for how they were measured.
 from __future__ import annotations
 
 import html
+from pathlib import Path
 
 import streamlit as st
 
@@ -136,6 +137,37 @@ def inject() -> None:
     st.markdown(_CSS, unsafe_allow_html=True)
 
 
+def build_marker() -> str:
+    """A short fingerprint of the code actually running.
+
+    Streamlit Cloud rebuilds on push but caches aggressively, and there was no
+    way to tell from the page whether you were looking at the new build or a
+    warm container still serving the old one. Hashing the source is more honest
+    than a hand-bumped version string, which only ever tells you what someone
+    remembered to change: this moves whenever the UI, the retriever or the
+    manifest actually moves.
+
+    Not git-derived on purpose - the deployed checkout may have no .git, and a
+    marker that silently degrades to "unknown" answers nothing.
+    """
+    import hashlib
+
+    root = Path(__file__).resolve().parents[1]
+    watched = [
+        root / "app" / "ui.py",
+        root / "app" / "streamlit_app.py",
+        root / "engine" / "retrieval.py",
+        root / "data_manifest.py",
+    ]
+    digest = hashlib.sha256()
+    for path in watched:
+        try:
+            digest.update(path.read_bytes())
+        except OSError:
+            digest.update(b"missing")
+    return digest.hexdigest()[:7]
+
+
 def masthead(*, tables: int, domains: int, live: bool) -> None:
     mode = "live · model-authored SQL" if live else "demo · committed reference SQL"
     st.markdown(
@@ -150,6 +182,7 @@ def masthead(*, tables: int, domains: int, live: bool) -> None:
     <span><b>{tables}</b> tables</span>
     <span><b>{domains}</b> domains</span>
     <span>{mode}</span>
+    <span>build <b>{build_marker()}</b></span>
   </div>
 </div>""",
         unsafe_allow_html=True,
