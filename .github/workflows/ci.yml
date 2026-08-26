@@ -35,4 +35,7 @@ jobs:
       - name: Build image and run the suite inside the container
         run: |
           docker build -t ask-your-data .
-          docker run --rm ask-your-data
+          # The image's default command serves Streamlit now, so the suite is an
+          # explicit override. Same proof as before: the tests run against the
+          # image's own vendored data, not against the runner's checkout.
+          docker run --rm ask-your-data pytest tests/ -v
