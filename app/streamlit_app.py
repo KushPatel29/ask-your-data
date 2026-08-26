@@ -43,6 +43,27 @@ def get_connection():
     return build_warehouse()
 
 
+@st.cache_resource(show_spinner="Preparing the schema index (first run downloads the embedding model)…")
+def warm_retrieval(_con):
+    """Build the Chroma index once, at startup, with the wait made visible.
+
+    Chroma fetches all-MiniLM-L6-v2 the first time it embeds anything - 79 MB,
+    into ~/.cache/chroma. Left lazy, that download lands in the middle of
+    someone's first question and looks like a hang; on Render it landed during
+    the health check and got the deploy cancelled. Doing it here moves the cost
+    to page load, where a spinner can explain it, and @st.cache_resource means
+    it happens once per container rather than once per session.
+
+    Returns False rather than raising: retrieval is an optimisation, and an app
+    that cannot embed should still answer from the full catalogue.
+    """
+    try:
+        retrieval.build_index(_con)
+        return True
+    except Exception:
+        return False
+
+
 @st.cache_resource
 def get_assistant(_con):
     # Imported and constructed only in live mode, so demo mode never depends on
@@ -53,6 +74,7 @@ def get_assistant(_con):
 
 
 con = get_connection()
+RETRIEVAL_READY = warm_retrieval(con)
 assistant = get_assistant(con) if LIVE_MODE else None
 st.session_state.setdefault("turns", [])      # engine context (Turn objects)
 st.session_state.setdefault("transcript", [])  # everything we rendered, incl. refusals

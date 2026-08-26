@@ -8,15 +8,14 @@
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
-**▶ Live demo: [ask-your-data-3tdz.onrender.com](https://ask-your-data-3tdz.onrender.com)** —
-runs without an API key and without a login. It answers the golden-question
-contract by executing each question's committed reference SQL live against
-DuckDB, and labels every answer as reference SQL rather than passing it off as
-the model's work.
+**▶ Live demo: [ask-your-data-kp.streamlit.app](https://ask-your-data-kp.streamlit.app)** —
+runs without an API key. It answers the golden-question contract by executing
+each question's committed reference SQL live against DuckDB, and labels every
+answer as reference SQL rather than passing it off as the model's work.
 
-*(First load pays a cold start — the free instance sleeps after 15 minutes idle.
-The Streamlit Cloud mirror at `ask-your-data-kp.streamlit.app` currently sits
-behind a Streamlit sign-in, so this is the link to send someone.)*
+*(First load builds the schema index, which downloads a 79 MB embedding model
+once per container — the spinner says so. The app must be set to **public** in
+Streamlit Cloud, or visitors get a sign-in page instead.)*
 
 Ask a plain-English question about any of my portfolio datasets and get a real
 answer — with the SQL that produced it shown right next to the number.
