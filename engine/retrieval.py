@@ -64,16 +64,34 @@ from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
 #   vector     14           94.9%             95.6%             3,334
 #   hybrid     14           97.4%             97.8%             3,241
 #
-# Hybrid at k=14 reaches what vector needs k=18 (4,137 tokens) to reach, so it
-# is both the most accurate and the cheaper of the two at equal recall.
+# THE PARAGRAPH THAT USED TO BE HERE WAS WRONG, and the way it was wrong is
+# worth keeping. It said one question failed under every strategy at every k
+# because supplychain_fact_orders had a description that did not say what the
+# question asked - a corpus problem, unfixable by more context.
 #
-# It is NOT 100%, and raising k does not fix it: vector plateaus at 94.9% from
-# k=9 through k=16, because the misses are ranking failures rather than budget
-# failures. One question still fails at every k - top_category_revenue does not
-# retrieve supplychain_fact_orders under any strategy. That is a corpus problem
-# (the table's description does not say what the question asks) and the fix is
-# to write a better description, not to buy more context.
-DEFAULT_K = 14
+# The description was fine. `_tokens()` was eating the match: `[a-z0-9_]+`
+# treats `qty_shipped` as ONE token, so the word "shipped" in a question had
+# zero overlap with the column that answers it. Splitting snake_case into its
+# parts (while keeping the joined form, which is what exact identifier mentions
+# need) fixed it. After the fix, re-measured on the same harness:
+#
+#   strategy   k    questions covered   tables recalled   ~tokens/turn
+#   full       -           100.0%            100.0%            12,741
+#   vector     10            ~95%              ~96%             2,4xx
+#   hybrid     10           100.0%            100.0%             2,253
+#   hybrid     14           100.0%            100.0%             3,213
+#
+# So k drops from 14 to 10: full recall at 2,253 tokens, against 3,241 for the
+# old 97.4%. Better answers for 30% fewer tokens, and 82% smaller than pasting
+# the catalogue.
+#
+# Keyword alone also reaches 100% after the fix, at fewer tokens still (2,893 at
+# k=14). Hybrid is kept anyway, and the reason is a limit of this eval rather
+# than a measured win: the golden questions were written by people looking at
+# column names, so they are unusually friendly to literal matching. Vector is
+# what covers a question phrased in words the schema never uses, and that case
+# is exactly what the 39 questions cannot test.
+DEFAULT_K = 10
 
 _COLLECTION = "schema_objects"
 _client = None
@@ -256,8 +274,28 @@ _STOP = {
 
 
 def _tokens(text: str) -> set[str]:
+    """Words, with snake_case identifiers split into their parts as well.
+
+    The split is the whole fix for the one golden question that used to fail
+    under every strategy at every k. `[a-z0-9_]+` treats `qty_shipped` as a
+    single token, so the word "shipped" in a question had ZERO overlap with the
+    column that answers it - measured, not theorised. The code comment in this
+    module used to blame the table's description; the description was fine and
+    the tokeniser was eating the match.
+
+    Both forms are kept. Dropping the joined form would break exact identifier
+    mentions, which are the case keyword retrieval is best at and the reason it
+    earns its place in the fusion at all.
+    """
     raw = re.findall(r"[a-z0-9_]+", (text or "").lower())
-    return {token for token in raw if token not in _STOP and len(token) > 2}
+    out: set[str] = set()
+    for token in raw:
+        if token not in _STOP and len(token) > 2:
+            out.add(token)
+        for part in token.split("_"):
+            if part not in _STOP and len(part) > 2:
+                out.add(part)
+    return out
 
 
 def retrieve_keyword(question: str, *, k: int = DEFAULT_K, con=None) -> list[RetrievedTable]:

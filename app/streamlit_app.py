@@ -25,6 +25,14 @@ redraw it). So retrieval is gathered once per question into `_retrieval_bundle`
 and cached on the question text. The bundle also carries the measured cost of
 the hybrid call, so the timing shown next to the RETRIEVE stage is the time
 retrieval actually took when it ran, not the near-zero cost of a cache hit.
+
+Two more readouts ask DuckDB about a statement without running it — EXPLAIN
+(FORMAT JSON) for the physical plan and DESCRIBE for the output schema — and
+they are cached the same way and for the same reason, even though both are
+cheap (measured across the 39 golden queries: EXPLAIN 0.20-1.70 ms, DESCRIBE
+0.18-0.61 ms). Neither executes the query, and neither runs on SQL the guard
+has not already passed, so showing the plan cannot become a second execution
+path around the safety boundary.
 """
 
 import sys
@@ -212,6 +220,12 @@ def _guard_readout(sql: str) -> None:
     Built only from validate_sql's public return, never from its private
     helpers, and it reproduces the guard's short-circuit: when a check fails the
     later checks genuinely did not run, so they are not drawn as passing.
+
+    The verb the panel lights is parsed out of the guard's own reason string
+    rather than found by re-scanning the SQL here. A second scanner would have
+    to reimplement _strip_literals to avoid firing on the word DELETE inside a
+    string literal, and a UI that disagreed with the guard about what the guard
+    blocked would be worse than one that showed nothing.
     """
     ok, reason = validate_sql(sql)
     order = [
@@ -228,7 +242,179 @@ def _guard_readout(sql: str) -> None:
             checks.append((label, not failed))
             if failed:
                 break
-    ui.guard_verdict(ok=ok, reason=reason, checks=checks)
+    verb = reason.split("forbidden keyword:", 1)[1].strip() if "forbidden keyword:" in reason else ""
+    ui.guard_verdict(ok=ok, reason=reason, checks=checks,
+                     forbidden=FORBIDDEN, blocked_verb=verb)
+
+
+# --------------------------------------------------------------------------
+# The plan and the result shape, read from DuckDB rather than described.
+# --------------------------------------------------------------------------
+# Both of these ask DuckDB about a statement WITHOUT running it: EXPLAIN builds
+# the plan and stops, DESCRIBE resolves the output schema and stops. Measured
+# across the 39 golden queries on this warehouse, EXPLAIN (FORMAT JSON) costs
+# 0.20-1.70 ms (median 0.44) and DESCRIBE 0.18-0.61 ms (median 0.29), so a panel
+# that shows the plan costs about a thousandth of what retrieval does.
+#
+# Both are still cached on the SQL text, because Streamlit reruns the whole
+# script on every widget interaction and a transcript of ten answers would
+# otherwise re-explain all ten on every keystroke.
+
+# Which piece of extra_info actually says what an operator is doing. DuckDB
+# attaches up to fifteen different keys and dumping all of them turns a plan
+# into a wall; these are the ones that carry the operator's own decision.
+_PLAN_DETAIL = {
+    "SEQ_SCAN": ("Table", "Filters"),
+    "HASH_JOIN": ("Join Type", "Conditions"),
+    "PIECEWISE_MERGE_JOIN": ("Join Type", "Conditions"),
+    "NESTED_LOOP_JOIN": ("Join Type", "Conditions"),
+    "HASH_GROUP_BY": ("Groups",),
+    "PERFECT_HASH_GROUP_BY": ("Groups",),
+    "UNGROUPED_AGGREGATE": ("Aggregates",),
+    "TOP_N": ("Top", "Order By"),
+    "ORDER_BY": ("Order By",),
+    "FILTER": ("Expression",),
+    "CTE": ("CTE Name",),
+    "CTE_SCAN": ("CTE Name", "CTE Index"),
+    # PROJECTION and CROSS_PRODUCT are plumbing: the expression list is long,
+    # repeats what the SQL above already says, and is not a decision the
+    # optimiser made. They render as a bare operator name.
+    "PROJECTION": (),
+    "CROSS_PRODUCT": (),
+}
+_PLAN_FALLBACK = ("Table", "Expression", "Conditions", "Groups", "Aggregates",
+                  "Order By", "Filters")
+# A one-word lead-in for the keys whose value is unreadable without one. DuckDB
+# writes a group key as "#0" and a TOP_N limit as "1"; on their own those are
+# two bare numbers on a line. The values themselves are never rewritten - "#0"
+# is the optimiser's own column reference and rendering it as a column name
+# would be this panel inventing something DuckDB did not say.
+_PLAN_LEAD = {"Top": "top", "Groups": "by", "Order By": "order",
+              "Conditions": "on", "Filters": "where", "CTE Name": "cte",
+              "CTE Index": "cte"}
+_PLAN_MAX_NODES = 200
+
+
+def _plan_value(info: dict, key: str) -> str:
+    """One extra_info entry as a single line. DuckDB gives str or list of str."""
+    value = info.get(key)
+    if value in (None, "", []):
+        return ""
+    if isinstance(value, (list, tuple)):
+        value = ", ".join(str(item) for item in value if str(item).strip())
+    text = " ".join(str(value).split())
+    if not text:
+        return ""
+    if key == "Table":
+        # Every table in this warehouse is memory.main.<name>; the catalog and
+        # schema are constant and repeating them 47 times says nothing.
+        text = text.rsplit(".", 1)[-1]
+    lead = _PLAN_LEAD.get(key)
+    return f"{lead} {text}" if lead else text
+
+
+def _plan_rows(node: dict, prefix: str, root: bool, last: bool, out: list) -> None:
+    """Depth-first walk, pre-rendering the tree guide for each row.
+
+    The guide is built here rather than in app/ui.py because only the walk knows
+    whether an ancestor still has siblings below it — the difference between a
+    branch that continues down the left margin and one that has ended. A flat
+    list of (depth, name) rows cannot reconstruct that, and a two-child operator
+    is exactly where it shows.
+    """
+    if len(out) >= _PLAN_MAX_NODES:
+        return
+    guide = "" if root else prefix + ("└─ " if last else "├─ ")
+    child_prefix = "" if root else prefix + ("   " if last else "│  ")
+    name = str(node.get("name", "?"))
+    info = node.get("extra_info") or {}
+    keys = _PLAN_DETAIL.get(name, _PLAN_FALLBACK)
+    detail = " · ".join(filter(None, (_plan_value(info, key) for key in keys)))
+    try:
+        card = int(str(info.get("Estimated Cardinality", "")).replace(",", ""))
+    except (TypeError, ValueError):
+        card = None
+    out.append({"guide": guide, "name": name, "detail": detail, "card": card})
+    children = node.get("children") or []
+    for index, child in enumerate(children):
+        _plan_rows(child, child_prefix, False, index == len(children) - 1, out)
+
+
+@st.cache_data(show_spinner=False)
+def _query_plan(sql: str):
+    """DuckDB's physical plan for this SQL, flattened for display.
+
+    Returns None rather than raising, and only ever runs on SQL the guard has
+    already passed. EXPLAIN does not execute the statement — it stops after
+    planning — so this cannot become a second, unguarded execution path.
+    """
+    import json
+
+    if not validate_sql(sql)[0]:
+        return None
+    try:
+        started = time.perf_counter()
+        cur = con.cursor()
+        try:
+            cur.execute("EXPLAIN (FORMAT JSON) " + sql)
+            raw = cur.fetchall()[0][1]
+        finally:
+            cur.close()
+        elapsed = 1000 * (time.perf_counter() - started)
+        tree = json.loads(raw)
+        nodes: list[dict] = []
+        for root in tree:
+            _plan_rows(root, "", True, True, nodes)
+        # The walk stops at _PLAN_MAX_NODES, and a panel that stops without
+        # saying so is claiming the plan ended where the renderer gave up. The
+        # true size is counted separately so the head can report both.
+        total = sum(_plan_size(root) for root in tree)
+    except Exception:
+        return None
+    return {"nodes": nodes, "ms": elapsed, "total": total}
+
+
+def _plan_size(node: dict) -> int:
+    return 1 + sum(_plan_size(child) for child in (node.get("children") or []))
+
+
+@st.cache_data(show_spinner=False)
+def _result_columns(sql: str) -> list[tuple[str, str]]:
+    """The output schema in DuckDB's type names, via DESCRIBE.
+
+    pandas would also answer this, but it would answer with its own inference
+    over the returned values — int64 where the warehouse holds a BIGINT, object
+    where it holds a VARCHAR. The point of the line is what the warehouse says.
+    """
+    if not validate_sql(sql)[0]:
+        return []
+    try:
+        cur = con.cursor()
+        try:
+            cur.execute("DESCRIBE " + sql)
+            rows = cur.fetchall()
+        finally:
+            cur.close()
+    except Exception:
+        return []
+    return [(str(row[0]), str(row[1])) for row in rows]
+
+
+def _result_readout(sql: str, frame, *, truncated: bool = False) -> None:
+    """The plan, then the shape line, for one executed statement.
+
+    In that order because the shape line has to sit directly on top of the
+    dataframe it describes — it is a caption for the table, and a plan panel
+    between the two would orphan it.
+    """
+    if frame is None:
+        return
+    plan = _query_plan(sql)
+    if plan:
+        ui.query_plan(plan["nodes"], plan_ms=plan["ms"], total=plan["total"],
+                      returned=len(frame), truncated=truncated)
+    ui.result_shape(_result_columns(sql), rows=len(frame),
+                    truncated=truncated, cap=MAX_ROWS)
 
 
 def _render_sidebar(active_question: str | None) -> None:
@@ -333,10 +519,9 @@ def render_demo_mode(connection) -> None:
                 )
             _guard_readout(result.sql)
             st.code(result.sql, language="sql")
-            st.dataframe(
-                pd.DataFrame(result.result.rows, columns=result.result.columns),
-                use_container_width=True, hide_index=True,
-            )
+            frame = pd.DataFrame(result.result.rows, columns=result.result.columns)
+            _result_readout(result.sql, frame, truncated=result.result.truncated)
+            st.dataframe(frame, use_container_width=True, hide_index=True)
             st.caption(
                 "Reference SQL, executed live — not written by the model. "
                 "The model-authored path is what the API key unlocks."
@@ -361,7 +546,9 @@ if not LIVE_MODE:
     st.stop()
 
 # Live mode only, so demo mode never imports the anthropic client.
-from engine.assistant import AssistantUnavailable  # noqa: E402
+# MAX_ATTEMPTS comes from the loop that enforces it rather than being typed into
+# the panel: the ledger's denominator has to move when that constant does.
+from engine.assistant import MAX_ATTEMPTS, AssistantUnavailable  # noqa: E402
 
 if not st.session_state.transcript:
     st.write("Try one of these, or type your own:")
@@ -381,6 +568,12 @@ def render_entry(entry):
             ui.pipeline(retrieved=True, generated=True, guarded=False, executed=False,
                         timings={"retrieve": bundle["ms"]} if bundle else None)
             st.warning(f"I can't answer that from the loaded data: {entry['reason']}")
+            # A refusal can arrive on attempt 2 or 3 — the model corrected once,
+            # then declined — and that history is the interesting part of a
+            # refusal. It used to be dropped on the floor by this early return.
+            ui.attempt_ledger(attempts=entry["attempts"],
+                              corrections=entry.get("corrections") or [],
+                              max_attempts=MAX_ATTEMPTS, ok=False)
             return
         ui.pipeline(retrieved=True, generated=True,
                     guarded=True if entry["attempts"] == 1 else "fail",
@@ -396,17 +589,22 @@ def render_entry(entry):
             ui.note(f"Model round trip {entry['elapsed_ms']:,.0f} ms "
                     f"(generate → guard → execute, {entry['attempts']} attempt"
                     f"{'s' if entry['attempts'] != 1 else ''}).")
-        if entry["attempts"] > 1:
-            ui.note(f"Self-corrected after {entry['attempts']} attempts "
-                    f"(first error: {entry['corrections'][0]})")
+        # The loop's own record, when it ran more than once. This replaces a
+        # one-line note that quoted only corrections[0] and dropped the rest —
+        # on a three-attempt answer that silently hid the second error, which is
+        # the one that says whether the model was converging or thrashing.
+        ui.attempt_ledger(attempts=entry["attempts"],
+                          corrections=entry.get("corrections") or [],
+                          max_attempts=MAX_ATTEMPTS,
+                          ok=bool(entry["rows"] is not None or not entry["error"]))
         if entry["sql"]:
             _guard_readout(entry["sql"])
         with st.expander("Show the SQL and the data behind this answer"):
             st.code(entry["sql"], language="sql")
             if entry["rows"] is not None:
+                _result_readout(entry["sql"], entry["rows"],
+                                truncated=bool(entry["truncated"]))
                 st.dataframe(entry["rows"], use_container_width=True, hide_index=True)
-                if entry["truncated"]:
-                    st.caption("Showing the first rows only.")
             elif entry["error"]:
                 st.error(f"Query error: {entry['error']}")
             if entry.get("usage"):

@@ -1,0 +1,279 @@
+"""
+The interface's own contract, asserted rather than eyeballed.
+
+app/ui.py makes claims about itself — small text clears WCAG AA, hostile strings
+never reach the page unescaped, every colour resolves to a defined token, the
+pipeline strip's connectors mean something specific. Those are all arithmetic or
+structure, so they belong in the test suite next to the accuracy contract rather
+than in a comment saying they were checked once.
+
+Everything here runs headless and deterministically. The things that genuinely
+need a browser — computed font-variant-numeric, the 3ch guide grid, whether the
+deep plan scrolls instead of pushing the page — were measured against the running
+app with getComputedStyle and are documented where they are relied on; they are
+not faked here, because a test that asserts a layout it cannot lay out is worse
+than no test.
+"""
+
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+for path in (str(ROOT), str(ROOT / "scripts")):
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
+import audit_ui  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def rendered(con):
+    ui = audit_ui.load_ui()
+    return ui, audit_ui.render_all(ui, audit_ui.fixtures(con))
+
+
+# --------------------------------------------------------------------------
+# Structure and escaping.
+# --------------------------------------------------------------------------
+
+def test_every_panel_produces_balanced_markup(rendered):
+    _ui, panels = rendered
+    assert audit_ui.check_markup(panels) == []
+
+
+def test_no_component_lets_hostile_text_through(rendered):
+    """The audit pushes `<script>alert(1)</script>` through every text parameter."""
+    _ui, panels = rendered
+    assert audit_ui.check_escaping(panels) == []
+
+
+def test_the_hostile_string_actually_reached_the_output(rendered):
+    """Guards the guard: an escaping test passes trivially if nothing was rendered."""
+    _ui, panels = rendered
+    escaped = sum("&lt;script&gt;" in body for body in panels.values())
+    assert escaped >= 4, "the hostile fixture stopped reaching the components"
+
+
+# --------------------------------------------------------------------------
+# Colour.
+# --------------------------------------------------------------------------
+
+def test_every_colour_reference_resolves_to_a_token(rendered):
+    """A typo'd custom property paints the inherited colour and says nothing."""
+    ui, _panels = rendered
+    assert audit_ui.check_tokens(ui._CSS, audit_ui.token_table(ui._CSS)) == []
+
+
+def test_small_text_clears_wcag_aa(rendered):
+    ui, _panels = rendered
+    rows = audit_ui.contrast_rows(audit_ui.token_table(ui._CSS))
+    failing = [f"{label} {ratio:.2f}:1" for label, _fg, _bg, ratio, ok in rows if not ok]
+    assert failing == []
+
+
+def test_the_contrast_floor_does_not_drift(rendered):
+    """The measured range is quoted in app/ui.py; this is what keeps it true."""
+    ui, _panels = rendered
+    rows = audit_ui.contrast_rows(audit_ui.token_table(ui._CSS))
+    assert min(r[3] for r in rows) == pytest.approx(4.94, abs=0.01)
+
+
+def test_only_two_accents_carry_meaning(rendered):
+    """The whole argument of the file: amber means verified, cyan means machine.
+
+    A third accent would cost both of them their meaning, so the palette is
+    asserted rather than left to the next person's taste. --ayd-alert is not a
+    third accent — it is a failure state, and it never marks a value.
+    """
+    ui, _panels = rendered
+    tokens = audit_ui.token_table(ui._CSS)
+    colours = {name for name, value in tokens.items() if value.startswith("#")}
+    assert colours == {
+        "--ayd-ground", "--ayd-panel", "--ayd-panel-2", "--ayd-line",
+        "--ayd-ink", "--ayd-muted",
+        "--ayd-machine", "--ayd-verified", "--ayd-alert",
+    }
+
+
+def test_amber_appears_only_on_the_verified_badge(rendered):
+    """Nothing is amber unless a committed file backs it."""
+    _ui, panels = rendered
+    ambered = {name for name, body in panels.items() if "ayd-verified" in body}
+    assert ambered == {"answer"}
+
+
+# --------------------------------------------------------------------------
+# The pipeline strip's connectors, which encode a directional claim.
+# --------------------------------------------------------------------------
+
+def _links(ui, **kwargs):
+    ui.st.take()
+    ui.pipeline(**kwargs)
+    body = ui.st.take()
+    import re
+    return re.findall(r'class="ayd-arrow" data-on="([^"]*)"', body)
+
+
+def test_a_lit_link_means_the_signal_crossed_it(rendered):
+    ui, _panels = rendered
+    assert _links(ui, retrieved=True, generated=True, guarded=True, executed=True) \
+        == ["1", "1", "1"]
+
+
+def test_demo_mode_does_not_claim_anything_was_generated(rendered):
+    """GENERATE is honestly dark, so both segments touching it must be dark."""
+    ui, _panels = rendered
+    assert _links(ui, retrieved=True, generated=False, guarded=True, executed=True) \
+        == ["0", "0", "1"]
+
+
+def test_a_guard_block_breaks_the_link_after_the_guard_not_before(rendered):
+    """The SQL really did reach the guard; nothing came out of it.
+
+    Marking both adjacent segments as failed — which the first version did —
+    claims something crossed out of the guard and went wrong downstream. EXECUTE
+    never ran.
+    """
+    ui, _panels = rendered
+    assert _links(ui, retrieved=True, generated=True, guarded="fail",
+                  executed=False, attempts=3) == ["1", "1", "fail"]
+
+
+def test_a_refusal_never_reaches_the_guard(rendered):
+    ui, _panels = rendered
+    assert _links(ui, retrieved=True, generated=True, guarded=False, executed=False) \
+        == ["1", "0", "0"]
+
+
+# --------------------------------------------------------------------------
+# The readouts that report machine state.
+# --------------------------------------------------------------------------
+
+def test_the_guard_panel_draws_every_forbidden_verb(rendered):
+    """"None of N forbidden verbs" is a claim; the N on screen are the evidence."""
+    from engine.sql_guard import FORBIDDEN
+
+    _ui, panels = rendered
+    body = panels["guard_pass"]
+    assert body.count('class="ayd-verb"') == len(FORBIDDEN)
+    for verb in FORBIDDEN:
+        assert f">{verb}</span>" in body
+
+
+def test_only_the_verb_the_guard_named_is_lit(rendered):
+    _ui, panels = rendered
+    body = panels["guard_blocked"]
+    assert body.count('data-hit="1"') == 1
+    assert '<span class="ayd-verb" data-hit="1">DROP</span>' in body
+
+
+def test_a_clean_first_attempt_renders_no_ledger(rendered):
+    """There is no ledger to show when nothing was corrected."""
+    _ui, panels = rendered
+    assert panels["attempts_ok"] == ""
+
+
+def test_the_ledger_has_one_row_per_attempt_and_names_every_error(rendered):
+    """engine.assistant appends one correction per attempt that did not survive."""
+    _ui, panels = rendered
+    body = panels["attempts_corrected"]
+    assert body.count('class="ayd-att-row"') == 3
+    assert body.count('data-ok="0"') == 2   # the two that failed
+    assert body.count('data-ok="1"') == 1   # the one that ran
+    assert "Binder Error" in body           # the first error, not summarised away
+    assert "joins two independent domains" in body   # and the second one too
+
+
+def test_an_exhausted_loop_never_claims_an_attempt_ran(rendered):
+    """MAX_ATTEMPTS corrections for MAX_ATTEMPTS attempts: every row is a failure.
+
+    engine.assistant appends the error from the final attempt before falling out
+    of the loop, so an exhausted answer has no accepted row at all — the ledger
+    must not manufacture one to round the panel off.
+    """
+    _ui, panels = rendered
+    body = panels["attempts_exhausted"]
+    assert body.count('data-ok="1"') == 0
+    assert body.count('data-ok="0"') == 3
+    assert body.count(">ran<") == 0
+
+
+def test_a_refusal_after_a_correction_still_shows_its_history(rendered):
+    """The other way the loop ends early: the model corrected once, then declined."""
+    ui, _panels = rendered
+    ui.st.take()
+    ui.attempt_ledger(attempts=2, corrections=["Binder Error: no such column"],
+                      max_attempts=3, ok=False)
+    body = ui.st.take()
+    assert body.count('class="ayd-att-row"') == 2
+    assert ">stopped<" in body and ">ran<" not in body
+
+
+def test_the_plan_is_duckdbs_and_the_tree_structure_survives(rendered, con):
+    """Operator names and branch guides come from EXPLAIN, not from parsing SQL."""
+    _ui, panels = rendered
+    body = panels["query_plan"]
+    for operator in ("HASH_JOIN", "HASH_GROUP_BY", "SEQ_SCAN", "TOP_N"):
+        assert operator in body
+    # A two-child operator must produce a branch and a continuation line.
+    assert "├─" in body and "│" in body
+
+
+def test_every_guide_level_is_exactly_three_characters(rendered, con):
+    """The 3ch boxes in the stylesheet depend on this being exact, not typical.
+
+    IBM Plex Mono has no Box Drawing block — measured in the running app, the
+    corner glyphs advance 6.334px against the font's own 6.913px step — so each
+    level is boxed at a fixed 3ch and the glyph sits inside. Chunking the guide
+    by three is only correct because every level is written as three characters.
+    """
+    nodes = audit_ui.plan_nodes(
+        "SELECT c.channel FROM marketing_dim_channel c "
+        "JOIN marketing_fact_spend s ON s.channel = c.channel GROUP BY 1", con)
+    guides = [node["guide"] for node in nodes]
+    assert any(guides), "the plan produced no tree guides at all"
+    for guide in guides:
+        assert len(guide) % 3 == 0
+        for i in range(0, len(guide), 3):
+            assert guide[i:i + 3] in ("   ", "│  ", "└─ ", "├─ ")
+
+
+def test_the_plan_foot_sets_the_estimate_against_the_outturn(rendered):
+    """A prediction is only useful with its outturn beside it."""
+    ui, _panels = rendered
+    ui.st.take()
+    ui.query_plan([{"guide": "", "name": "SEQ_SCAN", "detail": "t", "card": 12000}],
+                  plan_ms=0.4, returned=1, truncated=False)
+    body = ui.st.take()
+    assert "12,000" in body and "1</b> came back" in body
+
+
+def test_the_shape_line_reports_the_row_cap_being_hit(rendered):
+    _ui, panels = rendered
+    assert "cap of 200 reached" in panels["result_shape_capped"]
+    assert "cap of" not in panels["result_shape"]
+
+
+def test_the_build_marker_survives_in_the_masthead(rendered):
+    ui, panels = rendered
+    assert f"build <b>{ui.build_marker()}</b>" in panels["masthead"]
+
+
+def test_a_capped_plan_says_it_was_capped(rendered):
+    """The renderer stops at 200 operators; stopping silently would be a lie."""
+    ui, _panels = rendered
+    ui.st.take()
+    ui.query_plan([{"guide": "", "name": "SEQ_SCAN", "detail": "t", "card": 1}],
+                  plan_ms=0.4, total=412, returned=1)
+    assert "1</b> of 412 operators shown" in ui.st.take()
+
+
+def test_an_uncapped_plan_does_not_say_it_was_capped(rendered):
+    ui, _panels = rendered
+    ui.st.take()
+    ui.query_plan([{"guide": "", "name": "SEQ_SCAN", "detail": "t", "card": 1}],
+                  plan_ms=0.4, total=1, returned=1)
+    body = ui.st.take()
+    assert "operators shown" not in body and "<b>1</b> operators" in body

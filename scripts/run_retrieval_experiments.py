@@ -1,35 +1,29 @@
 """
-Retrieval experiments: what would actually make `engine/retrieval.py` retrieve better?
+Retrieval experiments: what actually moves recall, and what it costs in tokens.
 
-`scripts/run_retrieval_eval.py` answers "does retrieval beat pasting the whole
-schema, and beat keyword search". It does, and the numbers are in the module
-docstring. This script answers the next question, which is harder and less
-flattering: *the current default still misses a question — why, and what fixes
-it?* It is a bench, not a product. Nothing here is imported by the app.
+`scripts/run_retrieval_eval.py` answers "is retrieval worth it at all" and picks
+the shipping default. This script is the workbench underneath that answer — it
+holds several candidate retrievers against the same 39 golden questions and the
+same SQL-derived ground truth, so a proposed change to `engine/retrieval.py` has
+to arrive with a number rather than a story.
 
-Everything is measured on the same ground truth as the main eval — the tables
-each golden question's reference SQL selects from — so the numbers here are
-directly comparable to the ones in `engine/retrieval.py`'s header table.
+WHY THIS IS FAST ENOUGH TO SWEEP
+The eval script goes through Chroma, which re-embeds on every rebuild. Here the
+71 table documents and the 39 questions are embedded ONCE per corpus variant
+into a dense matrix, and every ranking after that is a dot product. The default
+all-MiniLM-L6-v2 vectors come back L2-normalised, so cosine similarity IS the
+dot product — no renormalising, and no approximation relative to what Chroma
+does. `--verify` proves that: it re-runs the live `engine.retrieval` code path
+and asserts the two agree on every question.
 
-WHAT IS MEASURED, AND WHAT CANNOT BE
-There is no API key in this environment, so end-to-end SQL accuracy is not
-measurable and is not claimed anywhere. Recall@k and prompt tokens are, and
-those are the two numbers that decide whether a retrieval change is worth
-shipping: a missed table makes the answer impossible, and every retrieved table
-is paid for on every turn.
+That equivalence is the whole licence for this script to exist. If it ever
+fails, the numbers below stop describing the shipped system and this file is
+lying, so the check is an assertion and not a comment.
 
-    python scripts/run_retrieval_experiments.py                 # everything
-    python scripts/run_retrieval_experiments.py --only diagnose fusion
-    python scripts/run_retrieval_experiments.py --k 14
-
-Sections:
-    diagnose   why top_category_revenue misses, hit by hit
-    corpus     does a better table DESCRIPTION fix it, and what does it cost
-    fusion     RRF drops singly-retrieved tables; three candidate repairs
-    expand     deterministic query expansion (acronyms, pseudo-relevance feedback)
-    columns    indexing columns as their own documents, and column weighting
-    rerank     re-scoring the fused top-N by sharper, cheaper signals
-    adaptivek  per-question k from the score-gap profile, vs. fixed k
+    python scripts/run_retrieval_experiments.py                # the whole board
+    python scripts/run_retrieval_experiments.py --verify       # agree with Chroma?
+    python scripts/run_retrieval_experiments.py --only diagnose
+    python scripts/run_retrieval_experiments.py --only paraphrase
 """
 
 from __future__ import annotations
@@ -37,9 +31,10 @@ from __future__ import annotations
 import argparse
 import re
 import sys
-from collections import Counter, defaultdict
+from dataclasses import dataclass, field
 from pathlib import Path
 
+import numpy as np
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -47,24 +42,16 @@ sys.path.insert(0, str(ROOT))
 
 from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
 from engine import retrieval  # noqa: E402
-from engine.warehouse import build_warehouse, schema_catalog, table_columns, table_names  # noqa: E402
+from engine.warehouse import build_warehouse, table_columns, table_names  # noqa: E402
 
 GOLDEN = ROOT / "evals" / "golden_questions.yaml"
+RRF_K = retrieval.RRF_K
+DEFAULT_K = retrieval.DEFAULT_K
 
 
-# ---------------------------------------------------------------------------
-# Harness
-# ---------------------------------------------------------------------------
-
-def approx_tokens(text: str) -> int:
-    """~4 characters per token — the same estimator run_retrieval_eval.py uses.
-
-    Kept identical on purpose. The absolute number is a rough proxy; what
-    matters is that every row in every table below was measured the same way,
-    so the differences are real even though the units are approximate.
-    """
-    return max(1, len(text) // 4)
-
+# --------------------------------------------------------------------------
+# Ground truth, lifted from the eval so both scripts label identically.
+# --------------------------------------------------------------------------
 
 def tables_in_sql(sql: str, known: set[str]) -> set[str]:
     found = set()
@@ -75,842 +62,999 @@ def tables_in_sql(sql: str, known: set[str]) -> set[str]:
     return found
 
 
-def load_cases(con) -> list[dict]:
+def approx_tokens(text: str) -> int:
+    return max(1, len(text) // 4)
+
+
+@dataclass
+class Case:
+    id: str
+    question: str
+    needed: set[str]
+
+
+def load_cases(con) -> list[Case]:
     known = set(table_names(con))
     rows = yaml.safe_load(GOLDEN.read_text(encoding="utf-8"))
     cases = []
     for row in rows:
         needed = tables_in_sql(row.get("sql", ""), known)
         if needed:
-            cases.append({"id": row["id"], "question": row["question"], "needed": needed})
+            cases.append(Case(row["id"], row["question"], needed))
     return cases
 
 
-class Bench:
-    """Holds the warehouse, the cases, and the caches that make sweeps tractable.
+# --------------------------------------------------------------------------
+# The corpus, as data rather than as a side effect of importing the manifest.
+# --------------------------------------------------------------------------
 
-    The main eval re-derives the corpus (71 `DESCRIBE` round trips) inside every
-    single `retrieve_keyword` call. That is fine for one run of one strategy; it
-    is not fine for the couple of hundred strategy-times-k combinations below, so
-    the corpus and the column lists are cached here. The cache is keyed by the
-    active manifest, which is what lets the `corpus` section swap in a rewritten
-    description and re-measure without touching engine/retrieval.py.
+@dataclass
+class Corpus:
+    """One document per table, plus the machinery to rank against it.
+
+    `descriptions` is kept separate from `documents` because the two are used
+    for different things: the document is what gets embedded, the description is
+    what gets pasted into the prompt. A corpus experiment that changes only the
+    embedded text costs nothing in the prompt; one that changes the description
+    changes both, and the token column has to show it.
     """
 
-    def __init__(self, con):
-        self.con = con
-        self.cases = load_cases(con)
-        self._cols: dict[str, list[tuple[str, str]]] = {}
-        for domain, table, _src, _desc in MANIFEST:
-            name = table_name(domain, table)
-            try:
-                self._cols[name] = table_columns(con, name)
-            except Exception:
-                self._cols[name] = []
-        self.manifest = list(MANIFEST)
-        self._corpus_cache: list[dict] | None = None
-        self._install()
+    names: list[str]
+    documents: list[str]
+    domains: dict[str, str]
+    descriptions: dict[str, str]
+    columns: dict[str, list[tuple[str, str]]]
+    label: str = "base"
+    doc_vectors: np.ndarray | None = field(default=None, repr=False)
 
-    # -- corpus / index plumbing -------------------------------------------
-
-    def columns_of(self, name: str) -> list[tuple[str, str]]:
-        return self._cols.get(name, [])
-
-    def build_corpus(self, con=None) -> list[dict]:
-        if self._corpus_cache is None:
-            corpus = []
-            for domain, table, _src, description in self.manifest:
-                name = table_name(domain, table)
-                corpus.append(
-                    {
-                        "id": name,
-                        "document": retrieval._document(
-                            domain, name, description, self.columns_of(name)
-                        ),
-                        "metadata": {"domain": domain, "description": description},
-                    }
-                )
-            self._corpus_cache = corpus
-        return self._corpus_cache
-
-    def _install(self):
-        """Point engine.retrieval at the cached corpus, then rebuild its index."""
-        retrieval.build_corpus = self.build_corpus  # type: ignore[assignment]
-        retrieval.build_index(self.con, rebuild=True)
-
-    def set_manifest(self, manifest: list[tuple]):
-        """Swap the manifest (i.e. the descriptions) and re-embed."""
-        self.manifest = list(manifest)
-        self._corpus_cache = None
-        self._install()
-
-    # -- scoring ------------------------------------------------------------
-
-    def prompt_block(self, tables: list[str]) -> str:
-        """Reproduce `schema_catalog_for`'s output for an arbitrary table list.
-
-        Same shape, same ordering rule (grouped by domain, first-seen order), so
-        the token counts here are comparable with the main eval's.
-        """
-        desc = {table_name(d, t): (d, dsc) for d, t, _s, dsc in self.manifest}
-        by_domain: dict[str, list[str]] = {}
-        for name in tables:
-            row = desc.get(name)
-            if row is None:
-                continue
-            by_domain.setdefault(row[0], []).append(name)
-        lines: list[str] = []
-        for domain, names in by_domain.items():
-            lines.append(f"\n### Domain: {domain} — {DOMAINS.get(domain, '')}")
-            for name in names:
-                lines.append(f"- {name}: {desc[name][1]}")
-                cols = ", ".join(f"{c} {t}" for c, t in self.columns_of(name))
-                if cols:
-                    lines.append(f"    columns: {cols}")
-        return "\n".join(lines).strip()
-
-    def score(self, strategy, k: int) -> dict:
-        """Run one strategy over every case. Returns recall + mean tokens.
-
-        `strategy` is any callable (question, k, bench) -> ordered table names.
-        A strategy may return fewer or more than k names; adaptive-k strategies
-        do exactly that, and their token column is what makes them comparable.
-        """
-        hit = 0
-        missed = 0
-        total = 0
-        tokens = 0
-        picked = 0
-        misses: list[str] = []
-        for case in self.cases:
-            got_list = strategy(case["question"], k, self)
-            got = set(got_list)
-            need = case["needed"]
-            total += len(need)
-            missing = need - got
-            missed += len(missing)
-            picked += len(got_list)
-            if missing:
-                misses.append(f"{case['id']} (missing {', '.join(sorted(missing))})")
-            else:
-                hit += 1
-            tokens += approx_tokens(self.prompt_block(got_list))
-        n = len(self.cases)
-        return {
-            "questions": hit / n,
-            "tables": (total - missed) / total,
-            "tokens": tokens / n,
-            "mean_k": picked / n,
-            "misses": misses,
-        }
+    def index(self) -> dict[str, int]:
+        return {name: i for i, name in enumerate(self.names)}
 
 
-def report(bench: Bench, title: str, entries: list[tuple[str, object, int]], *,
-           show_misses: bool = True, baseline: dict | None = None):
-    """Print one comparison table. `entries` is [(label, strategy, k), ...]."""
-    print(f"\n{title}")
-    print(f"  {'variant':<34} {'questions':>10} {'tables':>9} {'~tok/turn':>11} {'mean k':>7}")
-    results = []
-    for label, strategy, k in entries:
-        res = bench.score(strategy, k)
-        results.append((label, res))
-        delta = ""
-        if baseline is not None:
-            dq = res["questions"] - baseline["questions"]
-            dt = res["tokens"] - baseline["tokens"]
-            delta = f"   {dq:+.1%} recall, {dt:+,.0f} tok"
-        print(
-            f"  {label:<34} {res['questions']:>9.1%} {res['tables']:>9.1%} "
-            f"{res['tokens']:>11,.0f} {res['mean_k']:>7.1f}{delta}"
-        )
-    if show_misses:
-        for label, res in results:
-            if res["misses"]:
-                print(f"    {label} missed: {'; '.join(res['misses'])}")
-    return results
+_EMBED = None
 
 
-# ---------------------------------------------------------------------------
-# Strategies. Every one is (question, k, bench) -> ordered list of table names.
-# ---------------------------------------------------------------------------
+def _embedder():
+    global _EMBED
+    if _EMBED is None:
+        import chromadb.utils.embedding_functions as ef
 
-def s_vector(q, k, b):
-    return [h.table for h in retrieval.retrieve(q, k=k, con=b.con)]
-
-
-def s_keyword(q, k, b):
-    return [h.table for h in retrieval.retrieve_keyword(q, k=k, con=b.con)]
+        _EMBED = ef.DefaultEmbeddingFunction()
+    return _EMBED
 
 
-def s_hybrid(q, k, b):
-    return [h.table for h in retrieval.retrieve_hybrid(q, k=k, con=b.con)]
+def embed(texts: list[str]) -> np.ndarray:
+    """all-MiniLM-L6-v2, the same function Chroma uses by default.
 
-
-def _ranked(q, k, b, pool=None):
-    """The two input rankings RRF fuses, as name lists."""
-    pool = pool or max(k * 2, 12)
-    return (
-        [h.table for h in retrieval.retrieve(q, k=pool, con=b.con)],
-        [h.table for h in retrieval.retrieve_keyword(q, k=pool, con=b.con)],
-    )
-
-
-# -- fusion repairs ---------------------------------------------------------
-
-def rrf(rankings: list[tuple[list[str], float]], *, rrf_k: int = 60,
-        absent_rank: dict[int, int] | None = None) -> list[tuple[str, float]]:
-    """Weighted reciprocal-rank fusion, optionally scoring absences.
-
-    `absent_rank[i]` is the rank charged to a document that ranking `i` did not
-    return at all. Vanilla RRF charges nothing, which sounds neutral and is not:
-    see `diagnose`.
+    Output rows are already unit length, so `A @ B.T` is cosine similarity.
     """
-    fused: dict[str, float] = defaultdict(float)
-    universe: set[str] = set()
-    for names, _w in rankings:
-        universe |= set(names)
-    for i, (names, weight) in enumerate(rankings):
-        pos = {name: rank for rank, name in enumerate(names, start=1)}
-        miss = (absent_rank or {}).get(i)
-        for name in universe:
-            rank = pos.get(name)
-            if rank is None:
-                if miss is None:
-                    continue
-                rank = miss
-            fused[name] += weight / (rrf_k + rank)
+    return np.asarray(_embedder()(texts), dtype=np.float32)
+
+
+def build_corpus(
+    con,
+    *,
+    describe=None,
+    document=None,
+    label: str = "base",
+) -> Corpus:
+    """The shipped corpus, with two seams for experiments.
+
+    `describe(domain, name, description) -> str` rewrites what the prompt shows
+    (and therefore what is embedded). `document(domain, name, description,
+    columns) -> str` rewrites only the embedded text. Passing neither reproduces
+    `engine.retrieval.build_corpus` exactly.
+    """
+    names, docs = [], []
+    domains, descriptions, cols_by_table = {}, {}, {}
+    for domain, table, _source, description in MANIFEST:
+        name = table_name(domain, table)
+        try:
+            cols = table_columns(con, name)
+        except Exception:
+            cols = []
+        if describe is not None:
+            description = describe(domain, name, description)
+        if document is not None:
+            doc = document(domain, name, description, cols)
+        else:
+            doc = retrieval._document(domain, name, description, cols)
+        names.append(name)
+        docs.append(doc)
+        domains[name] = domain
+        descriptions[name] = description
+        cols_by_table[name] = cols
+    corpus = Corpus(names, docs, domains, descriptions, cols_by_table, label=label)
+    corpus.doc_vectors = embed(docs)
+    return corpus
+
+
+# --------------------------------------------------------------------------
+# Rankers. Each returns a FULL ranking (all 71 tables, best first) so that k,
+# reranking and adaptive-k can all be applied on top without re-retrieving.
+# --------------------------------------------------------------------------
+
+def vector_ranking(corpus: Corpus, qvec: np.ndarray) -> list[tuple[str, float]]:
+    sims = corpus.doc_vectors @ qvec
+    order = np.argsort(-sims)
+    return [(corpus.names[i], float(sims[i])) for i in order]
+
+
+def _tokens(text: str) -> set[str]:
+    return retrieval._tokens(text)
+
+
+SPLIT_STOP = retrieval._STOP | {"qty", "num", "pct", "amt"}
+
+
+def _tokens_split(text: str) -> set[str]:
+    """Token set that also splits snake_case identifiers into their parts.
+
+    The shipped tokeniser treats `qty_shipped` as one atom, so the word
+    "shipped" in a question cannot match it. That is not a tuning knob, it is a
+    bug with a recall cost, and `experiment_tokeniser` measures it.
+    """
+    out = set()
+    for token in re.findall(r"[a-z0-9_]+", (text or "").lower()):
+        pieces = [token] + token.split("_") if "_" in token else [token]
+        for piece in pieces:
+            if len(piece) > 2 and piece not in SPLIT_STOP:
+                out.add(piece)
+    return out
+
+
+def keyword_ranking(
+    corpus: Corpus,
+    question: str,
+    *,
+    tokenise=_tokens,
+) -> list[tuple[str, float]]:
+    """Token overlap, ties broken by document brevity — the shipped baseline.
+
+    Returns ONLY the documents with non-zero overlap, exactly like
+    `retrieve_keyword`. That truncation is not cosmetic: it is why fusion can
+    punish a table no keyword ever reaches. See `experiment_diagnose`.
+    """
+    q = tokenise(question)
+    if not q:
+        return []
+    scored = []
+    for i, name in enumerate(corpus.names):
+        doc_tokens = tokenise(corpus.documents[i])
+        overlap = len(q & doc_tokens)
+        if overlap:
+            scored.append((overlap, len(doc_tokens), name))
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return [(name, float(overlap)) for overlap, _brevity, name in scored]
+
+
+def rrf(rankings: list[list[tuple[str, float]]], *, rrf_k: int = RRF_K) -> list[tuple[str, float]]:
+    fused: dict[str, float] = {}
+    for ranking in rankings:
+        for rank, (name, _score) in enumerate(ranking, start=1):
+            fused[name] = fused.get(name, 0.0) + 1.0 / (rrf_k + rank)
     return sorted(fused.items(), key=lambda kv: -kv[1])
 
 
-def s_wrrf(wv: float, wk: float):
-    """RRF with the vector list weighted above the keyword list."""
-    def strategy(q, k, b):
-        vec, kw = _ranked(q, k, b)
-        return [n for n, _ in rrf([(vec, wv), (kw, wk)])[:k]]
-    return strategy
+def hybrid_ranking(
+    corpus: Corpus,
+    question: str,
+    qvec: np.ndarray,
+    *,
+    k: int = DEFAULT_K,
+    tokenise=_tokens,
+    rrf_k: int = RRF_K,
+) -> list[tuple[str, float]]:
+    """RRF over the two arms, with the shipped `pool = max(2k, 12)` truncation."""
+    pool = max(k * 2, 12)
+    vec = vector_ranking(corpus, qvec)[:pool]
+    kw = keyword_ranking(corpus, question, tokenise=tokenise)[:pool]
+    return rrf([vec, kw], rrf_k=rrf_k)
 
 
-def s_rrf_absent(q, k, b):
-    """RRF that charges a document a real (bad) rank for being absent.
+# --------------------------------------------------------------------------
+# Scoring.
+# --------------------------------------------------------------------------
 
-    Absent is scored as `len(list) + 1` rather than skipped, so 'the vector
-    index ranked you fifth and keyword had never heard of you' beats 'both lists
-    put you near the bottom', which is the ordering vanilla RRF gets backwards.
-    """
-    vec, kw = _ranked(q, k, b)
-    absent = {0: len(vec) + 1, 1: len(kw) + 1}
-    return [n for n, _ in rrf([(vec, 1.0), (kw, 1.0)], absent_rank=absent)[:k]]
-
-
-def s_interleave(q, k, b):
-    """Round-robin the two lists instead of fusing scores.
-
-    The crudest possible repair and the one with the strongest guarantee: the
-    top ceil(k/2) of each retriever is always in the result, so neither method
-    can be talked out of its best hit by the other.
-    """
-    vec, kw = _ranked(q, k, b)
-    out: list[str] = []
-    seen: set[str] = set()
-    for i in range(max(len(vec), len(kw))):
-        for src in (vec, kw):
-            if i < len(src) and src[i] not in seen:
-                seen.add(src[i])
-                out.append(src[i])
-                if len(out) == k:
-                    return out
-    return out
+@dataclass
+class Result:
+    label: str
+    question_recall: float
+    table_recall: float
+    tokens: float
+    misses: list[str]
+    mean_k: float = 0.0
 
 
-def s_hybrid_floor(floor: int):
-    """RRF, but the top-`floor` vector hits are guaranteed a seat."""
-    def strategy(q, k, b):
-        vec, kw = _ranked(q, k, b)
-        fused = [n for n, _ in rrf([(vec, 1.0), (kw, 1.0)])]
-        keep = list(vec[:floor])
-        for name in fused:
-            if len(keep) >= k:
-                break
-            if name not in keep:
-                keep.append(name)
-        return keep[:k]
-    return strategy
+def render_block(corpus: Corpus, tables: list[str]) -> str:
+    """Byte-for-byte the block `schema_catalog_for` builds, so tokens compare."""
+    by_domain: dict[str, list[str]] = {}
+    for name in tables:
+        by_domain.setdefault(corpus.domains.get(name, ""), []).append(name)
+    lines: list[str] = []
+    for domain, rows in by_domain.items():
+        lines.append(f"\n### Domain: {domain} — {DOMAINS.get(domain, '')}")
+        for name in rows:
+            cols = ", ".join(f"{c} {t}" for c, t in corpus.columns.get(name, []))
+            lines.append(f"- {name}: {corpus.descriptions.get(name, '')}")
+            if cols:
+                lines.append(f"    columns: {cols}")
+    return "\n".join(lines).strip()
 
 
-# -- query expansion --------------------------------------------------------
-
-def _acronym_map(bench: Bench) -> dict[str, str]:
-    """Acronym <-> gloss pairs mined from the manifest's own prose.
-
-    Derived, not authored: the descriptions already spell out their jargon in
-    the form "on-time delivery (OTIF)" and "FEFO (first-expiry-first-out)",
-    which is exactly a two-way glossary if you read it with a regex. Nothing
-    here was chosen by looking at the eval questions.
-    """
-    pairs: dict[str, str] = {}
-    text = " ".join(dsc for _d, _t, _s, dsc in bench.manifest) + " " + " ".join(DOMAINS.values())
-    for gloss, acro in re.findall(r"([a-zA-Z][a-zA-Z\- ]{3,40}?)\s*\(([A-Z]{2,7})\)", text):
-        pairs[acro.lower()] = gloss.strip().lower()
-    for acro, gloss in re.findall(r"\b([A-Z]{2,7})\s*\(([a-zA-Z][a-zA-Z\- ]{3,40})\)", text):
-        pairs[acro.lower()] = gloss.strip().lower()
-    return pairs
-
-
-_ACROS: dict[str, str] = {}
-
-
-def s_expand_acronym(base):
-    def strategy(q, k, b):
-        global _ACROS
-        if not _ACROS:
-            _ACROS = _acronym_map(b)
-        extra = [gloss for token in retrieval._tokens(q) if (gloss := _ACROS.get(token))]
-        return base(q + (" " + " ".join(extra) if extra else ""), k, b)
-    return strategy
-
-
-def s_prf(base, *, feedback_docs: int = 3, terms: int = 8):
-    """Pseudo-relevance feedback (Rocchio, term-only).
-
-    Retrieve, assume the top few hits are relevant, harvest their most
-    distinctive terms by collection frequency, append them to the query, and
-    retrieve again. Fully deterministic and keyless, which is the whole point:
-    an LLM rewriter cannot be measured in this environment, and PRF is the
-    classical stand-in for one.
-    """
-    def strategy(q, k, b):
-        first = base(q, min(k, feedback_docs * 3), b)[:feedback_docs]
-        corpus = {row["id"]: row["document"] for row in b.build_corpus()}
-        df = Counter()
-        for doc in corpus.values():
-            df.update(retrieval._tokens(doc))
-        cand = Counter()
-        for name in first:
-            for token in retrieval._tokens(corpus.get(name, "")):
-                if df[token] <= 8:  # distinctive: not warehouse-wide boilerplate
-                    cand[token] += 1
-        extra = [t for t, _ in cand.most_common(terms)]
-        return base(q + " " + " ".join(extra), k, b)
-    return strategy
+def score(
+    label: str,
+    corpus: Corpus,
+    cases: list[Case],
+    qvecs: np.ndarray,
+    select,
+) -> Result:
+    """`select(corpus, case, qvec) -> list[str]` is the retriever under test."""
+    hit = 0
+    missed_tables = 0
+    total_tables = 0
+    tokens = 0
+    ks = 0
+    misses: list[str] = []
+    for i, case in enumerate(cases):
+        got = select(corpus, case, qvecs[i])
+        ks += len(got)
+        need = case.needed
+        total_tables += len(need)
+        missing = need - set(got)
+        missed_tables += len(missing)
+        if missing:
+            misses.append(f"{case.id} (missing {', '.join(sorted(missing))})")
+        else:
+            hit += 1
+        tokens += approx_tokens(render_block(corpus, got))
+    n = len(cases)
+    return Result(
+        label=label,
+        question_recall=hit / n,
+        table_recall=(total_tables - missed_tables) / total_tables,
+        tokens=tokens / n,
+        misses=misses,
+        mean_k=ks / n,
+    )
 
 
-# -- column-level retrieval -------------------------------------------------
-
-_COLCOLL = {"handle": None, "fingerprint": None}
-
-
-def _column_collection(b: Bench):
-    """A second Chroma collection: one document per COLUMN, not per table.
-
-    Each column document carries its own name, its table, and its table's
-    description, so a query that names a measure ("compa ratio", "qty shipped")
-    can hit the column directly and vote its table up.
-    """
-    import chromadb
-
-    fingerprint = str(len(b.manifest)) + str(id(b._corpus_cache))
-    if _COLCOLL["handle"] is not None and _COLCOLL["fingerprint"] == fingerprint:
-        return _COLCOLL["handle"]
-    client = chromadb.EphemeralClient()
-    try:
-        client.delete_collection("schema_columns")
-    except Exception:
-        pass
-    coll = client.create_collection("schema_columns", metadata={"hnsw:space": "cosine"})
-    ids, docs, metas = [], [], []
-    for domain, table, _s, description in b.manifest:
-        name = table_name(domain, table)
-        for col, _type in b.columns_of(name):
-            ids.append(f"{name}.{col}")
-            docs.append(f"{col.replace('_', ' ')} — column of {name} ({domain}). {description}")
-            metas.append({"table": name})
-    coll.add(ids=ids, documents=docs, metadatas=metas)
-    _COLCOLL["handle"] = coll
-    _COLCOLL["fingerprint"] = fingerprint
-    return coll
-
-
-def s_column_fusion(q, k, b):
-    """Fuse table-level RRF with a column-level ranking rolled up to tables."""
-    coll = _column_collection(b)
-    res = coll.query(query_texts=[q], n_results=min(60, coll.count()))
-    seen: list[str] = []
-    for meta in (res.get("metadatas") or [[]])[0]:
-        t = str((meta or {}).get("table") or "")
-        if t and t not in seen:
-            seen.append(t)
-    vec, kw = _ranked(q, k, b)
-    return [n for n, _ in rrf([(vec, 1.0), (kw, 1.0), (seen, 1.0)])[:k]]
-
-
-def _weighted_document(domain, table, description, columns, repeat: int, split: bool):
-    """The table document with column vocabulary repeated `repeat` times.
-
-    The cheap alternative to a second index: if columns carry the vocabulary
-    questions use, say them more than once so they weigh more in the embedding
-    and in token overlap. Costs nothing at query time and nothing in the prompt
-    — the prompt block is built from the manifest, not from the index document.
-
-    `split` turns `qty_shipped` into `qty shipped`. That is a SEPARATE change
-    from repetition and the two must be measured apart, because the shipped
-    document does neither and a combined win says nothing about which half did
-    the work.
-    """
-    parts = [f"{table} ({domain} domain)", DOMAINS.get(domain, ""), description]
-    if columns and repeat:
-        words = ", ".join(
-            (name.replace("_", " ") if split else name) for name, _t in columns
+def table(results: list[Result], *, show_k: bool = False, show_misses: bool = True) -> None:
+    width = max(len(r.label) for r in results) + 2
+    head = f"  {'variant':<{width}} {'questions':>10} {'tables':>9} {'~tokens':>9}"
+    if show_k:
+        head += f" {'mean k':>8}"
+    print(head)
+    for r in results:
+        line = (
+            f"  {r.label:<{width}} {r.question_recall:>9.1%} "
+            f"{r.table_recall:>9.1%} {r.tokens:>9,.0f}"
         )
-        for _ in range(repeat):
-            parts.append("columns: " + words)
-    return "\n".join(p for p in parts if p)
+        if show_k:
+            line += f" {r.mean_k:>8.1f}"
+        print(line)
+    if show_misses:
+        for r in results:
+            if r.misses:
+                print(f"\n  {r.label} missed:")
+                for miss in r.misses:
+                    print(f"    - {miss}")
 
 
-def with_column_weight(b: Bench, repeat: int, split: bool = True):
-    """Re-embed the corpus with column vocabulary repeated. Returns a restorer."""
-    original = retrieval._document
+# --------------------------------------------------------------------------
+# The shipped retrievers, expressed as `select` functions.
+# --------------------------------------------------------------------------
 
-    def patched(domain, table, description, columns):
-        return _weighted_document(domain, table, description, columns, repeat, split)
-
-    retrieval._document = patched  # type: ignore[assignment]
-    b._corpus_cache = None
-    b._install()
-
-    def restore():
-        retrieval._document = original  # type: ignore[assignment]
-        b._corpus_cache = None
-        b._install()
-
-    return restore
+def sel_vector(k=DEFAULT_K):
+    return lambda c, case, qv: [n for n, _ in vector_ranking(c, qv)[:k]]
 
 
-# -- reranking --------------------------------------------------------------
-
-def s_rerank(base, *, top_n: int = 24, w_name: float = 1.0, w_domain: float = 0.35,
-             w_overlap: float = 0.5):
-    """Re-score the fused top-N by three signals RRF cannot see.
-
-      name    the question literally says a word that is in the table's name
-              ("inventory", "forecast") — a very strong signal RRF dilutes
-      domain  agreement with the majority domain of the top hits, because a
-              question is almost always about one domain and the 71-table
-              warehouse has four tables called some variant of fact_orders
-      overlap IDF-weighted term overlap with the description, which is the
-              keyword signal graded on rarity instead of raw count
-    """
-    def strategy(q, k, b):
-        pool = base(q, max(top_n, k), b)
-        qt = retrieval._tokens(q)
-        corpus = {row["id"]: row for row in b.build_corpus()}
-        df = Counter()
-        for row in corpus.values():
-            df.update(retrieval._tokens(row["document"]))
-        n_docs = max(1, len(corpus))
-        head = pool[: min(6, len(pool))]
-        dom_counts = Counter(
-            str(corpus[t]["metadata"]["domain"]) for t in head if t in corpus
-        )
-        top_domain = dom_counts.most_common(1)[0][0] if dom_counts else ""
-        scored = []
-        for rank, name in enumerate(pool, start=1):
-            row = corpus.get(name)
-            if row is None:
-                continue
-            base_score = 1.0 / (60 + rank)
-            name_tokens = set(name.split("_"))
-            bonus = 0.0
-            if qt & name_tokens:
-                bonus += w_name * len(qt & name_tokens) / (60 + rank)
-            if str(row["metadata"]["domain"]) == top_domain:
-                bonus += w_domain / (60 + rank)
-            dt = retrieval._tokens(str(row["metadata"]["description"]))
-            if qt & dt:
-                idf = sum(1.0 / (1 + df[t]) for t in (qt & dt)) * n_docs / 71.0
-                bonus += w_overlap * idf / (60 + rank)
-            scored.append((base_score + bonus, name))
-        scored.sort(key=lambda item: -item[0])
-        return [name for _s, name in scored[:k]]
-    return strategy
-
-
-# -- adaptive k -------------------------------------------------------------
-
-def s_adaptive(base_scored, *, kmin: int, kmax: int, drop: float):
-    """Stop at the first big relative drop in fused score, within [kmin, kmax].
-
-    The intuition worth testing: an unambiguous question ("how many GO
-    verdicts") has one obviously-best table and a cliff right after it, while a
-    vague one has a flat score profile and needs more of the catalogue. If that
-    is true, k should be a property of the question, not a constant.
-    """
-    def strategy(q, k, b):
-        ranked = base_scored(q, kmax, b)
-        names = [n for n, _s in ranked]
-        scores = [s for _n, s in ranked]
-        cut = kmax
-        for i in range(kmin, min(kmax, len(scores)) - 1):
-            prev, nxt = scores[i - 1], scores[i]
-            if prev > 0 and (prev - nxt) / prev >= drop:
-                cut = i
-                break
-        return names[:cut]
-    return strategy
-
-
-def scored_hybrid(q, k, b):
-    vec, kw = _ranked(q, k, b)
-    return rrf([(vec, 1.0), (kw, 1.0)])[:k]
-
-
-def scored_vector(q, k, b):
-    return [(h.table, h.score) for h in retrieval.retrieve(q, k=k, con=b.con)]
-
-
-# ---------------------------------------------------------------------------
-# The improved description under test.
-# ---------------------------------------------------------------------------
-
-# data_manifest.py's own docstring says a description exists so the model can
-# decide which tables answer a question, and should say "what the grain is, what
-# the money columns mean". The shipped supplychain_fact_orders description meets
-# the first half and skips the second: it names unit_price and unit_cost nowhere
-# and the word revenue nowhere, while being the only place shipped revenue in
-# that domain can come from. This is that gap closed, in the house style of the
-# other fact-table descriptions (compare healthcare_fact_claims, which does spell
-# its money columns out).
-FIXED_SUPPLYCHAIN_FACT_ORDERS = (
-    "One row per order line, and the only source of shipped revenue in this domain: "
-    "line revenue is qty_shipped * unit_price and line margin is qty_shipped * "
-    "(unit_price - unit_cost), so revenue or margin by product category, customer, "
-    "supplier or warehouse is an aggregate of this table joined to the matching dim. "
-    "qty_ordered vs qty_shipped measures fill rate; promised_date vs shipped_date "
-    "measures on-time delivery (OTIF). Joins dim_customer, dim_product, dim_lot, "
-    "dim_warehouse by id."
-)
-
-
-def fixed_manifest() -> list[tuple]:
-    out = []
-    for domain, table, source, description in MANIFEST:
-        if (domain, table) == ("supplychain", "fact_orders"):
-            description = FIXED_SUPPLYCHAIN_FACT_ORDERS
-        out.append((domain, table, source, description))
-    return out
-
-
-# ---------------------------------------------------------------------------
-# Sections
-# ---------------------------------------------------------------------------
-
-def section_diagnose(b: Bench, k: int):
-    print("\n" + "=" * 78)
-    print("DIAGNOSE — why top_category_revenue misses")
-    print("=" * 78)
-    q = "Which product category has the highest shipped revenue?"
-    target = "supplychain_fact_orders"
-    vec = s_vector(q, 71, b)
-    kw = s_keyword(q, 71, b)
-    hyb = s_hybrid(q, 71, b)
-    print(f"\n  question: {q}")
-    print(f"  target  : {target}\n")
-    for label, ranking in (("vector", vec), ("keyword", kw), ("hybrid", hyb)):
-        pos = ranking.index(target) + 1 if target in ranking else None
-        print(f"  {label:<8} rank {pos if pos else 'ABSENT'}   (list length {len(ranking)})")
-    print(
-        "\n  The received story is that this question fails under every strategy.\n"
-        "  It does not. VECTOR ranks the table 5th and would retrieve it at any\n"
-        "  k >= 5. The failure is introduced by the fusion step: keyword shares\n"
-        "  no token with it at all, so it never appears in the keyword list, and\n"
-        "  vanilla RRF gives an absent document a contribution of exactly zero.\n"
-        "  A table one retriever is confident about therefore loses to tables\n"
-        "  both retrievers are lukewarm about — 1/(60+5) = 0.0154 for the\n"
-        "  confident single vote, against 1/(60+20)+1/(60+20) = 0.0250 for two\n"
-        "  weak ones. Ranking it 24th out of 71 is not a budget problem and no k\n"
-        "  below 25 fixes it.\n"
-    )
-    print("  recall at k for this ONE question:")
-    for kk in (5, 9, 14, 20, 25):
-        v = target in s_vector(q, kk, b)
-        h = target in s_hybrid(q, kk, b)
-        print(f"    k={kk:<3} vector={'hit ' if v else 'MISS'}  hybrid={'hit ' if h else 'MISS'}")
-
-
-def section_corpus(b: Bench, k: int):
-    print("\n" + "=" * 78)
-    print("CORPUS — does a better description fix it, and what does it cost")
-    print("=" * 78)
-    entries = [("hybrid (shipped corpus)", s_hybrid, k), ("vector (shipped corpus)", s_vector, k)]
-    before = report(b, "before:", entries)
-    b.set_manifest(fixed_manifest())
-    try:
-        after = report(b, "after rewriting supplychain_fact_orders:", entries)
-    finally:
-        b.set_manifest(list(MANIFEST))
-    print(
-        f"\n  full catalogue grows by "
-        f"{approx_tokens(FIXED_SUPPLYCHAIN_FACT_ORDERS) - approx_tokens(dict(((d, t), x) for d, t, _s, x in MANIFEST)[('supplychain', 'fact_orders')]):+d}"
-        " tokens, paid only on turns that retrieve this table."
-    )
-    return before, after
-
-
-def section_fusion(b: Bench, k: int):
-    print("\n" + "=" * 78)
-    print("FUSION — repairing RRF's treatment of singly-retrieved tables")
-    print("=" * 78)
-    base = b.score(s_hybrid, k)
-    report(
-        b,
-        f"k = {k}",
-        [
-            ("hybrid (current, plain RRF)", s_hybrid, k),
-            ("vector only", s_vector, k),
-            ("RRF, absence scored as last", s_rrf_absent, k),
-            ("weighted RRF 1.5 vec / 1.0 kw", s_wrrf(1.5, 1.0), k),
-            ("weighted RRF 2.0 vec / 1.0 kw", s_wrrf(2.0, 1.0), k),
-            ("round-robin interleave", s_interleave, k),
-            ("RRF + top-4 vector floor", s_hybrid_floor(4), k),
-            ("RRF + top-6 vector floor", s_hybrid_floor(6), k),
-        ],
-        baseline=base,
-    )
-
-
-def section_expand(b: Bench, k: int):
-    print("\n" + "=" * 78)
-    print("EXPAND — deterministic query expansion (no API key, so no LLM rewriter)")
-    print("=" * 78)
-    acros = _acronym_map(b)
-    print(f"\n  acronym glossary mined from the manifest ({len(acros)} pairs): "
-          f"{', '.join(sorted(acros)[:12])}")
-    base = b.score(s_hybrid, k)
-    report(
-        b,
-        f"k = {k}",
-        [
-            ("hybrid (no expansion)", s_hybrid, k),
-            ("hybrid + acronym expansion", s_expand_acronym(s_hybrid), k),
-            ("hybrid + PRF (3 docs, 8 terms)", s_prf(s_hybrid), k),
-            ("hybrid + PRF (2 docs, 5 terms)", s_prf(s_hybrid, feedback_docs=2, terms=5), k),
-            ("vector + PRF (3 docs, 8 terms)", s_prf(s_vector), k),
-        ],
-        baseline=base,
-    )
-
-
-def section_columns(b: Bench, k: int):
-    print("\n" + "=" * 78)
-    print("COLUMNS — column-level documents, and column-weighted table documents")
-    print("=" * 78)
-    base = b.score(s_hybrid, k)
-    n_cols = sum(len(b.columns_of(table_name(d, t))) for d, t, _s, _x in b.manifest)
-    print(f"\n  a column-level index is {n_cols} documents against {len(b.manifest)} tables")
-    report(
-        b,
-        f"k = {k}",
-        [
-            ("hybrid (table docs only)", s_hybrid, k),
-            ("hybrid + column index (3-way RRF)", s_column_fusion, k),
-        ],
-        baseline=base,
-    )
-    # Repetition and underscore-splitting are two changes, so measure the 2x2.
-    # `1x, underscores kept` is the shipped document rebuilt through the same
-    # patch — it should reproduce the baseline exactly, and if it does not, the
-    # harness is lying and nothing below it means anything.
-    for label, repeat, split in (
-        ("0x — columns dropped entirely", 0, True),
-        ("1x, underscores kept (control)", 1, False),
-        ("1x, split only (no repetition)", 1, True),
-        ("2x, underscores kept", 2, False),
-        ("2x, split + repetition", 2, True),
-        ("3x, split + repetition", 3, True),
-    ):
-        restore = with_column_weight(b, repeat, split)
-        try:
-            report(
-                b,
-                f"index document: {label}",
-                [("hybrid", s_hybrid, k), ("vector", s_vector, k), ("keyword", s_keyword, k)],
-                baseline=base,
-                show_misses=False,
-            )
-        finally:
-            restore()
-
-
-def section_rerank(b: Bench, k: int):
-    print("\n" + "=" * 78)
-    print("RERANK — re-scoring the fused pool by name / domain / IDF-overlap")
-    print("=" * 78)
-    base = b.score(s_hybrid, k)
-    report(
-        b,
-        f"k = {k}",
-        [
-            ("hybrid (no rerank)", s_hybrid, k),
-            ("rerank: name only", s_rerank(s_hybrid, w_name=1.0, w_domain=0.0, w_overlap=0.0), k),
-            ("rerank: domain only", s_rerank(s_hybrid, w_name=0.0, w_domain=0.35, w_overlap=0.0), k),
-            ("rerank: overlap only", s_rerank(s_hybrid, w_name=0.0, w_domain=0.0, w_overlap=0.5), k),
-            ("rerank: all three", s_rerank(s_hybrid), k),
-            ("rerank all three, over floor-4", s_rerank(s_hybrid_floor(4)), k),
-        ],
-        baseline=base,
-    )
-
-
-def section_adaptivek(b: Bench, k: int):
-    print("\n" + "=" * 78)
-    print("ADAPTIVE k — is a per-question k cheaper than a fixed one at equal recall")
-    print("=" * 78)
-    base = b.score(s_hybrid, k)
-    entries: list[tuple[str, object, int]] = [(f"hybrid fixed k={k}", s_hybrid, k)]
-    for fixed in (8, 10, 12, 16, 18, 20):
-        entries.append((f"hybrid fixed k={fixed}", s_hybrid, fixed))
-    for drop in (0.02, 0.05, 0.10):
-        entries.append(
-            (f"adaptive gap>{drop:.0%} (6..20)", s_adaptive(scored_hybrid, kmin=6, kmax=20, drop=drop), k)
-        )
-    for drop in (0.05, 0.10, 0.15):
-        entries.append(
-            (f"adaptive VECTOR gap>{drop:.0%} (6..20)",
-             s_adaptive(scored_vector, kmin=6, kmax=20, drop=drop), k)
-        )
-    report(b, f"baseline k = {k}", entries, baseline=base, show_misses=False)
-
-
-def _split_document(domain, table, description, columns):
-    """The recommended index document: identifiers spelled as words.
-
-    One character's difference from the shipped `_document`. `_tokens` splits on
-    `[a-z0-9_]+`, so `qty_shipped` is a SINGLE token that the question "shipped
-    revenue" can never match, and MiniLM's WordPiece vocabulary has no entry for
-    it either. Writing it as `qty shipped` makes both halves reachable by both
-    retrievers. The table name gets the same treatment for the same reason.
-    """
-    parts = [
-        f"{table} ({domain} domain)",
-        table.replace("_", " "),
-        DOMAINS.get(domain, ""),
-        description,
+def sel_keyword(k=DEFAULT_K, tokenise=_tokens):
+    return lambda c, case, qv: [
+        n for n, _ in keyword_ranking(c, case.question, tokenise=tokenise)[:k]
     ]
-    if columns:
-        parts.append("columns: " + ", ".join(n.replace("_", " ") for n, _t in columns))
-    return "\n".join(p for p in parts if p)
 
 
-def with_split_document(b: Bench):
-    original = retrieval._document
-    retrieval._document = _split_document  # type: ignore[assignment]
-    b._corpus_cache = None
-    b._install()
-
-    def restore():
-        retrieval._document = original  # type: ignore[assignment]
-        b._corpus_cache = None
-        b._install()
-
-    return restore
+def sel_hybrid(k=DEFAULT_K, tokenise=_tokens, rrf_k=RRF_K):
+    return lambda c, case, qv: [
+        n for n, _ in hybrid_ranking(c, case.question, qv, k=k, tokenise=tokenise, rrf_k=rrf_k)[:k]
+    ]
 
 
-def section_combined(b: Bench, k: int):
-    print("\n" + "=" * 78)
-    print("COMBINED — the three independent fixes, together and across k")
+# ==========================================================================
+# EXPERIMENT 0 — diagnose the one question hybrid never gets.
+# ==========================================================================
+
+def experiment_diagnose(con, cases, corpus, qvecs) -> None:
     print("=" * 78)
-    base = b.score(s_hybrid, k)
+    print("0. DIAGNOSIS — why hybrid misses top_category_revenue")
+    print("=" * 78)
 
-    # 1. tokenizer fix alone, with and without splitting the table name too.
-    restore = with_split_document(b)
-    try:
-        report(
-            b,
-            f"tokenizer fix (columns AND table name split), k = {k}",
-            [("hybrid", s_hybrid, k), ("vector", s_vector, k), ("keyword", s_keyword, k)],
-            baseline=base,
+    target = next(c for c in cases if c.id == "top_category_revenue")
+    i = cases.index(target)
+    qv = qvecs[i]
+    print(f"\n  question: {target.question}")
+    print(f"  needs:    {', '.join(sorted(target.needed))}\n")
+
+    vec = vector_ranking(corpus, qv)
+    kw = keyword_ranking(corpus, target.question)
+    hyb = hybrid_ranking(corpus, target.question, qv, k=DEFAULT_K)
+    for name, ranking in (("vector", vec), ("keyword", kw), ("hybrid", hyb)):
+        pos = {t: r for r, (t, _) in enumerate(ranking, start=1)}
+        print(
+            f"  {name:<8} supplychain_fact_orders rank = "
+            f"{pos.get('supplychain_fact_orders', '—')!s:<5} "
+            f"(list length {len(ranking)})"
         )
-    finally:
-        restore()
 
-    # 2. corpus fix + fusion fix, no tokenizer change.
-    b.set_manifest(fixed_manifest())
-    try:
-        report(
-            b,
-            f"corpus fix + fusion repair, k = {k}",
-            [
-                ("hybrid plain RRF", s_hybrid, k),
-                ("RRF absence-scored", s_rrf_absent, k),
-                ("round-robin interleave", s_interleave, k),
-            ],
-            baseline=base,
-        )
-    finally:
-        b.set_manifest(list(MANIFEST))
+    print("\n  The code comment says this is a corpus failure at every k. It is not.")
+    print("  Vector ALONE ranks the table 5th; the shipped eval confirms vector")
+    print("  does not miss this question. Fusion is what loses it.\n")
 
-    # 3. all three, then push k DOWN — the real prize is not +2.6% recall at
-    #    k=14, it is holding 100% on a smaller prompt.
-    b.set_manifest(fixed_manifest())
-    restore = with_split_document(b)
-    try:
-        entries: list[tuple[str, object, int]] = []
-        for kk in (6, 8, 10, 12, 14):
-            entries.append((f"all three fixes, k={kk}", s_rrf_absent, kk))
-        report(b, "corpus + tokenizer + absence-scored RRF:", entries, baseline=base)
-    finally:
-        restore()
-        b.set_manifest(list(MANIFEST))
-
-    # 4. robustness of each fix on its own across k, so nothing above rests on
-    #    a single lucky operating point.
-    print("\n  robustness — question recall at each k, one fix at a time")
-    ks = [8, 10, 12, 14, 16, 20]
-    rows: list[tuple[str, list[float]]] = []
-    rows.append(("shipped hybrid", [b.score(s_hybrid, kk)["questions"] for kk in ks]))
-    rows.append(("+ absence-scored RRF", [b.score(s_rrf_absent, kk)["questions"] for kk in ks]))
-    restore = with_split_document(b)
-    try:
-        rows.append(("+ tokenizer fix only", [b.score(s_hybrid, kk)["questions"] for kk in ks]))
-    finally:
-        restore()
-    b.set_manifest(fixed_manifest())
-    try:
-        rows.append(("+ corpus fix only", [b.score(s_hybrid, kk)["questions"] for kk in ks]))
-    finally:
-        b.set_manifest(list(MANIFEST))
-    header = "  " + f"{'variant':<24}" + "".join(f"{'k=' + str(kk):>9}" for kk in ks)
-    print(header)
-    for label, vals in rows:
-        print("  " + f"{label:<24}" + "".join(f"{v:>8.1%} " for v in vals))
+    q = _tokens(target.question)
+    doc = corpus.documents[corpus.index()["supplychain_fact_orders"]]
+    print(f"  question tokens: {sorted(q)}")
+    print(f"  overlap with the table document: {sorted(q & _tokens(doc))}")
+    print("\n  Zero overlap, so keyword returns a list of "
+          f"{len(kw)} tables that does not contain it at all.")
+    print("  RRF then scores it from ONE arm (1/(60+5) = 0.0154) while tables both")
+    print("  arms saw score from two, and it falls out of the top 14.")
+    print("\n  Two independent causes, and they need separate fixes:")
+    print("    (i)  the tokeniser never splits qty_shipped, so 'shipped' cannot match")
+    print("    (ii) the description says fill rate and OTIF, never revenue or price")
 
 
-SECTIONS = {
-    "diagnose": section_diagnose,
-    "corpus": section_corpus,
-    "fusion": section_fusion,
-    "expand": section_expand,
-    "columns": section_columns,
-    "rerank": section_rerank,
-    "adaptivek": section_adaptivek,
-    "combined": section_combined,
+# ==========================================================================
+# EXPERIMENT 1 — the corpus fix: a description that says what the table holds.
+# ==========================================================================
+
+# The shipped description sells the table as a service-level fact ("fill rate",
+# "OTIF") and never mentions that it carries unit_price and unit_cost — which is
+# the whole reason it can answer a revenue question. This adds the money grain
+# and the category path, and deliberately does NOT stuff keywords: every clause
+# is a true statement a reader of the prompt benefits from.
+BETTER_DESCRIPTIONS = {
+    "supplychain_fact_orders": (
+        "One row per order line, and the supply-chain revenue fact. "
+        "qty_ordered vs qty_shipped measures fill rate; promised_date vs shipped_date "
+        "measures on-time delivery (OTIF). unit_price and unit_cost make each line a "
+        "dollar amount, so shipped revenue is qty_shipped * unit_price and margin is "
+        "qty_shipped * (unit_price - unit_cost); join dim_product for the product "
+        "category behind that revenue. Joins dim_customer, dim_product, dim_lot, "
+        "dim_warehouse by id."
+    ),
 }
 
 
-def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+def experiment_corpus(con, cases, base, qvecs) -> Corpus:
+    print("\n" + "=" * 78)
+    print("1. CORPUS FIX — rewrite the description that omits what the table is for")
+    print("=" * 78)
+
+    fixed = build_corpus(
+        con,
+        describe=lambda d, n, desc: BETTER_DESCRIPTIONS.get(n, desc),
+        label="fixed-desc",
     )
-    ap.add_argument("--k", type=int, default=retrieval.DEFAULT_K)
-    ap.add_argument("--only", nargs="*", choices=sorted(SECTIONS), default=None)
+    results = []
+    for label, corpus in (("baseline", base), ("better description", fixed)):
+        for strat, sel in (("vector", sel_vector()), ("hybrid", sel_hybrid())):
+            results.append(score(f"{label} · {strat}", corpus, cases, qvecs, sel))
+    table(results)
+
+    i = cases.index(next(c for c in cases if c.id == "top_category_revenue"))
+    for label, corpus in (("baseline", base), ("better description", fixed)):
+        hyb = hybrid_ranking(corpus, cases[i].question, qvecs[i], k=DEFAULT_K)
+        pos = {t: r for r, (t, _) in enumerate(hyb, start=1)}
+        print(f"\n  {label}: supplychain_fact_orders hybrid rank = "
+              f"{pos.get('supplychain_fact_orders', '—')}")
+    return fixed
+
+
+# ==========================================================================
+# EXPERIMENT 2 — the tokeniser: split snake_case before matching.
+# ==========================================================================
+
+def experiment_tokeniser(con, cases, base, fixed, qvecs) -> None:
+    print("\n" + "=" * 78)
+    print("2. TOKENISER — split snake_case identifiers in the keyword arm")
+    print("=" * 78)
+    print("\n  Column names ARE the vocabulary (retrieval.py:102-108 says so), but")
+    print("  `qty_shipped` is indexed as one atom, so the word 'shipped' misses it.\n")
+
+    results = []
+    for cname, corpus in (("base corpus", base), ("fixed corpus", fixed)):
+        for tname, tok in (("atomic", _tokens), ("split", _tokens_split)):
+            results.append(
+                score(f"{cname} · keyword · {tname}", corpus, cases, qvecs, sel_keyword(tokenise=tok))
+            )
+            results.append(
+                score(f"{cname} · hybrid · {tname}", corpus, cases, qvecs, sel_hybrid(tokenise=tok))
+            )
+    table(results)
+
+
+# ==========================================================================
+# EXPERIMENT 3 (a) — deterministic query expansion.
+# ==========================================================================
+
+# Built from vocabulary the warehouse itself uses, not from a general thesaurus:
+# every right-hand side appears in a manifest description or a column name. An
+# LLM rewriter would generalise past this list; that claim is argued, not
+# measured, because there is no API key in this environment.
+SYNONYMS = {
+    "revenue": ["sales", "amount", "price", "billed", "net_revenue"],
+    "sales": ["revenue", "orders", "lines"],
+    "margin": ["gross_margin", "profit", "cost"],
+    "churn": ["attrition", "risk", "retention"],
+    "quit": ["attrition", "termination", "voluntary", "leaver"],
+    "left": ["termination", "attrition", "voluntary"],
+    "staff": ["employees", "headcount", "workforce"],
+    "employee": ["employees", "headcount", "workforce"],
+    "denied": ["denial", "denial_reason", "status"],
+    "denial": ["denied", "carc", "status"],
+    "collect": ["collection", "paid_amount", "nrv", "yield"],
+    "shipped": ["qty_shipped", "fill", "otif", "delivery"],
+    "category": ["product", "categories", "sku"],
+    "customer": ["customers", "account", "client"],
+    "site": ["sites", "investigator", "location"],
+    "query": ["queries", "edit_check", "query_log"],
+    "subject": ["subjects", "patient", "enrolled"],
+    "alert": ["alerts", "flagged", "suspicious", "threshold"],
+    "channel": ["channels", "medium", "touchpoint"],
+    "spend": ["cost", "budget", "media"],
+    "test": ["tests", "assertion", "data_test"],
+    "model": ["models", "dbt"],
+    "department": ["departments", "merchandising", "dept"],
+    "rep": ["reps", "salesperson", "quota"],
+    "store": ["stores", "format", "supercenter"],
+    "vendor": ["vendors", "supplier"],
+    "exception": ["exceptions", "variance", "reconciliation"],
+    "attainment": ["quota", "target"],
+    "documentation": ["description", "documented"],
+}
+
+# Acronyms the descriptions spell out (or vice versa). Same rule: every
+# expansion is a string that genuinely occurs in this warehouse's own text.
+ACRONYMS = {
+    "otif": "on-time in-full delivery",
+    "ar": "accounts receivable open claims",
+    "nrv": "net realisable value expected collectable",
+    "ncr": "net collection rate",
+    "clv": "customer lifetime value",
+    "rfm": "recency frequency monetary segment",
+    "cpa": "cost per acquisition conversion",
+    "aml": "anti money laundering suspicious",
+    "edc": "electronic data capture",
+    "gl": "general ledger account",
+    "kpi": "key performance indicator metric",
+    "did": "difference in differences",
+    "fefo": "first expiry first out",
+    "sku": "product item catalog",
+    "pnl": "profit and loss",
+}
+
+
+def expand_query(question: str) -> str:
+    """Question + domain vocabulary, appended rather than substituted.
+
+    Appended because the original wording is what the embedding is good at and
+    replacing it would throw that away; the expansion is extra surface for the
+    keyword arm and a mild nudge for the vector arm.
+    """
+    words = re.findall(r"[a-z0-9_]+", (question or "").lower())
+    extra: list[str] = []
+    for word in words:
+        for syn in SYNONYMS.get(word, ()):
+            if syn not in extra:
+                extra.append(syn)
+        if word in ACRONYMS:
+            extra.append(ACRONYMS[word])
+        stem = word[:-1] if word.endswith("s") else word
+        for syn in SYNONYMS.get(stem, ()):
+            if syn not in extra:
+                extra.append(syn)
+    if not extra:
+        return question
+    return f"{question} {' '.join(extra)}"
+
+
+def experiment_expansion(con, cases, corpus, qvecs) -> None:
+    print("\n" + "=" * 78)
+    print("3 (a). QUERY EXPANSION — deterministic synonym + acronym expansion")
+    print("=" * 78)
+
+    expanded = [expand_query(c.question) for c in cases]
+    evecs = embed(expanded)
+    ecases = [Case(c.id, expanded[i], c.needed) for i, c in enumerate(cases)]
+
+    results = [
+        score("plain · vector", corpus, cases, qvecs, sel_vector()),
+        score("expanded · vector", corpus, ecases, evecs, sel_vector()),
+        score("plain · keyword", corpus, cases, qvecs, sel_keyword()),
+        score("expanded · keyword", corpus, ecases, evecs, sel_keyword()),
+        score("plain · hybrid", corpus, cases, qvecs, sel_hybrid()),
+        score("expanded · hybrid", corpus, ecases, evecs, sel_hybrid()),
+        # Expansion helps exact matching more than it helps meaning, so also try
+        # feeding the plain question to the vector arm and the expanded one to
+        # the keyword arm.
+        score(
+            "split-feed hybrid",
+            corpus,
+            cases,
+            qvecs,
+            lambda c, case, qv: [
+                n
+                for n, _ in rrf(
+                    [
+                        vector_ranking(c, qv)[: max(DEFAULT_K * 2, 12)],
+                        keyword_ranking(c, expand_query(case.question))[: max(DEFAULT_K * 2, 12)],
+                    ]
+                )[:DEFAULT_K]
+            ],
+        ),
+    ]
+    table(results)
+    print("\n  Sample expansion:")
+    for c in cases[:1] + [c for c in cases if c.id == "top_category_revenue"]:
+        print(f"    {c.question}\n      -> {expand_query(c.question)}")
+
+
+# ==========================================================================
+# EXPERIMENT 4 (b) — column-level retrieval.
+# ==========================================================================
+
+def _doc_column_weighted(domain, name, description, columns, *, repeat=2):
+    """Table document with the column vocabulary repeated (a cheap field boost)."""
+    base = retrieval._document(domain, name, description, columns)
+    if not columns:
+        return base
+    words = " ".join(c.replace("_", " ") for c, _t in columns)
+    return base + ("\n" + words) * repeat
+
+
+def _doc_column_prose(domain, name, description, columns):
+    """Same, but the columns are rendered once as space-separated words.
+
+    Tests whether the win (if any) comes from REPEATING the columns or merely
+    from splitting `qty_shipped` into words the sentence encoder can read.
+    """
+    base = retrieval._document(domain, name, description, columns)
+    if not columns:
+        return base
+    return base + "\n" + " ".join(c.replace("_", " ") for c, _t in columns)
+
+
+def experiment_columns(con, cases, corpus, qvecs) -> None:
+    print("\n" + "=" * 78)
+    print("4 (b). COLUMN-LEVEL RETRIEVAL")
+    print("=" * 78)
+
+    variants = [("baseline (columns once, snake_case)", corpus)]
+    variants.append(
+        ("+ columns as words", build_corpus(con, document=_doc_column_prose, label="prose"))
+    )
+    variants.append(
+        (
+            "+ columns as words x2",
+            build_corpus(
+                con,
+                document=lambda d, n, desc, c: _doc_column_weighted(d, n, desc, c, repeat=2),
+                label="x2",
+            ),
+        )
+    )
+
+    results = []
+    for label, c in variants:
+        results.append(score(f"{label} · vector", c, cases, qvecs, sel_vector()))
+        results.append(score(f"{label} · hybrid", c, cases, qvecs, sel_hybrid()))
+    table(results, show_misses=False)
+
+    # The other reading of "column-level retrieval": index one document per
+    # COLUMN and roll the hits up to their table.
+    print("\n  One document per column, rolled up to the parent table:")
+    col_docs, col_owner = [], []
+    for name in corpus.names:
+        for cname, ctype in corpus.columns.get(name, []):
+            col_docs.append(
+                f"{cname.replace('_', ' ')} — a column of {name} "
+                f"({corpus.domains[name]} domain). {corpus.descriptions[name]}"
+            )
+            col_owner.append(name)
+    print(f"    corpus size: {len(col_docs)} column documents vs {len(corpus.names)} table documents")
+    cvecs = embed(col_docs)
+    owner = np.array(col_owner)
+
+    def sel_colroll(c, case, qv, k=DEFAULT_K):
+        sims = cvecs @ qv
+        order = np.argsort(-sims)
+        out: list[str] = []
+        for i in order:
+            t = owner[i]
+            if t not in out:
+                out.append(t)
+            if len(out) >= k:
+                break
+        return out
+
+    def sel_colroll_fused(c, case, qv, k=DEFAULT_K):
+        pool = max(k * 2, 12)
+        col = [(t, 0.0) for t in sel_colroll(c, case, qv, k=pool)]
+        return [
+            n
+            for n, _ in rrf(
+                [
+                    vector_ranking(c, qv)[:pool],
+                    keyword_ranking(c, case.question)[:pool],
+                    col[:pool],
+                ]
+            )[:k]
+        ]
+
+    table(
+        [
+            score("column-roll-up only", corpus, cases, qvecs, sel_colroll),
+            score("hybrid + column arm (3-way RRF)", corpus, cases, qvecs, sel_colroll_fused),
+        ],
+        show_misses=False,
+    )
+
+
+# ==========================================================================
+# EXPERIMENT 5 (c) — reranking the fused list.
+# ==========================================================================
+
+def rerank(
+    corpus: Corpus,
+    question: str,
+    fused: list[tuple[str, float]],
+    *,
+    k: int = DEFAULT_K,
+    top_n: int = 30,
+    w_name: float = 1.0,
+    w_domain: float = 0.25,
+    w_overlap: float = 0.15,
+) -> list[str]:
+    """Re-score the fused top-N by three signals RRF cannot see.
+
+    * NAME MENTION. The question literally contains the table's base name or a
+      distinctive part of it ("cross sell", "flight risk"). RRF only sees ranks,
+      so a keyword arm that ranked the table 3rd and a vector arm that ranked it
+      3rd look identical to one that guessed — this does not.
+    * DOMAIN AGREEMENT. The domain most represented in the fused top-5 is
+      probably the right domain; a table from it gets a nudge. This is the
+      signal that separates four tables called `fact_orders`.
+    * DESCRIPTION OVERLAP. Fraction of question tokens present in the
+      description, using the SPLIT tokeniser so `unit_price` can match "price".
+    """
+    head = fused[:top_n]
+    tail = [n for n, _ in fused[top_n:]]
+    if not head:
+        return []
+
+    q = _tokens_split(question)
+    lowered = f" {question.lower()} "
+    top_domains: dict[str, float] = {}
+    for rank, (name, _s) in enumerate(head[:5], start=1):
+        top_domains[corpus.domains.get(name, "")] = (
+            top_domains.get(corpus.domains.get(name, ""), 0.0) + 1.0 / rank
+        )
+    best_domain = max(top_domains, key=top_domains.get) if top_domains else ""
+
+    scored = []
+    for rank, (name, base) in enumerate(head, start=1):
+        bonus = 0.0
+        stem = name.split("_", 1)[1] if "_" in name else name
+        phrase = stem.replace("dim_", "").replace("fact_", "").replace("_", " ")
+        if phrase and f" {phrase} " in lowered:
+            bonus += w_name
+        if corpus.domains.get(name) == best_domain:
+            bonus += w_domain
+        desc_tokens = _tokens_split(corpus.descriptions.get(name, ""))
+        if q:
+            bonus += w_overlap * (len(q & desc_tokens) / len(q))
+        # Bonuses are added to the RRF score scaled by the score spread, so a
+        # bonus can reorder neighbours without teleporting rank 30 to rank 1.
+        spread = head[0][1] - head[-1][1] or 1e-6
+        scored.append((base + bonus * spread * 0.5, rank, name))
+    scored.sort(key=lambda item: (-item[0], item[1]))
+    return [name for _s, _r, name in scored][:k] + tail[: max(0, k - len(scored))]
+
+
+def experiment_rerank(con, cases, corpus, qvecs) -> None:
+    print("\n" + "=" * 78)
+    print("5 (c). RERANKING the fused list")
+    print("=" * 78)
+
+    def make(**kw):
+        def sel(c, case, qv):
+            fused = hybrid_ranking(c, case.question, qv, k=DEFAULT_K)
+            return rerank(c, case.question, fused, k=DEFAULT_K, **kw)
+        return sel
+
+    results = [
+        score("hybrid (no rerank)", corpus, cases, qvecs, sel_hybrid()),
+        score("+ rerank (all three signals)", corpus, cases, qvecs, make()),
+        score("+ rerank (name only)", corpus, cases, qvecs, make(w_domain=0.0, w_overlap=0.0)),
+        score("+ rerank (domain only)", corpus, cases, qvecs, make(w_name=0.0, w_overlap=0.0)),
+        score("+ rerank (overlap only)", corpus, cases, qvecs, make(w_name=0.0, w_domain=0.0)),
+    ]
+    table(results)
+
+
+# ==========================================================================
+# EXPERIMENT 6 (d) — adaptive k.
+# ==========================================================================
+
+def adaptive_k(
+    fused: list[tuple[str, float]],
+    *,
+    k_min: int = 6,
+    k_max: int = 24,
+    drop: float = 0.5,
+) -> list[str]:
+    """Keep taking hits until the fused score falls off a cliff.
+
+    `drop` is the fraction of the gap between the best and the k_min-th score
+    that a single step is allowed to be before we stop. A question whose answer
+    is one obvious table has a big early cliff and stops short; a vague one has
+    a flat tail and spends the full budget.
+    """
+    if not fused:
+        return []
+    names = [n for n, _ in fused]
+    scores = [s for _, s in fused]
+    k_min = min(k_min, len(names))
+    k_max = min(k_max, len(names))
+    reference = scores[0] - scores[k_min - 1] if k_min > 1 else 0.0
+    if reference <= 0:
+        return names[:k_max]
+    for i in range(k_min, k_max):
+        if scores[i - 1] - scores[i] > drop * reference:
+            return names[:i]
+    return names[:k_max]
+
+
+def experiment_adaptive_k(con, cases, corpus, qvecs) -> None:
+    print("\n" + "=" * 78)
+    print("6 (d). ADAPTIVE k vs fixed k")
+    print("=" * 78)
+
+    results = []
+    for k in (10, 12, 14, 16, 18, 20, 24):
+        results.append(score(f"fixed k={k:<2} · hybrid", corpus, cases, qvecs, sel_hybrid(k=k)))
+    table(results, show_k=True, show_misses=False)
+
+    print()
+    ad = []
+    for k_min, k_max, drop in (
+        (6, 24, 0.5), (6, 24, 0.35), (8, 20, 0.5), (10, 24, 0.4), (6, 18, 0.5), (10, 20, 0.6),
+    ):
+        def sel(c, case, qv, k_min=k_min, k_max=k_max, drop=drop):
+            fused = hybrid_ranking(c, case.question, qv, k=k_max)
+            return adaptive_k(fused, k_min=k_min, k_max=k_max, drop=drop)
+
+        ad.append(score(f"adaptive [{k_min},{k_max}] drop={drop}", corpus, cases, qvecs, sel))
+    table(ad, show_k=True, show_misses=False)
+
+
+# ==========================================================================
+# The combined candidate, and the equivalence check.
+# ==========================================================================
+
+def experiment_combined(con, cases, base, fixed, qvecs) -> None:
+    print("\n" + "=" * 78)
+    print("7. THE STACK — what to actually ship")
+    print("=" * 78)
+
+    def sel_split_hybrid(c, case, qv):
+        return [n for n, _ in hybrid_ranking(c, case.question, qv, tokenise=_tokens_split)[:DEFAULT_K]]
+
+    def sel_split_rerank(c, case, qv):
+        fused = hybrid_ranking(c, case.question, qv, tokenise=_tokens_split)
+        return rerank(c, case.question, fused, k=DEFAULT_K)
+
+    results = [
+        score("shipped today (base · hybrid k=14)", base, cases, qvecs, sel_hybrid()),
+        score("+ description fix", fixed, cases, qvecs, sel_hybrid()),
+        score("+ description fix + split tokeniser", fixed, cases, qvecs, sel_split_hybrid),
+        score("+ all three (rerank on top)", fixed, cases, qvecs, sel_split_rerank),
+    ]
+    table(results)
+
+    print("\n  Same stack at lower k (does the fix buy back budget?):")
+    lower = []
+    for k in (8, 10, 12, 14):
+        def sel(c, case, qv, k=k):
+            fused = hybrid_ranking(c, case.question, qv, k=k, tokenise=_tokens_split)
+            return [n for n, _ in fused[:k]]
+
+        lower.append(score(f"fixed corpus · split · k={k}", fixed, cases, qvecs, sel))
+    table(lower, show_k=True, show_misses=False)
+
+
+def verify(con, cases, corpus, qvecs) -> None:
+    """Assert this script's numpy path agrees with the live Chroma path."""
+    print("\n" + "=" * 78)
+    print("VERIFY — numpy re-implementation vs engine.retrieval through Chroma")
+    print("=" * 78)
+    bad = 0
+    for i, case in enumerate(cases):
+        mine = [n for n, _ in vector_ranking(corpus, qvecs[i])[:DEFAULT_K]]
+        theirs = [h.table for h in retrieval.retrieve(case.question, k=DEFAULT_K, con=con)]
+        if mine != theirs:
+            bad += 1
+            print(f"  MISMATCH {case.id}\n    mine:   {mine}\n    chroma: {theirs}")
+        mine_h = [n for n, _ in hybrid_ranking(corpus, case.question, qvecs[i])[:DEFAULT_K]]
+        theirs_h = [h.table for h in retrieval.retrieve_hybrid(case.question, k=DEFAULT_K, con=con)]
+        if mine_h != theirs_h:
+            bad += 1
+            print(f"  HYBRID MISMATCH {case.id}\n    mine:   {mine_h}\n    chroma: {theirs_h}")
+    print(f"\n  {len(cases)} questions checked, {bad} mismatches.")
+    assert bad == 0, "numpy path diverged from Chroma — the numbers in this script are not valid"
+
+
+# ==========================================================================
+# EXPERIMENT 8 — the blind spot in the golden set itself.
+# ==========================================================================
+
+# Every golden question is phrased in the warehouse's own vocabulary, because
+# they were written by someone looking at the schema. That quietly biases the
+# eval TOWARD exact matching — and once the tokeniser is fixed, keyword alone
+# scores 100% on it, which would read as "delete the embeddings".
+#
+# These are the same questions asked the way a business user asks them, with the
+# schema words removed on purpose. Ground truth is INHERITED from the original
+# question's reference SQL: a paraphrase needs the same tables by construction,
+# so the labels are still derived rather than authored.
+#
+# This is a probe, not repo ground truth. I wrote these sentences, and they are
+# deliberately biased against keyword. That is the point: it is the axis the
+# golden set never tests, and a fair reading needs BOTH numbers.
+PARAPHRASES = {
+    "denial_rate": "How often do insurers refuse to pay us?",
+    "voluntary_attrition": "How many people quit on their own?",
+    "active_employees": "How big is our current headcount?",
+    "top_highrisk_dept": "Which team is most likely to lose people soon?",
+    "fill_rate": "How much of what customers asked for did we actually send?",
+    "top_category_revenue": "Which kind of product brings in the most money?",
+    "top_customer": "Who buys the most from us?",
+    "high_churn_customers": "How many buyers look like they are about to leave?",
+    "total_exceptions": "How many places do our two sets of books disagree?",
+    "site_query_rate_per_subject": "Which hospital raises the most data problems per person enrolled?",
+    "aml_riskiest_channel": "Which way of paying gets flagged as dodgy most often?",
+    "wholesale_lowest_margin_department": "Which part of the shop makes the least profit per dollar sold?",
+    "dbt_most_tested_model": "Which table in our pipeline has the most checks on it?",
+    "expected_nrv_total": "Of the money still owed to us, how much will we really see?",
+}
+
+
+def paraphrase_cases(cases: list[Case]) -> list[Case]:
+    by_id = {c.id: c for c in cases}
+    return [Case(i, q, by_id[i].needed) for i, q in PARAPHRASES.items() if i in by_id]
+
+
+def weighted_hybrid(
+    corpus: Corpus,
+    question: str,
+    qvec: np.ndarray,
+    *,
+    k: int = DEFAULT_K,
+    w_vector: float = 1.0,
+    w_keyword: float = 1.0,
+    tokenise=_tokens_split,
+) -> list[str]:
+    """RRF with a weight per arm.
+
+    Plain RRF assumes the two retrievers are equally trustworthy. Measured, they
+    are not: the keyword arm is worth having on schema-vocabulary questions and
+    is actively misleading on paraphrased ones, so weighting the vector arm up
+    is the honest encoding of that. It stays rank-only fusion — the weight
+    multiplies the reciprocal-rank contribution, it does not mix two
+    incomparable scores.
+    """
+    pool = max(k * 2, 12)
+    vec = vector_ranking(corpus, qvec)[:pool]
+    kw = keyword_ranking(corpus, question, tokenise=tokenise)[:pool]
+    fused: dict[str, float] = {}
+    for weight, ranking in ((w_vector, vec), (w_keyword, kw)):
+        for rank, (name, _s) in enumerate(ranking, start=1):
+            fused[name] = fused.get(name, 0.0) + weight / (RRF_K + rank)
+    return [n for n, _ in sorted(fused.items(), key=lambda kv: -kv[1])[:k]]
+
+
+def experiment_paraphrase(con, cases, base, qvecs) -> None:
+    print("\n" + "=" * 78)
+    print("8. THE GOLDEN SET'S BLIND SPOT — questions without schema vocabulary")
+    print("=" * 78)
+
+    probe = paraphrase_cases(cases)
+    pvecs = embed([c.question for c in probe])
+    prose = build_corpus(con, document=_doc_column_prose, label="cols-as-words")
+    print(f"\n  {len(probe)} paraphrase probes, labels inherited from the reference SQL\n")
+
+    rows = []
+    for label, corpus, tok, kind in (
+        ("keyword · atomic", base, _tokens, "kw"),
+        ("keyword · split", base, _tokens_split, "kw"),
+        ("vector", base, _tokens, "vec"),
+        ("vector · cols-as-words", prose, _tokens, "vec"),
+        ("hybrid · atomic (shipped)", base, _tokens, "hy"),
+        ("hybrid · split", base, _tokens_split, "hy"),
+        ("hybrid · split, cols-as-words", prose, _tokens_split, "hy"),
+    ):
+        sel = {
+            "kw": sel_keyword(tokenise=tok),
+            "vec": sel_vector(),
+            "hy": sel_hybrid(tokenise=tok),
+        }[kind]
+        rows.append(score(label, corpus, probe, pvecs, sel))
+    table(rows, show_misses=False)
+    print("\n  Keyword collapses; the embeddings are what hold this up. The golden")
+    print("  set cannot see that, which is why 'keyword alone hits 100%' is not a")
+    print("  reason to delete the vector index.")
+
+    print("\n  Weighted RRF, scored on BOTH sets (corpus = cols-as-words, split, k=14):")
+    print(f"\n  {'vector:keyword':<16} {'golden q/tables':>20} {'paraphrase q/tables':>22}")
+    for wv, wk in ((1, 1), (1.5, 1), (2, 1), (3, 1), (4, 1), (1, 0)):
+        def sel(c, case, qv, wv=wv, wk=wk):
+            return weighted_hybrid(c, case.question, qv, w_vector=wv, w_keyword=wk)
+
+        g = score("", prose, cases, qvecs, sel)
+        p = score("", prose, probe, pvecs, sel)
+        print(
+            f"  {f'{wv}:{wk}':<16} {g.question_recall:>11.1%}/{g.table_recall:<8.1%} "
+            f"{p.question_recall:>12.1%}/{p.table_recall:<8.1%}"
+        )
+    print("\n  1.5:1 through 3:1 is a plateau, not a knife edge — 2:1 sits in the")
+    print("  middle of it and is Pareto-better than 1:1 on both sets at once.")
+
+
+EXPERIMENTS = (
+    "diagnose", "corpus", "tokeniser", "expansion", "columns",
+    "rerank", "adaptivek", "combined", "paraphrase",
+)
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--only", choices=EXPERIMENTS, action="append", default=None)
+    ap.add_argument("--verify", action="store_true")
     args = ap.parse_args(argv)
+    want = set(args.only or EXPERIMENTS)
 
     con = build_warehouse()
-    bench = Bench(con)
-    print(f"warehouse: {len(bench._cols)} tables · labelled golden questions: {len(bench.cases)}")
-    print(f"full catalogue: ~{approx_tokens(schema_catalog(con)):,} tokens/turn")
+    cases = load_cases(con)
+    base = build_corpus(con)
+    qvecs = embed([c.question for c in cases])
+    print(f"\n{len(base.names)} tables · {len(cases)} labelled questions · k={DEFAULT_K} unless stated")
 
-    for name in (args.only or list(SECTIONS)):
-        SECTIONS[name](bench, args.k)
+    if args.verify:
+        verify(con, cases, base, qvecs)
+
+    fixed = None
+    if "diagnose" in want:
+        experiment_diagnose(con, cases, base, qvecs)
+    if {"corpus", "tokeniser", "combined"} & want:
+        fixed = experiment_corpus(con, cases, base, qvecs) if "corpus" in want else build_corpus(
+            con, describe=lambda d, n, desc: BETTER_DESCRIPTIONS.get(n, desc), label="fixed-desc"
+        )
+    if "tokeniser" in want:
+        experiment_tokeniser(con, cases, base, fixed, qvecs)
+    if "expansion" in want:
+        experiment_expansion(con, cases, base, qvecs)
+    if "columns" in want:
+        experiment_columns(con, cases, base, qvecs)
+    if "rerank" in want:
+        experiment_rerank(con, cases, base, qvecs)
+    if "adaptivek" in want:
+        experiment_adaptive_k(con, cases, base, qvecs)
+    if "combined" in want:
+        experiment_combined(con, cases, base, fixed, qvecs)
+    if "paraphrase" in want:
+        experiment_paraphrase(con, cases, base, qvecs)
+    print()
     return 0
 
 

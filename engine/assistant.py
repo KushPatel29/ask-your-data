@@ -129,6 +129,11 @@ class AskResult:
     attempts: int = 1
     corrections: list = field(default_factory=list)  # errors from failed attempts
     usage: dict = field(default_factory=dict)        # token spend, incl. cache reads
+    # Non-blocking verifier findings about the query that DID run - an empty
+    # result set, a rate outside its own range. These were previously computed
+    # and dropped on the floor, which is the worst of both worlds: the cost of
+    # checking without the benefit of saying anything.
+    findings: list = field(default_factory=list)
 
     @property
     def ok(self):
@@ -293,22 +298,34 @@ class Assistant:
             # no error, not empty, just meaningless.
             findings = self.verifier.check_sql(sql)
             blocking = [f for f in findings if f.blocking]
-            if blocking and attempt < MAX_ATTEMPTS:
+            if blocking:
                 note = correction_message(blocking)
-                corrections.append(note)
-                messages.append({"role": "assistant", "content": f"I tried this SQL:\n{sql}"})
-                messages.append({"role": "user", "content": note})
-                continue
+                if attempt < MAX_ATTEMPTS:
+                    corrections.append(note)
+                    messages.append({"role": "assistant", "content": f"I tried this SQL:\n{sql}"})
+                    messages.append({"role": "user", "content": note})
+                    continue
+                # Out of attempts, and the query is still structurally
+                # meaningless. Running it anyway would produce a number and a
+                # confident sentence about it - the exact failure this layer
+                # exists to prevent, and worse than an error because nothing
+                # about the output would look wrong. Refuse instead.
+                return AskResult(question, sql=sql, explanation=explanation,
+                                 refused=True, reason=note, attempts=attempt,
+                                 corrections=corrections, usage=usage,
+                                 findings=findings)
 
             result = run_query(self.con, sql)
             if result.ok:
                 # Post-execution checks: shapes that only the returned rows can
-                # reveal (an empty set, a rate outside its own range).
-                findings += self.verifier.check_result(sql, result, question)
+                # reveal (an empty set, a rate outside its own range). These are
+                # advisory - they travel with the answer rather than blocking it.
+                findings = findings + self.verifier.check_result(sql, result, question)
                 answer = self._summarize(question, result, usage)
                 return AskResult(question, sql=sql, explanation=explanation,
                                  answer=answer, result=result, usage=usage,
-                                 attempts=attempt, corrections=corrections)
+                                 attempts=attempt, corrections=corrections,
+                                 findings=findings)
 
             # Self-correction: hand the real error back and ask for a fix.
             corrections.append(result.error)

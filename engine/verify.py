@@ -39,6 +39,20 @@ WHAT IS HERE, AND WHY EACH EARNED IT
                       static structure can. 0 false positives on the 39 golden
                       queries.
 
+  cross_domain_       The same failure with the join condition removed, which the
+  cartesian           check above cannot see because it reads conditions. Measured:
+                      `FROM hr_fact_employees, finance_dim_account` returns 19,000
+                      rows and `ON e.employee_id < g.account_id` returns 24,306 —
+                      both silent, both previously only a NOTE. The test is
+                      connectivity of the FROM tree, not syntax, so CROSS JOIN,
+                      comma join and non-equi join are one case.
+
+  cartesian_join      The same connectivity test inside one domain, where an
+                      unjoined table multiplies every aggregate by its own row
+                      count (measured: 22,800 for a two-table case, 240,000 for a
+                      three-table one). WARN, not error — a deliberate cross join
+                      is rare but real.
+
   join_fanout         The classic silent-wrong analytics answer: SUM over a table
                       on the *one* side of a one-to-many join, which repeats each
                       value once per match. Measured: SUM(completed) over
@@ -58,9 +72,13 @@ WHAT IS HERE, AND WHY EACH EARNED IT
                       all. Only runs on an empty result, so the happy path pays
                       nothing.
 
-  null_scalar         A single row, a single column, and it is NULL. Almost always
-                      a division by an empty filter or an aggregate over no rows,
-                      and it renders as a blank the model will narrate around.
+  null_scalar         A one-row answer whose measured number is NULL — almost
+                      always a division by an empty filter or an aggregate over no
+                      rows. Not restricted to a 1x1 result: `(12000, None)` from a
+                      COUNT beside a filtered AVG is the version that reads as an
+                      answer. Aggregate columns only, so ordinary missing data in
+                      a listing stays quiet. 0 false positives on the golden set,
+                      all 39 of which return exactly one row.
 
   share_out_of_range  A value the SQL built as `100.0 * x / y` that lands outside
                       [0, 100]. Advisory only, and deliberately narrow: the naive
@@ -68,7 +86,11 @@ WHAT IS HERE, AND WHY EACH EARNED IT
                       on the golden set, because `wholesale_fy2025_revenue_change`
                       correctly returns -4.52. Percentage *changes* are not
                       percentage *shares*, so change wording is excluded, which
-                      takes it to 0%.
+                      takes it to 0%. The structural half of that exclusion reads
+                      the numerator specifically: a change subtracts *above* the
+                      line, so a share whose denominator merely happens to be a
+                      difference is still checked (measured: a 194 that a
+                      subtraction-anywhere test went silent on).
 
   ambiguous_entity    Four base names exist in more than one domain (dim_customer
                       in 3, dim_product in 4, dim_supplier in 2, fact_orders in 3),
@@ -115,6 +137,17 @@ ERROR, WARN, NOTE = "error", "warn", "note"
 # Aggregates whose value changes when rows are duplicated. COUNT(DISTINCT ...) is
 # excluded at the call site because de-duplication is exactly what makes it safe.
 ADDITIVE_AGGREGATES = {"sum", "avg", "mean", "count", "count_star", "total"}
+
+# Aggregates that return NULL over zero rows. Wider than ADDITIVE_AGGREGATES,
+# which is about row duplication: MIN/MAX are immune to fan-out but still come
+# back blank when the filter matched nothing, which is what `_null_metric` looks
+# for. COUNT is the exception — it returns 0, not NULL — but leaving it in costs
+# nothing, since a column that is NULL was not produced by a COUNT.
+NULLABLE_AGGREGATES = ADDITIVE_AGGREGATES | {
+    "min", "max", "median", "quantile", "quantile_cont", "quantile_disc",
+    "stddev", "stddev_samp", "stddev_pop", "var_samp", "var_pop", "mode",
+    "first", "last", "arg_min", "arg_max", "any_value", "product",
+}
 
 # Wording that means "difference between two periods", where a percentage is not
 # bounded by [0, 100] and may legitimately be negative.
@@ -241,6 +274,114 @@ def _equalities(node) -> list[tuple[list, list]]:
     return out
 
 
+def _select_nodes(ast):
+    """Every SELECT_NODE in the statement, CTE bodies and subqueries included.
+    Each one is its own row source with its own FROM tree."""
+    for node in _walk(ast):
+        if isinstance(node, dict) and node.get("type") == "SELECT_NODE":
+            yield node
+
+
+def _local(node):
+    """Walk `node`, stopping at any nested SELECT_NODE.
+
+    This boundary is what separates *combined row-wise* from *computed side by
+    side*. A subquery, a CTE body and a UNION branch each get their own
+    SELECT_NODE, so stopping there means `(SELECT COUNT(*) FROM hr_x) a, (SELECT
+    COUNT(*) FROM finance_y) b` — two scalars printed next to each other, which
+    is legitimate — is never confused with `FROM hr_x, finance_y`, which is a
+    19,000-row cartesian product of two unrelated datasets.
+    """
+    if isinstance(node, dict):
+        if node.get("type") == "SELECT_NODE":
+            return
+        yield node
+        for value in node.values():
+            yield from _local(value)
+    elif isinstance(node, list):
+        for value in node:
+            yield from _local(value)
+
+
+def _local_relations(node, ctes) -> list[tuple[str, str]]:
+    """(alias, table) for the warehouse tables in this node's own FROM tree."""
+    found = []
+    for candidate in _local(node.get("from_table")):
+        if candidate.get("type") != "BASE_TABLE":
+            continue
+        name = (candidate.get("table_name") or "").lower()
+        if not name or name in ctes or name not in DOMAIN_OF:
+            continue
+        found.append(((candidate.get("alias") or "").lower() or name, name))
+    return found
+
+
+def _subtracts_in_numerator(ast) -> bool:
+    """Does a subtraction sit in the NUMERATOR of some division?
+
+    A percentage *change* is `(new - old) / old`: the difference is above the
+    line, and the result is unbounded, so `share_out_of_range` must stay quiet.
+    A percentage *share* whose denominator happens to be a difference —
+    `100.0 * SUM(billed) / (SUM(billed) - SUM(allowed))` — is still a share and
+    still wrong at 194. Testing for a subtraction *anywhere*, which is what this
+    used to do, treated the second as the first and went silent on it.
+    """
+    for node in _walk(ast):
+        if not isinstance(node, dict):
+            continue
+        if node.get("class") != "FUNCTION" or node.get("function_name") != "/":
+            continue
+        children = node.get("children") or []
+        if not children:
+            continue
+        for candidate in _walk(children[0]):
+            if (isinstance(candidate, dict) and candidate.get("class") == "FUNCTION"
+                    and candidate.get("function_name") == "-"):
+                return True
+    return False
+
+
+def _aggregate_positions(ast) -> set[int]:
+    """Select-list positions built with an aggregate, over every SELECT_NODE.
+
+    Positions rather than names because `run_query` reports columns by position
+    and an unaliased aggregate has no name worth matching on.
+    """
+    positions: set[int] = set()
+    for node in _walk(ast):
+        if not isinstance(node, dict) or node.get("type") != "SELECT_NODE":
+            continue
+        for index, entry in enumerate(node.get("select_list") or []):
+            for candidate in _walk(entry):
+                if (isinstance(candidate, dict) and candidate.get("class") == "FUNCTION"
+                        and (candidate.get("function_name") or "").lower() in NULLABLE_AGGREGATES):
+                    positions.add(index)
+                    break
+    return positions
+
+
+def _equalities_local(node) -> list[tuple[list, list]]:
+    """`_equalities`, but not descending into nested subqueries.
+
+    Taken over the whole SELECT_NODE rather than just its FROM tree, because the
+    implicit join form puts the predicate elsewhere: for `FROM a, b WHERE
+    a.x = b.x` DuckDB parses a CROSS join and files the equality under
+    `where_clause`. Reading only the join condition would call that a cartesian.
+    """
+    out = []
+    # Descend into the node's children rather than passing the node itself:
+    # `_local` stops AT a SELECT_NODE, and this one is a SELECT_NODE.
+    children = [value for key, value in node.items() if key != "cte_map"]
+    for candidate in _local(children):
+        if candidate.get("class") != "COMPARISON" or candidate.get("type") != "COMPARE_EQUAL":
+            continue
+        left, right = candidate.get("left"), candidate.get("right")
+        if (isinstance(left, dict) and isinstance(right, dict)
+                and left.get("class") == "COLUMN_REF" and right.get("class") == "COLUMN_REF"):
+            out.append((left.get("column_names") or [], right.get("column_names") or []))
+    return out
+
+
 # --------------------------------------------------------------------------
 # The verifier.
 # --------------------------------------------------------------------------
@@ -321,7 +462,13 @@ class Verifier:
         if len(tables) < 2:
             return []
         findings = self._cross_domain(ast, binding, tables)
+        findings += self._cartesian(ast)
         findings += self._fanout(ast, binding, tables)
+        # `cross_domain_reference` exists to say "two domains appear here but are
+        # not combined". Once `_cartesian` has proved they ARE combined, the note
+        # contradicts the error sitting beside it, so it is dropped.
+        if any(f.severity == ERROR for f in findings):
+            findings = [f for f in findings if f.check != "cross_domain_reference"]
         return findings
 
     def _cross_domain(self, ast, binding, tables) -> list[Finding]:
@@ -353,6 +500,88 @@ class Verifier:
                 f"this query reads {len(domains)} unrelated domains ({', '.join(domains)}) "
                 f"without joining them; make sure the comparison is meant to be "
                 f"side-by-side rather than combined."))
+        return findings
+
+    def _cartesian(self, ast) -> list[Finding]:
+        """Tables combined row-wise with nothing connecting them.
+
+        `_cross_domain` reads join *conditions*, so it can only see a join that
+        has one. The shape it cannot see is the one with no condition at all.
+        Measured on this warehouse: `FROM hr_fact_employees, finance_dim_account`
+        returns 19,000 rows — no error, not empty, and the product of two
+        independent datasets. A non-equi join is the same failure wearing a join
+        keyword: `ON e.employee_id < g.account_id` returns 24,306 rows. Before
+        this check both were a NOTE.
+
+        The test is connectivity, not syntax. Build a graph whose nodes are the
+        base tables in one SELECT_NODE's FROM tree and whose edges are the
+        equalities binding two of them, then ask whether it is connected.
+        Equalities come from the whole node minus nested subqueries, so the
+        implicit form `FROM a, b WHERE a.x = b.x` reads as connected, which it
+        is.
+
+        Severity splits on domain because the consequences do. Across domains the
+        rows are meaningless: ERROR. Within one domain a deliberate cross join is
+        rare but real (a date spine, a threshold grid), so it is a WARN — worth
+        one correction attempt, never a refusal.
+
+        Measured: 0 findings on the 39 golden queries (4 of which have a
+        multi-table FROM tree) and 0 on the 41 generated fact-to-dimension joins
+        described in the eval script.
+        """
+        ctes = _cte_names(ast)
+        findings, seen = [], set()
+        for node in _select_nodes(ast):
+            relations = _local_relations(node, ctes)
+            if len(relations) < 2:
+                continue
+            binding = {}
+            for alias, table in relations:
+                binding[alias] = table
+                binding.setdefault(table, table)
+            tables = {table for _alias, table in relations}
+            if len(tables) < 2:
+                continue   # the same table joined to itself is not a cartesian
+            edges = set()
+            for left_names, right_names in _equalities_local(node):
+                left, _left_col = self._resolve(left_names, binding, tables)
+                right, _right_col = self._resolve(right_names, binding, tables)
+                if left and right and left != right:
+                    edges.add(tuple(sorted((left, right))))
+            reached = {sorted(tables)[0]}
+            growing = True
+            while growing:
+                growing = False
+                for one, other in edges:
+                    if (one in reached) ^ (other in reached):
+                        reached |= {one, other}
+                        growing = True
+            if reached == tables:
+                continue
+            key = tuple(sorted(tables))
+            if key in seen:
+                continue
+            seen.add(key)
+            stranded = ", ".join(sorted(tables - reached))
+            joined = ", ".join(sorted(tables))
+            domains = sorted({DOMAIN_OF[t] for t in tables})
+            if len(domains) > 1:
+                findings.append(Finding(
+                    "cross_domain_cartesian", ERROR,
+                    f"{joined} are combined in one FROM clause with no join key "
+                    f"connecting {stranded} to the rest. They belong to different "
+                    f"domains ({', '.join(domains)}) and share no identifiers, so "
+                    f"this is a cartesian product of unrelated datasets — every "
+                    f"count, sum and average it produces is some other table's row "
+                    f"count multiplied in. Answer from one domain."))
+            else:
+                findings.append(Finding(
+                    "cartesian_join", WARN,
+                    f"{joined} are combined with no join key connecting {stranded} "
+                    f"to the rest, so every row of one is paired with every row of "
+                    f"the other and any aggregate is multiplied by the other "
+                    f"table's row count. Add the join condition, or if a cross "
+                    f"join is genuinely intended, aggregate before crossing."))
         return findings
 
     def _aggregate_sources(self, ast, binding, tables) -> dict[str, set[str]]:
@@ -426,14 +655,49 @@ class Verifier:
         findings: list[Finding] = []
         if not result.rows:
             findings.append(self._diagnose_empty(sql))
-        elif len(result.rows) == 1 and len(result.columns) == 1 and result.rows[0][0] is None:
-            findings.append(Finding(
-                "null_scalar", WARN,
-                "the query returned exactly one value and it is NULL, which usually "
-                "means a division by an empty filter or an aggregate over zero rows. "
-                "Check the WHERE clause matches any rows before dividing."))
+        else:
+            findings += self._null_metric(sql, result)
         findings += self._share_range(sql, result, question)
         return findings
+
+    def _null_metric(self, sql: str, result) -> list[Finding]:
+        """A one-row answer whose measured number came back NULL.
+
+        The 1x1 case is the obvious one. The one that actually gets past a reader
+        is wider: `SELECT COUNT(*) AS n, AVG(paid_amount) FILTER (WHERE status =
+        'Nope') AS avg_paid` returns `(12000, None)` — a confident row with a real
+        count sitting next to a blank average, which reads as an answer rather
+        than as a failure. So the test is on the aggregate COLUMNS, not on the
+        shape of the result.
+
+        Restricted to single-row results and to columns the SQL built with an
+        aggregate, because a NULL in a dimension column of a many-row report is
+        ordinary missing data, not a broken calculation. Measured: all 39 golden
+        queries return exactly one row, and none has a NULL in an aggregate
+        column, so this is 0 false positives on the whole accuracy contract.
+        """
+        if len(result.rows) != 1:
+            return []
+        row = result.rows[0]
+        null_columns = [i for i, value in enumerate(row) if value is None]
+        if not null_columns:
+            return []
+        if len(result.columns) == 1:
+            wanted = set(null_columns)          # 1x1: no need to parse
+        else:
+            ast = parse_sql(self.con, sql)
+            if ast is None:
+                return []
+            wanted = set(null_columns) & _aggregate_positions(ast)
+            if not wanted:
+                return []
+        named = ", ".join(str(result.columns[i]) for i in sorted(wanted))
+        return [Finding(
+            "null_scalar", WARN,
+            f"the query returned one row and {named} came back NULL, which usually "
+            f"means a division by an empty filter or an aggregate over zero rows. "
+            f"Check the filter matches any rows before aggregating, and do not "
+            f"report a blank as a measured value.")]
 
     def _diagnose_empty(self, sql: str) -> Finding:
         """Say *why* it is empty when the reason is a join whose keys never meet."""
@@ -485,10 +749,7 @@ class Verifier:
         if _CHANGE_WORDS.search(question or "") or _CHANGE_WORDS.search(text):
             return []
         ast = parse_sql(self.con, sql)
-        if ast is not None and any(
-            node.get("class") == "FUNCTION" and node.get("function_name") == "-"
-            for node in _walk(ast)
-        ):
+        if ast is not None and _subtracts_in_numerator(ast):
             return []
         findings = []
         for index, column in enumerate(result.columns):

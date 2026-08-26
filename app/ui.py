@@ -50,7 +50,34 @@ example engine/retrieval.py cites in its own docstring - retail_customer_analyti
 at vector rank 17, keyword rank 3, for "top wholesale customer by revenue" - is
 now something you can see happen instead of something the source code claims.
 
-See scripts/run_retrieval_eval.py for how the retrieval numbers were measured.
+FOUR MORE READOUTS, ON THE SAME ARGUMENT
+Every panel added since has to answer the same question the fusion readout
+answers: is there real machine state here that the UI was only asserting?
+
+  `query_plan()`   DuckDB's physical operator tree, read from
+                   EXPLAIN (FORMAT JSON) — the plan the engine actually chose,
+                   with the optimiser's estimated cardinality per operator and
+                   the root estimate set against the rows the query really
+                   returned. Measured over the 39 golden queries: EXPLAIN costs
+                   0.20–1.70ms (median 0.44) and the tree is 2–36 operators
+                   (median 5), which is why the panel scrolls at 21rem rather
+                   than growing without limit.
+  `guard_verdict()` now draws all of sql_guard.FORBIDDEN. "None of 26 forbidden
+                   verbs" was a claim; the 26 are the evidence, and on a block
+                   the one the guard named lights.
+  `attempt_ledger()` the self-correction loop as a ledger — one row per attempt
+                   with the error that ended it, which is the text the loop fed
+                   back to the model. It used to be a sentence.
+  `result_shape()` rows × columns in DuckDB's own type names (DESCRIBE, 0.18–
+                   0.61ms), and how much of the row cap the answer used.
+
+And the pipeline strip's connectors are drawn rather than typed, carrying state:
+a segment lights only where the signal crossed it, so a turn that stopped at the
+guard shows a dark link at the point it stopped instead of four identical
+arrows.
+
+See scripts/run_retrieval_eval.py for how the retrieval numbers were measured,
+and scripts/audit_ui.py for the contrast and markup audit this file is held to.
 """
 
 from __future__ import annotations
@@ -84,8 +111,14 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 /* Every readout in here is a column of numbers meant to be compared down the
    page. Proportional digits make a 1 narrower than a 7 and the column stops
    lining up, which is the difference between a table and an instrument. */
+/* Adding a panel and forgetting to name it here is a silent regression: the
+   panel looks almost right, and only a column of digits that will not line up
+   says otherwise. It has already happened once - the plan, ledger and shape
+   readouts all shipped computing `font-variant-numeric: normal`, caught by
+   reading getComputedStyle off the running app rather than by looking at it. */
 .ayd-mono, .ayd-stats, .ayd-pipe, .ayd-rail, .ayd-ground-panel, .ayd-map,
-.ayd-guard, .ayd-note, .ayd-verified{
+.ayd-guard, .ayd-note, .ayd-verified, .ayd-plan, .ayd-att, .ayd-shape,
+.ayd-cols-list{
   font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
 
 /* A reticle rather than a box: two corners, not four sides. Enough to read as
@@ -149,7 +182,16 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 /* Measured wall-clock for the stage, when there is one to show. Letter-spacing
    is reset because a spaced-out "196ms" reads as three tokens, not a duration. */
 .ayd-step .t{ margin-left:.45rem; letter-spacing:0; text-transform:none; opacity:.72; }
-.ayd-arrow{ color:var(--ayd-line); }
+/* The link between two stages is drawn rather than typed, and it carries state:
+   it lights only where the signal really passed OUT of one lit stage and INTO
+   the next, so a turn that stopped at the guard shows a dark segment at exactly
+   the point it stopped. A row of identical "→" glyphs said the pipeline had
+   four stages; this says how far down it the turn got. Decorative in the
+   accessibility sense - the stage cells already carry every state it encodes -
+   so it is an empty element with no text to announce. */
+.ayd-arrow{ flex:0 0 auto; width:14px; height:1px; background:var(--ayd-line); }
+.ayd-arrow[data-on="1"]{ background:var(--ayd-machine); opacity:.5; }
+.ayd-arrow[data-on="fail"]{ background:var(--ayd-alert); opacity:.55; }
 
 /* ---- grounding readout (the signature) --------------------------------- */
 .ayd-ground-panel{ border:1px solid var(--ayd-line); border-left:2px solid var(--ayd-machine);
@@ -241,6 +283,115 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .ayd-check[data-pass="0"]{ color:var(--ayd-alert); }
 .ayd-check[data-pass="0"]::before{ content:'✕'; color:var(--ayd-alert); }
 
+/* The forbidden-verb array. Same argument as the schema map, applied to the
+   safety boundary: "none of 26 forbidden verbs" is a claim, and the 26 drawn out
+   is the evidence. On a passing query every token is muted and the row reads as
+   a cleared board; on a block the one verb the guard named lights in the alert
+   colour, so the reader sees WHICH boundary was crossed rather than that one
+   exists. Read from sql_guard.FORBIDDEN by the caller, never re-typed here.
+
+   Muted is used rather than the line colour even though these are the "off"
+   state: 27 labels nobody can read is not restraint, it is a wall of noise.
+   Measured 5.05:1 on the panel background. */
+.ayd-verbs{ display:flex; flex-wrap:wrap; gap:.16rem .3rem; margin-top:.5rem;
+  padding-top:.5rem; border-top:1px solid var(--ayd-line); }
+.ayd-verb{ font-size:.6rem; letter-spacing:.09em; color:var(--ayd-muted);
+  border:1px solid transparent; border-radius:2px; padding:0 .18rem; }
+.ayd-verb[data-hit="1"]{ color:var(--ayd-alert); border-color:rgba(251,113,133,.45);
+  background:rgba(251,113,133,.1); }
+
+/* ---- attempt ledger ---------------------------------------------------- */
+/* The self-correction loop is the most machine-like thing the assistant does
+   and it used to be a sentence. One row per attempt, in order, each carrying
+   the error that ended it - which is exactly what the loop fed back to the
+   model - and the surviving attempt marked as the one that ran.
+
+   The row count is bounded by engine.assistant.MAX_ATTEMPTS, passed in rather
+   than assumed, so the denominator moves if that constant does. */
+.ayd-att{ border:1px solid var(--ayd-line); border-left:2px solid var(--ayd-alert);
+  border-radius:3px; background:var(--ayd-panel); padding:.6rem .8rem; margin:.2rem 0 .9rem;
+  font-family:var(--ayd-mono) !important; font-size:.7rem; color:var(--ayd-muted); }
+.ayd-att-head{ font-size:.62rem; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--ayd-muted); margin-bottom:.5rem; }
+.ayd-att-head b{ color:var(--ayd-alert); }
+.ayd-att-row{ display:grid; grid-template-columns:64px 46px minmax(0,1fr); gap:.6rem;
+  align-items:baseline; padding:.22rem 0; border-top:1px solid rgba(35,40,56,.55); }
+.ayd-att-row:first-of-type{ border-top:0; }
+.ayd-att-n{ color:var(--ayd-muted); }
+.ayd-att-v{ color:var(--ayd-alert); }
+.ayd-att-row[data-ok="1"] .ayd-att-v{ color:var(--ayd-machine); }
+.ayd-att-why{ color:var(--ayd-muted); overflow-wrap:anywhere; line-height:1.45; }
+.ayd-att-row[data-ok="1"] .ayd-att-why{ color:var(--ayd-ink); }
+
+/* ---- query plan -------------------------------------------------------- */
+/* DuckDB's own physical operator tree for the SQL that is about to run, read
+   from EXPLAIN (FORMAT JSON) - not a redrawing of the query, the plan the
+   engine actually chose. Operator names are the machine's work so they are
+   cyan; PROJECTION is plumbing and recedes to muted, because a plan where 108
+   of 240 nodes shout equally is not a readout.
+
+   The right-hand column is the optimiser's ESTIMATE, which is the interesting
+   part: it is a guess, it is labelled as one, and the panel foot puts the root
+   estimate next to the row count the query really returned. An instrument that
+   shows a prediction is only useful if it also shows the outturn.
+
+   The tree guides are box-drawing characters rather than CSS borders on purpose:
+   the rows are a flat DFS list, and the vertical continuation line of a
+   two-child operator cannot be drawn from a row that does not know its
+   ancestors' sibling counts.
+
+   But they are NOT laid out by the monospace grid, because IBM Plex Mono does
+   not cover the Box Drawing block. Measured in the running app at .72rem:
+   space, M and i all advance 6.913px, while │ └ ├ ─ advance 6.334px — they are
+   coming from a fallback face, and a tree drawn with them drifts about half a
+   pixel per character, which at depth 10 is a branch line three pixels off the
+   one above it. So each three-character level is boxed in an inline-block of
+   exactly 3ch and the glyph sits inside it. The grid is then the box's, not the
+   glyph's, and it holds whichever face ends up drawing the corner. */
+.ayd-plan{ border:1px solid var(--ayd-line); border-left:2px solid var(--ayd-machine);
+  border-radius:3px; background:var(--ayd-panel); padding:.7rem .9rem .75rem;
+  margin:.2rem 0 .9rem; font-family:var(--ayd-mono) !important; }
+.ayd-plan-head{ font-size:.62rem; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--ayd-muted); margin-bottom:.5rem; display:flex; justify-content:space-between;
+  gap:1rem; flex-wrap:wrap; }
+.ayd-plan-head b{ color:var(--ayd-ink); }
+/* A deep plan scrolls inside the panel instead of pushing the result off the
+   page. Measured over the 39 golden queries the tree is 2..36 operators, median
+   5, so this caps the tail rather than the common case. */
+.ayd-plan-body{ max-height:21rem; overflow:auto; }
+.ayd-op{ display:grid; grid-template-columns:minmax(0,1fr) 92px; gap:.7rem;
+  align-items:baseline; font-size:.72rem; padding:.13rem 0; }
+.ayd-op-l{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ayd-guide{ color:var(--ayd-line); white-space:pre; }
+.ayd-guide i{ display:inline-block; width:3ch; font-style:normal; }
+.ayd-op-name{ color:var(--ayd-machine); letter-spacing:.04em; }
+.ayd-op[data-plumb="1"] .ayd-op-name{ color:var(--ayd-muted); }
+.ayd-op-detail{ color:var(--ayd-muted); }
+.ayd-op-card{ text-align:right; color:var(--ayd-ink); font-size:.68rem; }
+.ayd-op-card em{ font-style:normal; color:var(--ayd-muted); }
+.ayd-op-card.none{ color:var(--ayd-line); }
+.ayd-plan-foot{ margin-top:.55rem; padding-top:.5rem; border-top:1px solid var(--ayd-line);
+  font-size:.7rem; color:var(--ayd-muted); line-height:1.55; }
+.ayd-plan-foot b{ color:var(--ayd-machine); }
+
+/* ---- result shape ------------------------------------------------------ */
+/* What came back, in the warehouse's own type names (DESCRIBE, so the types are
+   DuckDB's rather than pandas' guess at them), plus how much of the row cap the
+   answer used. A dataframe with no shape line above it makes the reader count. */
+.ayd-shape{ font-family:var(--ayd-mono) !important; font-size:.68rem; color:var(--ayd-muted);
+  border-top:1px solid var(--ayd-line); padding-top:.45rem; margin:.55rem 0 .35rem;
+  display:flex; flex-wrap:wrap; gap:.3rem .9rem; align-items:baseline; }
+.ayd-shape b{ color:var(--ayd-ink); font-weight:500; }
+/* The × between the two counts is read as content, not as a divider rule, so it
+   stays at the muted colour that clears AA rather than dropping to the line
+   colour the way a purely structural mark could. */
+.ayd-shape em{ font-style:normal; color:var(--ayd-muted); }
+.ayd-shape u{ text-decoration:none; color:var(--ayd-alert); }
+.ayd-cols-list{ display:flex; flex-wrap:wrap; gap:.16rem .45rem; font-family:var(--ayd-mono) !important;
+  font-size:.65rem; color:var(--ayd-muted); margin:0 0 .5rem; }
+.ayd-coltype b{ color:var(--ayd-ink); font-weight:500; }
+.ayd-coltype i{ font-style:normal; color:var(--ayd-machine); opacity:.8; }
+
 /* ---- answer ------------------------------------------------------------ */
 .ayd-answer{ font-family:var(--ayd-cond) !important; font-weight:600; font-size:1.75rem; line-height:1.22;
   color:var(--ayd-ink); margin:.15rem 0 .45rem; letter-spacing:-.01em;
@@ -327,6 +478,16 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
   .ayd-rk::before{ content:'v '; color:var(--ayd-muted); }
   .ayd-rk.dim::before{ content:'k '; }
   .ayd-map-row{ grid-template-columns:74px minmax(0,1fr); }
+  /* The correction that ended an attempt is a DuckDB error message and it is
+     the content of that panel, so at 375px it takes its own line rather than
+     being squeezed into a ~190px column and wrapped to six. */
+  .ayd-att-row{ grid-template-columns:auto auto; row-gap:.18rem; column-gap:.8rem; }
+  .ayd-att-why{ grid-column:1 / -1; }
+  .ayd-op{ grid-template-columns:minmax(0,1fr) 72px; gap:.5rem; }
+  /* A ten-deep plan spends 10 × 3ch on guides before the operator name starts,
+     which at 375px is most of the row. Two characters per level still carries
+     the branch and gives the name back a third of the line. */
+  .ayd-guide i{ width:2ch; }
 }
 </style>
 """
@@ -448,12 +609,45 @@ def pipeline(*, retrieved: bool = False, generated: bool = False,
             stamp = f'<span class="t">{shown}</span>'
         return f'<span class="ayd-step" data-on="{on}">{label}{stamp}</span>'
 
-    parts = [
-        cell("retrieve", retrieved), '<span class="ayd-arrow">→</span>',
-        cell("generate", generated), '<span class="ayd-arrow">→</span>',
-        cell("guard", guarded), '<span class="ayd-arrow">→</span>',
-        cell("execute", executed),
-    ]
+    stages = [("retrieve", retrieved), ("generate", generated),
+              ("guard", guarded), ("execute", executed)]
+
+    def link(left, right) -> str:
+        """State of the segment BETWEEN two stages, read as "did anything cross".
+
+        The rule is directional, and getting it wrong was measured: a first
+        version marked BOTH segments touching a failed guard red, which claims
+        that something crossed out of the guard and went wrong downstream.
+        Nothing crossed — EXECUTE never ran.
+
+          left failed          → fail, this is where the turn stopped
+          left ran, right ran  → lit, the signal crossed
+          left ran, right failed → lit; the SQL did reach the guard, and what
+                                   the guard then decided is the guard cell's
+                                   job to say, not this segment's
+          otherwise            → dark
+
+        Demo mode leaves GENERATE dark on purpose, so both segments touching it
+        stay dark and the strip says "nothing was generated here" in the same
+        breath as the cell does.
+        """
+        def state(value):
+            return "fail" if value == "fail" else ("1" if value else "0")
+
+        a, b = state(left), state(right)
+        if a == "fail":
+            segment = "fail"
+        elif a == "1" and b in ("1", "fail"):
+            segment = "1"
+        else:
+            segment = "0"
+        return f'<span class="ayd-arrow" data-on="{segment}"></span>'
+
+    parts: list[str] = []
+    for index, (label, state) in enumerate(stages):
+        if index:
+            parts.append(link(stages[index - 1][1], state))
+        parts.append(cell(label, state))
     if attempts > 1:
         parts.append(f'<span class="ayd-step" data-on="fail">retry ×{attempts - 1}</span>')
     st.markdown(f'<div class="ayd-pipe">{"".join(parts)}</div>', unsafe_allow_html=True)
@@ -606,18 +800,37 @@ def schema_map(by_domain: dict[str, list[tuple[str, bool]]], *,
     )
 
 
-def guard_verdict(*, ok: bool, reason: str, checks: list[tuple[str, bool]]) -> None:
+def guard_verdict(*, ok: bool, reason: str, checks: list[tuple[str, bool]],
+                  forbidden: list[str] | None = None, blocked_verb: str = "") -> None:
     """What engine.sql_guard.validate_sql checked, and what it returned.
 
     `checks` are (label, passed) pairs describing the individual conditions.
     They are recomputed by the caller from the same module the guard uses, so
     this is a readout of the boundary rather than a decorative reassurance that
     one exists.
+
+    `forbidden` is sql_guard.FORBIDDEN itself, drawn out verb by verb. The
+    schema map's argument applied to the guard: "none of 26 forbidden verbs" is
+    a claim, and the 26 on screen are the evidence for it. `blocked_verb` is the
+    one the guard actually named, when it named one — it is not re-derived here
+    by scanning the SQL, because a second scanner that disagreed with the guard
+    would be showing a boundary the app does not actually enforce.
+
+    Both are optional; passing neither renders exactly what this function
+    rendered before they existed.
     """
     items = "".join(
         f'<span class="ayd-check" data-pass="{1 if passed else 0}">{html.escape(label)}</span>'
         for label, passed in checks
     )
+    verbs = ""
+    if forbidden:
+        hit = blocked_verb.strip().upper()
+        verbs = '<div class="ayd-verbs">' + "".join(
+            f'<span class="ayd-verb" data-hit="{1 if verb.upper() == hit else 0}">'
+            f'{html.escape(verb)}</span>'
+            for verb in forbidden
+        ) + "</div>"
     verdict = "pass" if ok else "blocked"
     st.markdown(
         f"""
@@ -625,7 +838,182 @@ def guard_verdict(*, ok: bool, reason: str, checks: list[tuple[str, bool]]) -> N
   <div class="ayd-guard-head">read-only guard · <b data-ok="{1 if ok else 0}">{verdict}</b>
   — {html.escape(reason)}</div>
   <div class="ayd-checks">{items}</div>
+  {verbs}
 </div>""",
+        unsafe_allow_html=True,
+    )
+
+
+def attempt_ledger(*, attempts: int, corrections: list[str], max_attempts: int,
+                   ok: bool = True) -> None:
+    """The self-correction loop, one row per attempt, in the order it ran.
+
+    engine.assistant appends exactly one entry to `corrections` for every
+    attempt that did not survive — a DuckDB error, or the verifier's correction
+    note for SQL that ran and was wrong — and then either returns on the next
+    attempt or exhausts MAX_ATTEMPTS. So the ledger is fully determined by
+    (attempts, corrections): the first len(corrections) rows are the failures
+    with the reason the loop fed back to the model, and the last row is the
+    attempt that was accepted.
+
+    Renders nothing for a single clean attempt. There is no ledger to show when
+    nothing was corrected, and a panel reading "attempt 1: fine" would be
+    ceremony.
+
+    An exhausted loop has one correction for every attempt, so every row is a
+    failure and there is no final row to label — the `ok=False` wording is for
+    the other way the loop ends early, a refusal on a later attempt, where the
+    model stopped rather than erroring.
+    """
+    if attempts <= 1 and not corrections:
+        return
+    rows = []
+    for index in range(1, attempts + 1):
+        failed = index <= len(corrections)
+        why = corrections[index - 1] if failed else (
+            "accepted — guard passed and the query returned rows"
+            if ok else "the loop ended here without an accepted query"
+        )
+        # A DuckDB error can be a paragraph. The first line is the diagnosis and
+        # the rest is a position marker that means nothing without the original
+        # cursor, so the row shows the line and the title carries the whole text.
+        head = str(why).strip().splitlines()[0]
+        short = head if len(head) <= 150 else head[:149] + "…"
+        rows.append(
+            f'<div class="ayd-att-row" data-ok="{0 if failed else 1}">'
+            f'<div class="ayd-att-n">attempt {index}</div>'
+            f'<div class="ayd-att-v">{"failed" if failed else ("ran" if ok else "stopped")}</div>'
+            f'<div class="ayd-att-why" title="{html.escape(str(why).strip())}">'
+            f'{html.escape(short)}</div>'
+            f'</div>'
+        )
+    st.markdown(
+        f"""
+<div class="ayd-att ayd-hud">
+  <div class="ayd-att-head">self-correction · <b>{attempts}</b> of {max_attempts} attempts used</div>
+  {''.join(rows)}
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+
+def query_plan(nodes: list[dict], *, plan_ms: float | None = None,
+               total: int | None = None,
+               returned: int | None = None, truncated: bool = False) -> None:
+    """DuckDB's physical operator tree for the SQL that ran.
+
+    `nodes` is a flat depth-first list of dicts — guide, name, detail, card —
+    produced by the caller from EXPLAIN (FORMAT JSON). The tree structure lives
+    in the pre-rendered `guide` string rather than in an indent level, because
+    the vertical continuation line of a two-child operator (a HASH_JOIN) cannot
+    be drawn by a row that does not know its ancestors' sibling counts.
+
+    `card` is the optimiser's ESTIMATED cardinality and is labelled as an
+    estimate everywhere it appears. The panel foot puts the root's estimate next
+    to the row count the query genuinely returned, which is the only honest way
+    to show a prediction: with its outturn beside it.
+    """
+    if not nodes:
+        return
+    def guide_cells(guide: str) -> str:
+        """One fixed 3ch box per tree level.
+
+        The guide arrives as three characters per level — "│  ", "   ", "└─ ",
+        "├─ " — so chunking by three is exact rather than a heuristic, and each
+        chunk gets a box the monospace grid defines instead of relying on the
+        corner glyph to be as wide as a space. It is not: see the note in the
+        stylesheet.
+        """
+        return "".join(f'<i>{html.escape(guide[i:i + 3])}</i>'
+                       for i in range(0, len(guide), 3))
+
+    rows = []
+    for node in nodes:
+        name = str(node.get("name", ""))
+        detail = str(node.get("detail", ""))
+        card = node.get("card")
+        plumb = 1 if name == "PROJECTION" else 0
+        short = detail if len(detail) <= 110 else detail[:109] + "…"
+        card_cell = (f'<div class="ayd-op-card"><em>~</em>{card:,}</div>'
+                     if isinstance(card, int)
+                     else '<div class="ayd-op-card none">—</div>')
+        rows.append(
+            f'<div class="ayd-op" data-plumb="{plumb}">'
+            f'<div class="ayd-op-l" title="{html.escape(detail or name)}">'
+            f'<span class="ayd-guide">{guide_cells(str(node.get("guide", "")))}</span>'
+            f'<span class="ayd-op-name">{html.escape(name)}</span>'
+            + (f' <span class="ayd-op-detail">{html.escape(short)}</span>' if short else "")
+            + '</div>' + card_cell + '</div>'
+        )
+
+    root_card = nodes[0].get("card")
+    foot = ""
+    if isinstance(root_card, int) and returned is not None:
+        outturn = (f'the row cap stopped the read at <b>{returned:,}</b>' if truncated
+                   else f'<b>{returned:,}</b> came back')
+        foot = (f'<div class="ayd-plan-foot">the optimiser estimated '
+                f'<b>{root_card:,}</b> row{"" if root_card == 1 else "s"} at the top '
+                f'of this plan; {outturn}.</div>')
+
+    stamp = f'plan read in {plan_ms:,.1f}ms' if plan_ms is not None else 'EXPLAIN'
+    # A renderer that stops at its own cap without saying so is claiming the
+    # plan ended where it gave up. No golden query comes close - the deepest is
+    # 36 operators against a cap of 200 - but model-authored SQL is not bounded
+    # by the golden set, and the panel should not start lying the first time it
+    # meets something bigger than what was measured.
+    count = (f'<b>{len(nodes)}</b> of {total:,} operators shown'
+             if total is not None and total > len(nodes)
+             else f'<b>{len(nodes)}</b> operators')
+    st.markdown(
+        f"""
+<div class="ayd-plan ayd-hud">
+  <div class="ayd-plan-head">
+    <span>physical plan · {count} · duckdb</span>
+    <span>{html.escape(stamp)} · est. rows</span>
+  </div>
+  <div class="ayd-plan-body">{''.join(rows)}</div>
+  {foot}
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+
+def result_shape(columns: list[tuple[str, str]], *, rows: int, truncated: bool,
+                 cap: int) -> None:
+    """The shape and the column types of what came back.
+
+    Types are DuckDB's own, from DESCRIBE against the same statement, not
+    pandas' inference from the values — a column of integers that DuckDB calls
+    BIGINT and pandas calls int64 is being described by two different systems,
+    and only one of them is the warehouse.
+    """
+    if not columns:
+        return
+    noun = "row" if rows == 1 else "rows"
+    cols = "column" if len(columns) == 1 else "columns"
+    head = (f'<b>{rows:,}</b> {noun} <em>×</em> <b>{len(columns)}</b> {cols}'
+            if not truncated else
+            f'<u>{rows:,} {noun} shown — cap of {cap:,} reached</u> '
+            f'<em>×</em> <b>{len(columns)}</b> {cols}')
+    # An unaliased aggregate gets its whole expression as a column name - DuckDB
+    # returned a 130-character `round(((100.0 * count_star() FILTER …)))` from
+    # the first golden question - and a name that long is not a name, it is the
+    # SQL again. It is clipped to a scannable head with the full text on hover;
+    # the SQL is on screen directly above, so nothing is actually lost.
+    def label(name: str) -> str:
+        text = " ".join(str(name).split())
+        return text if len(text) <= 34 else text[:33] + "…"
+
+    cells = "".join(
+        f'<span class="ayd-coltype" title="{html.escape(str(name))}">'
+        f'<b>{html.escape(label(name))}</b> '
+        f'<i>{html.escape(str(kind))}</i></span>'
+        for name, kind in columns
+    )
+    st.markdown(
+        f'<div class="ayd-shape"><span>result · {head}</span>'
+        f'<span>row cap {cap:,}</span></div>'
+        f'<div class="ayd-cols-list">{cells}</div>',
         unsafe_allow_html=True,
     )
 
