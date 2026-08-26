@@ -32,10 +32,27 @@ from dataclasses import dataclass, field
 import anthropic
 
 from engine.query import QueryResult, run_query
+from engine.exemplars import exemplar_block
+from engine.verify import Verifier, correction_message
 from engine.retrieval import schema_catalog_for
 from engine.warehouse import table_names
 
-MODEL = os.environ.get("ASK_YOUR_DATA_MODEL", "claude-opus-4-8")
+# Opus 5. Thinking is ON BY DEFAULT on this model - omitting the parameter runs
+# adaptive - which is a real behaviour change from opus-4-8, where omitting it
+# meant no thinking at all.
+#
+# Thinking is deliberately left on. The documented failure mode of disabling it
+# on Opus 5 is that the model sometimes writes a tool call into its VISIBLE TEXT
+# instead of emitting a tool_use block: the turn succeeds, the call never runs,
+# and nothing raises. This assistant reads tool_use blocks and nothing else
+# (see the `tool_use = next(...)` line in ask()), so that failure would present
+# as a silent refusal. Lower `effort` is the supported way to spend less.
+MODEL = os.environ.get("ASK_YOUR_DATA_MODEL", "claude-opus-5")
+
+# Thinking and visible output share this budget. At the old value of 2048 a
+# thinking model could spend the allowance reasoning and get truncated before
+# emitting the tool call.
+MAX_OUTPUT_TOKENS = 16000
 MAX_ATTEMPTS = 3   # 1 initial attempt + up to 2 corrections
 HISTORY_TURNS = 6  # how many prior turns are replayed as context
 
@@ -192,6 +209,7 @@ class Assistant:
         self.model = model
         self.catalog_builder = catalog_builder or schema_catalog_for
         self.known_tables = tuple(table_names(con))
+        self.verifier = Verifier(con)
 
     def _system_for(self, question: str, history: list[Turn]) -> list[dict]:
         """Stable rules plus the retrieved schema for this turn."""
@@ -202,10 +220,30 @@ class Assistant:
             self.con,
             include_tables=required,
         )
-        return [
+        blocks = [
             {"type": "text", "text": SYSTEM_RULES},
             {"type": "text", "text": SCHEMA_BLOCK.format(catalog=catalog)},
         ]
+
+        # Few-shot exemplars: the k most similar SOLVED questions, drawn from the
+        # same golden set CI asserts against. Leave-one-out lives inside
+        # select_exemplars(), not here - a question must never be shown its own
+        # reference SQL, or a live eval would be scoring memorisation.
+        try:
+            examples = exemplar_block(context, retrieved_tables=required)
+        except Exception:
+            examples = ""
+        if examples:
+            blocks.append({"type": "text", "text": examples})
+
+        # Cache the whole prefix. Measured: worth nothing ACROSS turns - 0 of 39
+        # follow-ups produced a byte-identical prefix, because the retrieved
+        # schema changes with the question. Worth something WITHIN a turn: the
+        # self-correction loop re-sends this identical prefix on attempts 2 and
+        # 3, and at ~3,900 tokens that is the difference between paying full
+        # price twice more and paying a tenth.
+        blocks[-1] = {**blocks[-1], "cache_control": {"type": "ephemeral"}}
+        return blocks
 
     def _create(self, **kwargs):
         """One place where the SDK is called, so auth/billing/network failures
@@ -228,7 +266,7 @@ class Assistant:
         for attempt in range(1, MAX_ATTEMPTS + 1):
             msg = self._create(
                 model=self.model,
-                max_tokens=2048,
+                max_tokens=MAX_OUTPUT_TOKENS,
                 system=system,
                 tools=TOOLS,
                 tool_choice={"type": "any"},
@@ -247,8 +285,26 @@ class Assistant:
 
             sql = tool_use.input["sql"]
             explanation = tool_use.input.get("explanation", "")
+
+            # Structural checks BEFORE execution. The retry loop already handles
+            # SQL that crashes; this handles SQL that RUNS AND IS WRONG, which
+            # nothing downstream can see. The measured case: a join across two
+            # of the eleven independent synthetic domains returns 5,400 rows -
+            # no error, not empty, just meaningless.
+            findings = self.verifier.check_sql(sql)
+            blocking = [f for f in findings if f.blocking]
+            if blocking and attempt < MAX_ATTEMPTS:
+                note = correction_message(blocking)
+                corrections.append(note)
+                messages.append({"role": "assistant", "content": f"I tried this SQL:\n{sql}"})
+                messages.append({"role": "user", "content": note})
+                continue
+
             result = run_query(self.con, sql)
             if result.ok:
+                # Post-execution checks: shapes that only the returned rows can
+                # reveal (an empty set, a rate outside its own range).
+                findings += self.verifier.check_result(sql, result, question)
                 answer = self._summarize(question, result, usage)
                 return AskResult(question, sql=sql, explanation=explanation,
                                  answer=answer, result=result, usage=usage,

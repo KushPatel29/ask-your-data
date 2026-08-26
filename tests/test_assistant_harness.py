@@ -159,9 +159,23 @@ def test_retrieved_schema_is_sent_as_a_separate_system_block(con):
     ])
     assistant(con, client).ask("how many claims?")
     system = client.calls[0]["system"]
-    assert len(system) == 2
+    # Rules, then the retrieved schema, then - when similar solved questions
+    # exist - a few-shot block. The exemplar block is conditional by design:
+    # exemplar_block() returns "" rather than an empty header, because a header
+    # with nothing under it reads to the model as "this question is unusual".
+    assert 2 <= len(system) <= 3
     assert "SELECT statements only" in system[0]["text"]
     assert "healthcare_fact_claims" in system[1]["text"]
+
+    # The prefix is cached on the LAST block, so the breakpoint covers rules +
+    # schema + exemplars. Measured as worthless across turns (0/39 follow-ups
+    # produce a byte-identical prefix) and worth ~90% within one, because the
+    # self-correction loop re-sends this exact prefix on attempts 2 and 3.
+    assert system[-1].get("cache_control") == {"type": "ephemeral"}
+    assert all("cache_control" not in b for b in system[:-1]), (
+        "only the final block carries the breakpoint; an earlier one would cache "
+        "a shorter prefix and strand the rest"
+    )
 
 
 def test_usage_is_aggregated_across_calls(con):
