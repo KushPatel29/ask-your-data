@@ -162,7 +162,12 @@ def build_marker() -> str:
     digest = hashlib.sha256()
     for path in watched:
         try:
-            digest.update(path.read_bytes())
+            # Normalise line endings before hashing. Git checks these files out
+            # with CRLF on Windows and LF on the Linux box that runs the deploy,
+            # so hashing raw bytes gave identical source two different markers -
+            # which defeats the entire point of comparing local against live.
+            raw = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+            digest.update(raw)
         except OSError:
             digest.update(b"missing")
     return digest.hexdigest()[:7]
