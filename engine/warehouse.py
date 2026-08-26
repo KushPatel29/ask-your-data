@@ -27,9 +27,17 @@ def build_warehouse(data_dir: Path = DATA_DIR) -> duckdb.DuckDBPyConnection:
     """Load every vendored CSV into a fresh in-memory DuckDB and return it."""
     con = duckdb.connect(":memory:")
     for domain, table, _source, _desc in MANIFEST:
-        csv = data_dir / domain / f"{table}.csv"
+        # Large facts are committed gzipped. DuckDB's read_csv_auto decompresses
+        # transparently, so the only thing that changes is which name we look
+        # for - the AML payment fact is 15.7 MB raw and 3.5 MB gzipped, and a
+        # portfolio repo should not carry the difference for no gain.
+        plain = data_dir / domain / f"{table}.csv"
+        gzipped = data_dir / domain / f"{table}.csv.gz"
+        csv = plain if plain.exists() else gzipped
         if not csv.exists():
-            raise FileNotFoundError(f"vendored data missing: {csv} (run scripts/vendor_data.py)")
+            raise FileNotFoundError(
+                f"vendored data missing: {plain} (or {gzipped.name}) - run scripts/vendor_data.py"
+            )
         name = table_name(domain, table)
         con.execute(
             f'CREATE TABLE "{name}" AS '

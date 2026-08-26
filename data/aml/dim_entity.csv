@@ -1,0 +1,1501 @@
+entity_id,entity_type,display_name,segment,home_region,opened_date,payroll_base_cad,rent_cad,typical_amount_cad
+ENT-00001,individual,Haley Kirk,salaried,Region D,2021-06-18,2215.29,1200.0,183.78
+ENT-00002,individual,Jordan Cooper,salaried,Region F,2021-02-26,2201.27,1025.0,119.6
+ENT-00003,individual,William Garcia,salaried,Region F,2022-08-14,2863.83,1600.0,405.94
+ENT-00004,individual,Danny Bailey,salaried,Region F,2023-10-12,2373.23,2325.0,81.45
+ENT-00005,individual,Mrs. Lisa Barnes PhD,salaried,Region A,2021-07-21,1547.97,2750.0,140.34
+ENT-00006,individual,Christopher Hamilton,salaried,Region A,2021-10-20,1246.08,2400.0,51.35
+ENT-00007,individual,Ricky Hart,salaried,Region E,2024-08-09,2710.92,900.0,790.81
+ENT-00008,individual,Michael Evans,salaried,Region F,2020-12-15,1742.89,2650.0,189.21
+ENT-00009,individual,Colleen Jenkins,salaried,Region B,2024-11-25,2432.15,2150.0,76.92
+ENT-00010,individual,Kelli Goodwin,salaried,Region C,2020-09-08,2641.36,1150.0,88.59
+ENT-00011,individual,Laurie Brewer,self_employed,Region D,2023-11-20,1551.91,2025.0,241.27
+ENT-00012,individual,Luke Waters,self_employed,Region F,2025-01-01,4538.89,2475.0,146.07
+ENT-00013,individual,Timothy Richardson,gig,Region B,2020-11-23,3757.2,1875.0,99.03
+ENT-00014,individual,Chris Peterson,retired,Region A,2022-12-04,2090.02,1250.0,364.67
+ENT-00015,individual,James Perry,self_employed,Region F,2025-05-16,2043.22,2450.0,185.91
+ENT-00016,individual,Julie Mcconnell,salaried,Region D,2022-07-24,1609.25,2425.0,178.7
+ENT-00017,individual,Erica Golden,retired,Region C,2022-09-28,3642.61,3375.0,849.56
+ENT-00018,individual,Tracy Navarro,salaried,Region A,2023-10-20,3381.28,1900.0,452.2
+ENT-00019,individual,Christine Ramirez,salaried,Region C,2024-01-27,1944.15,2975.0,97.4
+ENT-00020,individual,Alison Bradshaw,gig,Region C,2022-05-25,1782.31,3300.0,150.39
+ENT-00021,individual,Brandy Hernandez,gig,Region B,2024-11-30,1726.6,1300.0,150.06
+ENT-00022,individual,Tina Kane,salaried,Region D,2022-10-25,2471.71,1750.0,148.19
+ENT-00023,individual,Olivia Parker,salaried,Region D,2023-04-25,1708.7,1450.0,103.39
+ENT-00024,individual,Mark Khan,salaried,Region B,2024-09-18,3284.77,1850.0,370.68
+ENT-00025,individual,Kayla Smith,self_employed,Region A,2021-06-11,1299.71,1550.0,256.02
+ENT-00026,individual,Jerry Hall,gig,Region A,2024-07-28,1932.59,2425.0,189.18
+ENT-00027,individual,Corey Porter,self_employed,Region D,2021-12-12,1477.95,3225.0,84.17
+ENT-00028,individual,Brian Martin,self_employed,Region A,2022-06-05,2246.57,1475.0,194.59
+ENT-00029,individual,Richard Glenn,salaried,Region C,2021-07-31,1598.47,1850.0,130.66
+ENT-00030,individual,Mark Walter,salaried,Region E,2020-08-30,1340.02,2200.0,497.8
+ENT-00031,individual,Gavin Keith,salaried,Region F,2021-09-28,2567.05,3125.0,201.94
+ENT-00032,individual,Lisa Bauer,salaried,Region F,2021-10-04,2303.73,3350.0,176.28
+ENT-00033,individual,Emily Jennings,self_employed,Region A,2023-08-26,3446.74,1175.0,255.02
+ENT-00034,individual,Amy Morris,salaried,Region F,2023-02-25,2328.84,1275.0,166.59
+ENT-00035,individual,Stephen Roberts,salaried,Region A,2023-08-18,2354.37,925.0,127.29
+ENT-00036,individual,Jessica Gray,gig,Region C,2021-03-19,2675.04,2550.0,1246.9
+ENT-00037,individual,Dr. Matthew Price Jr.,salaried,Region F,2022-09-06,3862.79,1225.0,135.0
+ENT-00038,individual,John Lucas,salaried,Region D,2022-02-21,2501.16,2375.0,332.31
+ENT-00039,individual,Mrs. Teresa Bartlett MD,salaried,Region C,2022-08-02,2374.78,2750.0,68.06
+ENT-00040,individual,David Morse,self_employed,Region A,2025-04-14,2919.66,3150.0,254.5
+ENT-00041,individual,Matthew Delgado,salaried,Region C,2022-05-09,1777.11,3050.0,350.81
+ENT-00042,individual,Andre Little,self_employed,Region C,2024-02-10,2735.34,2675.0,241.42
+ENT-00043,individual,Joshua Mata,salaried,Region B,2022-08-14,2155.48,2525.0,320.39
+ENT-00044,individual,Eric Rodriguez,gig,Region A,2024-12-21,1842.04,1875.0,68.73
+ENT-00045,individual,Francisco Wilson,retired,Region D,2024-12-07,1540.91,2875.0,130.56
+ENT-00046,individual,Lindsey Robbins,salaried,Region C,2024-12-17,1474.58,1800.0,101.61
+ENT-00047,individual,David Buckley,self_employed,Region C,2024-01-04,2435.03,2525.0,267.08
+ENT-00048,individual,Jacob Meyers,retired,Region E,2022-05-04,1142.91,1900.0,227.39
+ENT-00049,individual,Daniel Walsh,salaried,Region E,2022-03-29,2596.27,1450.0,246.35
+ENT-00050,individual,George Myers,salaried,Region A,2020-12-07,3389.52,925.0,123.41
+ENT-00051,individual,Matthew Navarro,salaried,Region F,2025-04-13,1966.42,3225.0,235.38
+ENT-00052,individual,Veronica Jones,salaried,Region D,2024-04-30,1561.64,1775.0,175.25
+ENT-00053,individual,William Yates,salaried,Region E,2024-06-14,2432.35,2525.0,161.39
+ENT-00054,individual,Courtney Anderson,salaried,Region D,2022-09-25,1351.53,2775.0,100.44
+ENT-00055,individual,Steven Christensen,gig,Region A,2023-06-25,2030.93,1650.0,220.18
+ENT-00056,individual,Matthew Moss,gig,Region F,2022-12-02,1669.85,1325.0,253.3
+ENT-00057,individual,Brian Shepherd,gig,Region D,2020-08-09,2484.61,3000.0,224.32
+ENT-00058,individual,Renee Newton,retired,Region B,2025-02-21,2356.01,2300.0,108.2
+ENT-00059,individual,Matthew Richardson,salaried,Region A,2022-10-15,1115.29,1250.0,189.8
+ENT-00060,individual,Becky Horton,salaried,Region F,2020-09-23,2483.03,2725.0,625.67
+ENT-00061,individual,Theodore Lara,salaried,Region E,2021-08-08,2817.47,2925.0,123.2
+ENT-00062,individual,Alan Hall,salaried,Region E,2023-11-06,3143.36,2975.0,262.92
+ENT-00063,individual,Patricia Mccarthy,salaried,Region E,2024-07-10,3602.12,950.0,190.66
+ENT-00064,individual,Daniel Wallace,salaried,Region C,2021-08-14,2582.43,2950.0,97.59
+ENT-00065,individual,Lisa Brown,salaried,Region E,2022-04-27,2663.03,1925.0,80.87
+ENT-00066,individual,Dana Klein,salaried,Region D,2020-09-07,1860.16,3100.0,285.75
+ENT-00067,individual,Edward Harrell,gig,Region D,2023-01-11,1832.93,2275.0,197.06
+ENT-00068,individual,Jonathan Golden,salaried,Region A,2022-03-12,2006.38,2125.0,131.32
+ENT-00069,individual,Michelle Sanchez,salaried,Region E,2023-10-25,1608.38,2625.0,680.65
+ENT-00070,individual,Kara Torres,self_employed,Region E,2021-11-23,2696.01,3100.0,138.56
+ENT-00071,individual,Megan English,salaried,Region F,2024-12-25,3481.75,975.0,238.14
+ENT-00072,individual,Charles Nelson,salaried,Region B,2023-05-21,3510.64,1200.0,139.13
+ENT-00073,individual,Michele Day,salaried,Region A,2021-09-07,1331.84,2925.0,141.89
+ENT-00074,individual,Kenneth Jones,salaried,Region A,2024-07-10,2214.68,2425.0,201.86
+ENT-00075,individual,Robert Rodriguez,salaried,Region B,2023-12-11,2772.46,3350.0,99.6
+ENT-00076,individual,Elizabeth Jackson,salaried,Region E,2021-07-04,1502.97,1675.0,371.35
+ENT-00077,individual,Sophia Stewart,self_employed,Region B,2022-06-24,2507.84,2350.0,78.93
+ENT-00078,individual,Joel Rodriguez,gig,Region B,2024-05-08,3395.21,1900.0,318.32
+ENT-00079,individual,Allison Hicks,self_employed,Region B,2024-05-11,2149.32,1475.0,152.11
+ENT-00080,individual,Aaron Shea,salaried,Region E,2024-07-20,2194.67,2425.0,162.17
+ENT-00081,individual,Michele Carrillo,self_employed,Region B,2024-06-10,1860.49,2550.0,253.15
+ENT-00082,individual,Lisa Beck,salaried,Region A,2025-06-19,2116.62,3150.0,278.24
+ENT-00083,individual,Brian Barber,salaried,Region D,2021-08-02,2428.69,1025.0,106.69
+ENT-00084,individual,Nancy Lucas,self_employed,Region A,2022-07-26,3195.58,1450.0,91.31
+ENT-00085,individual,Matthew Miller,salaried,Region E,2024-12-14,2267.7,1475.0,280.61
+ENT-00086,individual,Alexa Baker,salaried,Region F,2021-03-01,2513.83,3400.0,244.66
+ENT-00087,individual,Sheila Sandoval,salaried,Region A,2021-06-24,2556.75,2775.0,301.45
+ENT-00088,individual,Neil Clark,salaried,Region E,2022-11-11,1599.25,2875.0,469.95
+ENT-00089,individual,Ian Yates,salaried,Region D,2021-10-06,2362.53,2825.0,276.91
+ENT-00090,individual,Frank Campbell,gig,Region E,2021-06-01,2116.72,3100.0,86.73
+ENT-00091,individual,Daniel Cruz,salaried,Region D,2022-04-25,1167.7,3150.0,196.55
+ENT-00092,individual,David Wilson,salaried,Region E,2023-09-11,2720.29,1825.0,178.61
+ENT-00093,individual,Melissa Young,salaried,Region D,2021-08-09,1636.33,1875.0,176.76
+ENT-00094,individual,Kyle Levine,self_employed,Region A,2022-05-25,1140.21,2750.0,363.17
+ENT-00095,individual,Ashley Duffy,salaried,Region D,2022-09-03,866.82,2550.0,180.08
+ENT-00096,individual,Courtney Gonzalez,retired,Region B,2024-10-13,2732.48,2325.0,382.86
+ENT-00097,individual,Diane Collins,salaried,Region D,2021-03-14,1473.09,3075.0,136.85
+ENT-00098,individual,Joshua Weaver,salaried,Region A,2020-10-02,2534.99,3000.0,348.25
+ENT-00099,individual,Jeff Walker,salaried,Region A,2025-01-28,2770.57,2950.0,80.2
+ENT-00100,individual,Briana Anderson,gig,Region C,2021-05-07,3352.64,3300.0,193.89
+ENT-00101,individual,David Holloway,retired,Region F,2025-03-05,1706.37,1475.0,167.3
+ENT-00102,individual,Timothy Lawson,retired,Region A,2020-10-29,1770.67,1625.0,87.05
+ENT-00103,individual,Deanna Black,salaried,Region C,2024-04-20,2326.77,2450.0,108.54
+ENT-00104,individual,Philip Weaver,salaried,Region A,2025-05-15,1265.21,1575.0,219.3
+ENT-00105,individual,Eric Smith,gig,Region B,2021-07-09,1312.14,1225.0,312.21
+ENT-00106,individual,Kevin Key,retired,Region E,2022-11-08,1759.3,1600.0,244.84
+ENT-00107,individual,Faith Reed,self_employed,Region A,2020-12-29,2243.2,1950.0,224.32
+ENT-00108,individual,Katherine Conner,salaried,Region D,2022-02-18,1289.67,2925.0,265.17
+ENT-00109,individual,James Pugh,self_employed,Region D,2022-05-07,2391.83,2750.0,139.62
+ENT-00110,individual,Michael Griffin,self_employed,Region A,2025-04-22,1809.35,2225.0,185.67
+ENT-00111,individual,Ronnie Bonilla MD,salaried,Region F,2024-09-28,1122.13,2400.0,128.49
+ENT-00112,individual,Debra Morris MD,self_employed,Region E,2023-01-24,1325.59,2125.0,188.78
+ENT-00113,individual,William Hernandez,salaried,Region E,2021-08-23,1688.02,1725.0,136.54
+ENT-00114,individual,Michelle Carr,salaried,Region A,2022-10-13,2032.73,3375.0,163.31
+ENT-00115,individual,Dr. Alexander Huynh,self_employed,Region B,2022-03-14,1772.42,1075.0,40.06
+ENT-00116,individual,David Smith,salaried,Region D,2022-03-23,4231.78,2375.0,83.7
+ENT-00117,individual,Alyssa Gallegos,salaried,Region C,2021-03-10,2478.08,3075.0,312.37
+ENT-00118,individual,William Salazar,salaried,Region A,2025-05-22,1499.12,2850.0,140.95
+ENT-00119,individual,Mrs. Gina Duarte,retired,Region F,2023-01-24,2961.45,2825.0,125.92
+ENT-00120,individual,Eric Howard,salaried,Region B,2021-03-28,1670.97,2650.0,144.26
+ENT-00121,individual,Michael Reyes,salaried,Region E,2025-04-07,2562.86,3250.0,283.05
+ENT-00122,individual,Gary Bennett,self_employed,Region E,2023-05-12,1611.8,2450.0,373.31
+ENT-00123,individual,Stacy Pierce,salaried,Region E,2022-03-08,1039.53,2250.0,339.3
+ENT-00124,individual,Walter Mitchell,salaried,Region F,2021-12-28,5648.1,1200.0,349.86
+ENT-00125,individual,Natalie Romero,self_employed,Region F,2025-05-02,2414.31,2750.0,112.07
+ENT-00126,individual,Gabriel Swanson,self_employed,Region C,2022-05-16,2075.36,3125.0,203.59
+ENT-00127,individual,Tamara Cole,salaried,Region F,2024-09-18,2011.06,3125.0,58.57
+ENT-00128,individual,Julie Scott,salaried,Region A,2023-10-22,2119.34,2500.0,128.09
+ENT-00129,individual,Lisa Rivera,salaried,Region F,2024-07-09,2073.06,2550.0,200.75
+ENT-00130,individual,Michael Smith,gig,Region D,2025-01-04,3402.4,3300.0,311.14
+ENT-00131,individual,Amber Ibarra,salaried,Region D,2023-09-12,2754.02,3050.0,391.27
+ENT-00132,individual,Andrew Strong,salaried,Region C,2023-04-12,2737.52,1700.0,56.79
+ENT-00133,individual,Julie Sanchez,salaried,Region C,2022-11-19,2342.5,3025.0,175.96
+ENT-00134,individual,Brittany Howe,salaried,Region A,2021-12-30,2998.73,2925.0,535.85
+ENT-00135,individual,Patricia Bird,self_employed,Region F,2020-10-12,2076.76,2125.0,111.12
+ENT-00136,individual,Stacey Smith,self_employed,Region D,2024-08-23,1626.89,1700.0,124.58
+ENT-00137,individual,Bryan Fisher,self_employed,Region E,2022-12-21,2167.49,2225.0,185.88
+ENT-00138,individual,Samantha Bradley,self_employed,Region E,2022-09-07,2078.57,2200.0,506.35
+ENT-00139,individual,Anthony Beck,salaried,Region D,2022-07-22,1140.09,1325.0,59.26
+ENT-00140,individual,Jason Johnson,salaried,Region B,2021-12-24,2461.51,1200.0,141.75
+ENT-00141,individual,Brittany Gonzalez,salaried,Region B,2023-04-19,2446.04,2425.0,513.91
+ENT-00142,individual,Carl Hughes,salaried,Region F,2023-12-12,1309.53,2425.0,165.7
+ENT-00143,individual,Kelli Smith,salaried,Region B,2020-12-26,1636.84,1650.0,97.77
+ENT-00144,individual,Michelle Blankenship,gig,Region A,2020-11-12,1910.55,2225.0,99.92
+ENT-00145,individual,Wanda Walton,salaried,Region E,2024-03-16,2256.35,1525.0,371.36
+ENT-00146,individual,Patricia Mcmahon,salaried,Region D,2022-10-25,1468.43,1775.0,214.98
+ENT-00147,individual,Cheryl Dorsey,self_employed,Region E,2024-10-16,2255.68,2500.0,321.71
+ENT-00148,individual,Nicole Benson,salaried,Region D,2024-08-06,2446.56,2900.0,348.37
+ENT-00149,individual,Joseph Johnson,salaried,Region B,2024-03-10,4707.88,3150.0,253.26
+ENT-00150,individual,Christine Brown,salaried,Region B,2023-09-15,3026.48,2825.0,246.86
+ENT-00151,individual,Kimberly Brown,salaried,Region A,2025-03-22,1620.6,2475.0,193.35
+ENT-00152,individual,Tina Elliott,retired,Region E,2022-06-10,2658.08,1925.0,311.61
+ENT-00153,individual,John Richardson,salaried,Region A,2024-09-09,3063.84,2650.0,92.9
+ENT-00154,individual,Natasha Walton,gig,Region F,2021-05-23,2023.32,3250.0,287.65
+ENT-00155,individual,Vincent Joyce,salaried,Region D,2022-11-27,2105.71,3225.0,107.63
+ENT-00156,individual,Jeffrey Murphy,salaried,Region E,2024-09-11,1008.22,2325.0,139.48
+ENT-00157,individual,Michael Fletcher,salaried,Region C,2021-08-20,2095.3,2100.0,269.89
+ENT-00158,individual,Devin Schultz,self_employed,Region C,2021-07-29,3575.27,3375.0,137.56
+ENT-00159,individual,John Adams,salaried,Region D,2021-03-08,1636.72,2975.0,46.85
+ENT-00160,individual,Robert Johns,salaried,Region B,2021-10-09,2110.45,2300.0,120.49
+ENT-00161,individual,Phillip Thomas,self_employed,Region C,2021-04-14,1754.98,1125.0,135.17
+ENT-00162,individual,Laura Mercado,salaried,Region E,2022-12-15,1998.97,1225.0,171.82
+ENT-00163,individual,Jessica Armstrong,self_employed,Region E,2024-11-21,2124.74,1375.0,121.99
+ENT-00164,individual,Linda Newton,salaried,Region E,2021-07-30,2529.1,3225.0,341.85
+ENT-00165,individual,Henry Perry,salaried,Region A,2023-09-30,1513.27,2025.0,101.86
+ENT-00166,individual,Anthony Powell,salaried,Region B,2023-05-03,1911.56,1900.0,162.23
+ENT-00167,individual,Patrick Smith,salaried,Region D,2020-12-01,3025.51,2375.0,97.13
+ENT-00168,individual,Ashley Collins,salaried,Region B,2023-06-07,1683.67,2675.0,249.57
+ENT-00169,individual,Kelli Delacruz,salaried,Region B,2022-07-05,3667.73,3400.0,269.14
+ENT-00170,individual,Bobby Montgomery,salaried,Region C,2020-12-25,3389.51,1200.0,273.94
+ENT-00171,individual,Angela Walker,salaried,Region F,2024-01-06,1455.48,1600.0,280.29
+ENT-00172,individual,Kevin Wood,retired,Region A,2024-05-16,3570.96,1575.0,191.12
+ENT-00173,individual,Michael Howell,self_employed,Region A,2021-05-05,1599.93,1900.0,324.16
+ENT-00174,individual,Nancy Green,self_employed,Region A,2024-02-22,2576.24,1200.0,138.46
+ENT-00175,individual,Donald Klein,self_employed,Region A,2022-09-23,2920.98,1650.0,99.67
+ENT-00176,individual,Johnathan Hernandez,salaried,Region E,2022-11-25,1914.38,900.0,130.54
+ENT-00177,individual,James Greene,gig,Region F,2020-11-18,2149.22,1100.0,285.16
+ENT-00178,individual,Lisa Baker,salaried,Region C,2022-12-03,3550.65,1975.0,279.51
+ENT-00179,individual,Alyssa Lee,salaried,Region F,2023-10-02,1646.25,2275.0,149.94
+ENT-00180,individual,April Gonzalez,self_employed,Region A,2023-01-28,2362.37,1975.0,170.0
+ENT-00181,individual,Jesse Morrison,salaried,Region B,2023-12-24,2661.38,1825.0,87.26
+ENT-00182,individual,Christina Barnett,self_employed,Region C,2023-07-15,4397.78,3275.0,141.55
+ENT-00183,individual,Christopher Lewis,salaried,Region F,2021-06-13,2895.93,2425.0,120.17
+ENT-00184,individual,Maxwell Ward,salaried,Region A,2023-10-06,2495.27,2750.0,250.04
+ENT-00185,individual,Ricardo Barber,self_employed,Region D,2023-04-12,2789.07,1000.0,138.07
+ENT-00186,individual,David Leonard,retired,Region B,2024-07-07,2065.73,2525.0,831.22
+ENT-00187,individual,Mark Clark,gig,Region B,2023-03-23,2298.39,2600.0,308.61
+ENT-00188,individual,Sean Williams,self_employed,Region B,2024-02-06,1848.79,2700.0,105.5
+ENT-00189,individual,David Proctor,salaried,Region C,2022-07-22,2451.83,1625.0,162.92
+ENT-00190,individual,Denise Henderson,gig,Region D,2025-04-25,984.46,1450.0,50.67
+ENT-00191,individual,Dennis Simpson,salaried,Region C,2025-04-15,1480.34,1100.0,126.46
+ENT-00192,individual,Matthew Myers,salaried,Region B,2023-02-02,1698.48,1525.0,210.16
+ENT-00193,individual,Daniel Calderon,salaried,Region D,2022-11-08,1977.8,2500.0,66.26
+ENT-00194,individual,John Burton,self_employed,Region A,2021-03-11,2725.42,3200.0,174.1
+ENT-00195,individual,Jeffrey Burnett,retired,Region D,2021-06-17,2943.89,1900.0,129.5
+ENT-00196,individual,Justin Contreras,salaried,Region C,2021-08-27,1137.84,2075.0,124.76
+ENT-00197,individual,Elaine Love,salaried,Region F,2021-06-05,2124.09,2525.0,211.47
+ENT-00198,individual,Amy Bautista,salaried,Region A,2020-09-01,4077.37,2175.0,51.11
+ENT-00199,individual,Crystal Harris,salaried,Region B,2024-06-12,2273.72,900.0,117.73
+ENT-00200,individual,Tara Ford,salaried,Region E,2022-03-04,1990.27,1550.0,149.94
+ENT-00201,individual,Andrew Davis,salaried,Region D,2024-06-29,1225.31,3075.0,372.11
+ENT-00202,individual,Lauren Johnson,salaried,Region F,2024-07-31,1311.92,2575.0,84.97
+ENT-00203,individual,Michael Rogers,salaried,Region E,2021-11-17,3427.84,1275.0,459.94
+ENT-00204,individual,Melissa Garcia,gig,Region C,2021-04-30,1592.17,2100.0,254.74
+ENT-00205,individual,William Bean,salaried,Region B,2020-08-26,2144.72,1725.0,137.73
+ENT-00206,individual,Kelsey Wilkerson,salaried,Region D,2022-03-31,1740.89,1400.0,249.45
+ENT-00207,individual,Christopher Farmer,self_employed,Region F,2021-06-20,2451.1,2400.0,164.58
+ENT-00208,individual,Charlotte Davis,salaried,Region C,2024-01-10,3286.63,2900.0,122.72
+ENT-00209,individual,Mackenzie Allen,self_employed,Region F,2022-05-22,3104.81,1650.0,387.44
+ENT-00210,individual,Zachary Thomas,salaried,Region F,2025-03-07,1728.87,2300.0,114.71
+ENT-00211,individual,Phillip Avila,salaried,Region A,2022-09-25,2059.96,2375.0,415.94
+ENT-00212,individual,Joy Kelley,salaried,Region B,2021-05-12,1712.72,2600.0,159.13
+ENT-00213,individual,Rachael Hill,salaried,Region A,2023-10-27,2348.61,1725.0,197.76
+ENT-00214,individual,Eugene Mullins,salaried,Region F,2023-11-10,2202.16,1800.0,157.29
+ENT-00215,individual,Amber Bradford,salaried,Region A,2024-07-04,2213.13,1275.0,273.33
+ENT-00216,individual,Tyler Rivera,salaried,Region E,2025-05-21,1194.8,1575.0,131.77
+ENT-00217,individual,Mary Mckinney,salaried,Region E,2025-05-08,1713.03,2750.0,217.72
+ENT-00218,individual,Nicole Bryan,salaried,Region B,2021-11-03,2558.66,3350.0,209.41
+ENT-00219,individual,Larry Powell,salaried,Region D,2022-07-07,2046.47,1125.0,142.35
+ENT-00220,individual,Aaron Arellano,self_employed,Region E,2025-02-03,2572.58,3100.0,256.37
+ENT-00221,individual,Michael Avery,salaried,Region C,2024-10-26,2227.79,1900.0,122.32
+ENT-00222,individual,Christine Miles,self_employed,Region F,2024-09-09,1341.22,2475.0,275.11
+ENT-00223,individual,James Jones,gig,Region D,2022-07-26,1843.39,2600.0,309.77
+ENT-00224,individual,Angel Roberson,salaried,Region B,2021-04-13,2623.51,1550.0,468.94
+ENT-00225,individual,Keith Cohen,salaried,Region E,2022-03-04,5054.99,3075.0,179.29
+ENT-00226,individual,Vicki Thomas,salaried,Region D,2022-01-06,1074.75,1500.0,184.17
+ENT-00227,individual,Joseph Small,salaried,Region C,2024-09-09,2425.76,1000.0,154.13
+ENT-00228,individual,Timothy Knight,salaried,Region D,2020-12-06,1317.52,2700.0,118.48
+ENT-00229,individual,Katherine Proctor,salaried,Region D,2021-06-25,2305.21,1700.0,78.82
+ENT-00230,individual,Cody Smith,retired,Region F,2021-05-04,2965.17,2350.0,379.72
+ENT-00231,individual,Jesus Carroll,salaried,Region C,2024-07-24,3879.32,3300.0,104.06
+ENT-00232,individual,Katrina Garcia,salaried,Region D,2021-01-21,2073.18,3175.0,122.7
+ENT-00233,individual,Shannon Mueller,salaried,Region D,2021-11-27,1828.84,1275.0,205.97
+ENT-00234,individual,Tamara Flores,salaried,Region F,2020-08-24,2209.52,1725.0,590.87
+ENT-00235,individual,Sharon Erickson,salaried,Region B,2020-10-13,2628.84,3050.0,71.44
+ENT-00236,individual,Christina Morales,salaried,Region A,2022-12-17,3824.09,2625.0,93.34
+ENT-00237,individual,Paul Chan,salaried,Region D,2023-09-05,4783.04,2075.0,208.21
+ENT-00238,individual,Christopher Cherry,salaried,Region C,2025-04-16,2925.51,1250.0,229.29
+ENT-00239,individual,Tiffany Brown,salaried,Region E,2022-10-14,1288.68,3375.0,178.89
+ENT-00240,individual,Christopher Carrillo,self_employed,Region F,2023-05-18,2604.64,2975.0,136.85
+ENT-00241,individual,Jeffrey Henry,self_employed,Region C,2021-01-12,1404.79,2950.0,143.59
+ENT-00242,individual,Jeffery Houston,salaried,Region B,2024-08-06,2357.67,3225.0,160.17
+ENT-00243,individual,Jesse Porter,salaried,Region D,2024-02-21,2711.0,2825.0,288.76
+ENT-00244,individual,Yvonne Ramos,salaried,Region D,2021-07-18,3172.08,3200.0,334.64
+ENT-00245,individual,Sarah Davenport,self_employed,Region E,2025-04-24,1715.34,3250.0,156.65
+ENT-00246,individual,Joshua Ramsey,gig,Region E,2022-08-14,1864.92,2950.0,230.94
+ENT-00247,individual,Sarah Page,gig,Region B,2021-10-06,2632.13,3200.0,419.3
+ENT-00248,individual,Joel Williams,salaried,Region D,2022-10-07,1544.22,1525.0,224.15
+ENT-00249,individual,Anthony Castillo,salaried,Region A,2022-03-26,2614.86,2675.0,102.04
+ENT-00250,individual,Matthew Taylor,salaried,Region D,2021-04-24,2056.96,1350.0,231.06
+ENT-00251,individual,Samantha Wilson,retired,Region E,2022-02-28,1793.45,1100.0,137.29
+ENT-00252,individual,Judith Villegas,gig,Region A,2023-10-31,2869.12,3100.0,182.32
+ENT-00253,individual,Steven Cummings,gig,Region F,2022-11-20,1818.74,3025.0,197.06
+ENT-00254,individual,Gabriel Maynard,gig,Region C,2022-09-14,3782.22,1625.0,274.11
+ENT-00255,individual,Jennifer Smith,salaried,Region F,2024-10-18,2008.69,2400.0,185.22
+ENT-00256,individual,Christopher Campbell,retired,Region F,2024-10-21,1940.7,3225.0,347.13
+ENT-00257,individual,Jason Ferguson,salaried,Region C,2021-02-22,2653.5,2625.0,254.57
+ENT-00258,individual,Kathleen Brown,self_employed,Region E,2022-06-05,2987.11,1100.0,323.03
+ENT-00259,individual,Michele Smith,salaried,Region B,2024-05-27,3843.14,3025.0,160.66
+ENT-00260,individual,Kimberly Chavez,salaried,Region E,2021-08-26,2541.09,2250.0,427.51
+ENT-00261,individual,Joanne Wheeler,gig,Region E,2021-10-18,3309.56,2575.0,135.0
+ENT-00262,individual,Steven Smith,self_employed,Region B,2024-05-15,2148.28,1275.0,181.85
+ENT-00263,individual,Christine Ryan,salaried,Region A,2021-01-18,2339.81,2275.0,72.73
+ENT-00264,individual,Benjamin Collier,gig,Region E,2022-11-13,2094.92,1325.0,157.42
+ENT-00265,individual,Darren Hill,salaried,Region C,2024-10-19,2747.82,1100.0,432.96
+ENT-00266,individual,Alicia Diaz,salaried,Region B,2022-08-20,2232.93,2150.0,88.1
+ENT-00267,individual,Kathryn Freeman,self_employed,Region B,2025-01-10,2940.48,3300.0,181.29
+ENT-00268,individual,Joshua Beard,salaried,Region B,2024-05-22,1799.06,1625.0,170.89
+ENT-00269,individual,Dana Hines,retired,Region F,2025-04-11,3874.91,3025.0,295.81
+ENT-00270,individual,Isaiah Malone,salaried,Region E,2021-12-10,3812.47,3125.0,755.79
+ENT-00271,individual,Mr. William Martinez MD,retired,Region B,2023-05-21,2963.35,1200.0,158.16
+ENT-00272,individual,Jessica Stevenson,salaried,Region E,2024-04-09,2558.85,2025.0,183.02
+ENT-00273,individual,Jessica Warren MD,salaried,Region A,2024-11-13,1250.96,1400.0,104.73
+ENT-00274,individual,Barbara Armstrong,salaried,Region F,2023-07-19,2101.65,1850.0,309.75
+ENT-00275,individual,Cynthia Dean,gig,Region C,2023-07-21,2013.82,2375.0,299.52
+ENT-00276,individual,Christopher Green,salaried,Region D,2023-12-29,2559.43,2675.0,204.18
+ENT-00277,individual,Amber Floyd,salaried,Region D,2022-08-02,1781.1,1175.0,321.25
+ENT-00278,individual,Stephanie Miller,self_employed,Region B,2024-01-17,1846.69,3100.0,183.59
+ENT-00279,individual,Kimberly Jackson,salaried,Region F,2023-06-09,2994.89,2075.0,245.38
+ENT-00280,individual,Adam Garner,salaried,Region F,2021-09-03,2567.95,2025.0,176.63
+ENT-00281,individual,Joshua Decker,salaried,Region C,2021-04-17,1843.72,1575.0,154.45
+ENT-00282,individual,Cheyenne King,gig,Region C,2020-09-16,2618.88,2450.0,472.74
+ENT-00283,individual,Jason Thomas,self_employed,Region E,2021-01-02,3304.14,2150.0,65.51
+ENT-00284,individual,Craig Baker,salaried,Region D,2021-06-27,2125.42,1675.0,105.17
+ENT-00285,individual,Jamie Butler,self_employed,Region D,2023-07-02,1279.96,1950.0,130.09
+ENT-00286,individual,Joshua Livingston,salaried,Region F,2024-04-24,3047.17,2600.0,200.07
+ENT-00287,individual,Kevin Terry,self_employed,Region D,2020-10-06,1726.01,2950.0,190.33
+ENT-00288,individual,Jesse Diaz,salaried,Region E,2024-02-26,3655.48,2950.0,343.14
+ENT-00289,individual,Amber Knapp,salaried,Region B,2022-09-24,1646.67,1925.0,216.89
+ENT-00290,individual,Tiffany Eaton,salaried,Region E,2023-11-17,2890.74,2600.0,230.62
+ENT-00291,individual,Robert Brock,salaried,Region A,2024-09-19,2528.86,3325.0,401.74
+ENT-00292,individual,Nancy Morris,self_employed,Region C,2021-12-07,1790.92,2400.0,193.77
+ENT-00293,individual,Rachel Martinez,salaried,Region D,2024-07-28,1760.63,2175.0,309.64
+ENT-00294,individual,Michael Davis,salaried,Region E,2020-12-15,2024.77,1150.0,402.91
+ENT-00295,individual,Miguel Wagner,self_employed,Region A,2023-03-25,2380.91,2425.0,137.62
+ENT-00296,individual,Kelsey Hansen,salaried,Region B,2020-10-12,2154.24,2000.0,376.54
+ENT-00297,individual,Shannon Stanley,salaried,Region D,2024-09-27,949.78,1625.0,484.06
+ENT-00298,individual,Eric Baker,self_employed,Region B,2021-11-11,2858.87,2225.0,712.48
+ENT-00299,individual,Steven Griffin,self_employed,Region D,2023-06-06,2434.27,3375.0,181.17
+ENT-00300,individual,Joseph Copeland,salaried,Region A,2025-05-18,4307.3,2750.0,273.26
+ENT-00301,individual,James Maldonado,salaried,Region E,2023-09-01,2519.63,1875.0,225.17
+ENT-00302,individual,Timothy Esparza,salaried,Region C,2024-08-14,2306.42,1625.0,288.67
+ENT-00303,individual,Johnny Johnson,salaried,Region A,2021-01-23,1607.2,1150.0,107.23
+ENT-00304,individual,Timothy Dillon,salaried,Region C,2022-09-15,1152.11,1600.0,115.01
+ENT-00305,individual,Krystal Pratt,salaried,Region B,2025-05-26,2261.6,1550.0,129.88
+ENT-00306,individual,Melanie Cruz,salaried,Region A,2020-08-31,2476.38,2725.0,148.82
+ENT-00307,individual,Nathan Ramirez,salaried,Region D,2021-01-07,2237.3,1800.0,181.4
+ENT-00308,individual,Blake Page,retired,Region D,2024-01-14,2058.67,2850.0,49.96
+ENT-00309,individual,Alexis Jimenez,salaried,Region E,2020-10-01,2119.0,1550.0,397.07
+ENT-00310,individual,Keith Dixon,salaried,Region E,2021-03-11,4317.98,1750.0,164.86
+ENT-00311,individual,Daniel Garcia,salaried,Region F,2021-05-12,2478.89,1775.0,96.2
+ENT-00312,individual,Charles Rogers,salaried,Region C,2020-10-31,1145.36,2975.0,141.02
+ENT-00313,individual,Brittany Pacheco,salaried,Region D,2020-10-03,2110.13,975.0,55.06
+ENT-00314,individual,Patrick Richards,self_employed,Region E,2023-03-13,1554.8,3050.0,263.5
+ENT-00315,individual,Lisa Carpenter,salaried,Region A,2023-05-24,1561.7,2325.0,457.11
+ENT-00316,individual,William Knight,salaried,Region F,2023-06-21,2257.15,1725.0,170.56
+ENT-00317,individual,Andrew Strickland,salaried,Region D,2021-08-26,2238.51,2425.0,257.24
+ENT-00318,individual,Aaron Williamson,retired,Region B,2025-06-12,1468.07,2075.0,177.11
+ENT-00319,individual,Lauren Hayes,retired,Region C,2024-03-18,1301.14,2375.0,210.58
+ENT-00320,individual,Kim Harris,salaried,Region A,2023-12-18,3108.33,2450.0,302.17
+ENT-00321,individual,John Davis,salaried,Region B,2022-05-27,1539.35,2375.0,222.96
+ENT-00322,individual,Andrea Harris,gig,Region E,2023-11-26,4273.42,2400.0,94.14
+ENT-00323,individual,Justin Black,salaried,Region B,2021-04-07,3432.78,1675.0,183.71
+ENT-00324,individual,Amber Cruz,salaried,Region C,2021-03-06,2291.48,3400.0,230.34
+ENT-00325,individual,Matthew Cox,self_employed,Region D,2023-05-19,2978.33,1550.0,505.95
+ENT-00326,individual,Danielle Hodge,salaried,Region F,2023-01-03,1307.04,3300.0,79.18
+ENT-00327,individual,Angela Walker,salaried,Region E,2020-12-15,2118.13,1300.0,443.3
+ENT-00328,individual,John Harris,gig,Region E,2024-11-30,1785.02,2750.0,126.41
+ENT-00329,individual,Jennifer Rivera,self_employed,Region C,2023-03-28,3046.0,1225.0,328.0
+ENT-00330,individual,Monica Anderson MD,retired,Region A,2024-01-24,3689.89,2725.0,423.66
+ENT-00331,individual,Robert Gregory,gig,Region B,2022-06-07,2452.21,2925.0,98.79
+ENT-00332,individual,Kathryn Burke,gig,Region D,2024-09-25,1425.63,2550.0,95.77
+ENT-00333,individual,Derek Sanders,salaried,Region E,2024-02-09,1097.28,2250.0,116.43
+ENT-00334,individual,Stephen Irwin,salaried,Region D,2022-03-08,1082.81,1375.0,139.57
+ENT-00335,individual,Gabrielle Barber,salaried,Region C,2022-03-03,1839.41,1775.0,507.46
+ENT-00336,individual,Gerald Torres,salaried,Region C,2024-08-03,1111.12,1050.0,104.61
+ENT-00337,individual,Craig Doyle,self_employed,Region D,2023-04-11,3252.09,2025.0,286.99
+ENT-00338,individual,Mary Johnson,self_employed,Region E,2022-07-04,4345.81,3375.0,37.64
+ENT-00339,individual,Rebecca Hicks,self_employed,Region F,2021-08-31,2791.2,1025.0,78.73
+ENT-00340,individual,Lori Mcfarland,salaried,Region E,2021-09-21,2287.15,1625.0,86.39
+ENT-00341,individual,Stephen Villanueva,retired,Region C,2023-05-13,1553.49,3300.0,341.81
+ENT-00342,individual,Matthew Douglas,salaried,Region F,2024-11-22,1886.16,2550.0,99.51
+ENT-00343,individual,Justin Hoffman,salaried,Region A,2022-06-30,2438.48,2575.0,222.58
+ENT-00344,individual,Antonio Romero,gig,Region E,2023-11-21,2702.67,925.0,183.64
+ENT-00345,individual,Jacqueline Palmer,salaried,Region D,2022-10-14,1908.52,2675.0,195.05
+ENT-00346,individual,Tammy Lee,self_employed,Region C,2024-03-30,915.78,2475.0,84.63
+ENT-00347,individual,Tiffany Macdonald,salaried,Region A,2021-09-22,2566.72,2650.0,101.89
+ENT-00348,individual,Tyler Hall,gig,Region C,2022-03-12,3803.5,2400.0,106.96
+ENT-00349,individual,Joseph Pugh,self_employed,Region D,2020-09-29,1955.52,1275.0,135.42
+ENT-00350,individual,Matthew Carroll,retired,Region C,2022-02-27,1554.39,2125.0,254.16
+ENT-00351,individual,Brian Jackson,self_employed,Region C,2024-10-03,3975.08,1700.0,227.77
+ENT-00352,individual,Richard Taylor,salaried,Region F,2025-01-21,3029.36,2975.0,157.37
+ENT-00353,individual,Mark Cline,salaried,Region F,2022-06-09,2544.18,1800.0,271.17
+ENT-00354,individual,Carl Parks,salaried,Region C,2023-03-10,2120.55,1250.0,103.99
+ENT-00355,individual,Melissa Cannon,self_employed,Region C,2025-06-27,2517.9,3150.0,122.7
+ENT-00356,individual,Michael Bean,salaried,Region C,2024-01-16,2032.69,2000.0,83.03
+ENT-00357,individual,Pedro Wilson,salaried,Region C,2024-10-18,2013.86,2075.0,230.8
+ENT-00358,individual,Yvonne White,salaried,Region A,2024-11-18,2753.14,1500.0,140.88
+ENT-00359,individual,Penny Gonzales,retired,Region C,2021-11-27,1696.66,1350.0,141.23
+ENT-00360,individual,Edwin Johnson,self_employed,Region B,2024-02-08,3111.96,3075.0,50.38
+ENT-00361,individual,Erica Herman,salaried,Region B,2025-01-02,1644.85,1375.0,180.23
+ENT-00362,individual,Lauren Davis,salaried,Region F,2021-03-11,1773.13,2150.0,214.42
+ENT-00363,individual,Rachel Burns,salaried,Region C,2024-08-04,2150.6,1125.0,226.96
+ENT-00364,individual,Henry Cameron,salaried,Region E,2021-01-12,2355.93,3125.0,142.25
+ENT-00365,individual,Antonio White,self_employed,Region C,2021-01-31,2145.84,2975.0,214.25
+ENT-00366,individual,Mary Scott,salaried,Region E,2023-03-22,1450.25,1025.0,300.63
+ENT-00367,individual,Charles Hatfield,gig,Region B,2021-12-16,2061.13,1925.0,243.32
+ENT-00368,individual,Angelica Fowler,self_employed,Region C,2023-08-16,1278.85,3175.0,206.7
+ENT-00369,individual,Kenneth Wilkerson,salaried,Region E,2025-04-13,3786.76,3350.0,656.83
+ENT-00370,individual,Dana Montoya,salaried,Region C,2022-10-24,1295.31,1050.0,229.74
+ENT-00371,individual,Christine Vasquez,salaried,Region C,2021-05-07,1848.67,2775.0,385.6
+ENT-00372,individual,Mitchell Price,gig,Region D,2020-11-24,4233.42,950.0,118.23
+ENT-00373,individual,Angela Gomez,retired,Region F,2021-07-28,2431.46,2250.0,560.83
+ENT-00374,individual,Carolyn Norton,self_employed,Region F,2024-12-19,2291.9,2075.0,207.45
+ENT-00375,individual,Dr. Pam Brown,retired,Region C,2022-04-06,2910.7,1300.0,216.33
+ENT-00376,individual,Billy Clark,salaried,Region C,2021-05-15,2219.75,2750.0,75.42
+ENT-00377,individual,Tiffany Estes,self_employed,Region E,2025-05-22,2718.86,925.0,150.35
+ENT-00378,individual,Wendy Montoya,salaried,Region E,2020-11-07,1775.96,1500.0,140.92
+ENT-00379,individual,Alicia Barajas,gig,Region D,2022-03-25,1721.9,2775.0,81.46
+ENT-00380,individual,Tammy Estes,salaried,Region F,2024-11-08,2498.0,950.0,255.65
+ENT-00381,individual,Kristen Noble,gig,Region F,2021-09-08,3061.67,2125.0,195.87
+ENT-00382,individual,Robert Paul,salaried,Region F,2024-07-01,2222.29,925.0,210.9
+ENT-00383,individual,Paula Smith,retired,Region F,2023-04-20,3009.09,2250.0,385.42
+ENT-00384,individual,Gregory Ballard,salaried,Region D,2020-08-18,1458.0,1525.0,130.88
+ENT-00385,individual,Richard Johnson III,salaried,Region E,2020-09-20,3099.97,3125.0,134.3
+ENT-00386,individual,Nathan Nelson,salaried,Region D,2020-09-13,1657.76,1625.0,209.76
+ENT-00387,individual,Victor Clark,salaried,Region F,2022-03-11,1575.34,1350.0,608.82
+ENT-00388,individual,Roy Adams,salaried,Region B,2024-07-04,1794.18,1575.0,307.33
+ENT-00389,individual,Angela Brown,retired,Region B,2024-09-20,2189.86,1475.0,117.86
+ENT-00390,individual,Derrick Hanson,self_employed,Region C,2022-10-02,3284.69,2850.0,83.31
+ENT-00391,individual,Valerie Delacruz MD,salaried,Region D,2025-03-31,2644.84,2125.0,140.22
+ENT-00392,individual,Gregory Cochran,retired,Region D,2024-05-25,2271.54,1525.0,260.94
+ENT-00393,individual,Alec Giles,salaried,Region D,2021-10-06,1473.77,2025.0,100.08
+ENT-00394,individual,Joshua Payne,self_employed,Region F,2020-08-25,1768.9,2650.0,202.75
+ENT-00395,individual,Brian Vaughn,gig,Region C,2022-07-01,4651.92,1550.0,106.38
+ENT-00396,individual,Ruth Ware,salaried,Region D,2023-12-22,2391.77,1600.0,153.72
+ENT-00397,individual,Michael Hall,salaried,Region D,2023-11-25,2746.44,2900.0,230.06
+ENT-00398,individual,Makayla Bowers,salaried,Region E,2024-03-04,2463.18,2900.0,187.1
+ENT-00399,individual,Bradley Mccullough,self_employed,Region C,2022-06-29,1694.75,1325.0,79.64
+ENT-00400,individual,Vanessa Clark,gig,Region F,2024-11-28,1218.97,1150.0,201.8
+ENT-00401,individual,Brooke Andrade,salaried,Region C,2021-10-20,1861.66,2050.0,91.39
+ENT-00402,individual,Emily Sanders,salaried,Region F,2025-06-26,1986.16,1625.0,235.12
+ENT-00403,individual,James Ortega,salaried,Region B,2024-04-09,1679.99,2700.0,253.42
+ENT-00404,individual,Angela Parker,salaried,Region A,2023-12-04,916.3,1725.0,53.86
+ENT-00405,individual,Megan Robinson,salaried,Region B,2024-09-01,1070.59,900.0,83.18
+ENT-00406,individual,Cody Sullivan,salaried,Region F,2022-05-26,3363.86,2350.0,246.9
+ENT-00407,individual,Jeffrey Livingston,salaried,Region F,2021-08-05,1323.64,2225.0,150.87
+ENT-00408,individual,Anna Wolfe,retired,Region E,2020-10-20,1672.04,975.0,239.98
+ENT-00409,individual,Brandon Wright,self_employed,Region A,2021-02-27,2480.16,2575.0,300.24
+ENT-00410,individual,Edwin White,salaried,Region E,2023-07-07,1686.14,2900.0,175.97
+ENT-00411,individual,Kyle Rogers,salaried,Region E,2020-08-16,1964.07,1350.0,185.52
+ENT-00412,individual,Stephanie Simmons,salaried,Region C,2021-06-08,2572.59,2475.0,233.98
+ENT-00413,individual,Brittany Travis,self_employed,Region F,2022-01-31,1345.99,1225.0,171.86
+ENT-00414,individual,Jay Rios,salaried,Region D,2024-07-07,1979.03,1150.0,85.21
+ENT-00415,individual,Angela Thomas,salaried,Region B,2024-02-14,5257.49,2450.0,131.95
+ENT-00416,individual,Amy Giles,salaried,Region A,2021-11-10,3754.92,1700.0,141.61
+ENT-00417,individual,Ashley Carpenter,salaried,Region C,2024-06-07,1553.0,2750.0,85.79
+ENT-00418,individual,Douglas Nash,retired,Region A,2022-01-28,1526.32,1000.0,143.24
+ENT-00419,individual,Troy Mack,salaried,Region D,2020-08-29,2409.49,1050.0,147.43
+ENT-00420,individual,Alvin Mays,gig,Region A,2024-10-23,1463.02,1800.0,215.71
+ENT-00421,individual,Robin James,salaried,Region B,2022-09-17,1707.52,2125.0,228.24
+ENT-00422,individual,Christopher Valencia,salaried,Region C,2022-03-24,884.47,2425.0,128.25
+ENT-00423,individual,Jason Sanchez,self_employed,Region F,2024-03-04,2378.73,1875.0,114.33
+ENT-00424,individual,Jennifer Klein,self_employed,Region F,2021-01-10,1349.32,2075.0,122.97
+ENT-00425,individual,Clifford Ross,self_employed,Region F,2025-04-12,1199.27,1675.0,310.73
+ENT-00426,individual,Julie Ortiz,gig,Region E,2022-10-23,1645.48,1300.0,57.21
+ENT-00427,individual,Nancy Knight,salaried,Region A,2024-03-06,2829.99,3250.0,277.57
+ENT-00428,individual,William Wilkinson,salaried,Region C,2024-12-11,1807.26,1175.0,135.57
+ENT-00429,individual,Judy Lowe,gig,Region F,2024-05-15,2045.54,2500.0,210.19
+ENT-00430,individual,Matthew Daugherty,salaried,Region C,2025-02-04,3775.63,2950.0,103.05
+ENT-00431,individual,Maria Bradford,salaried,Region D,2022-03-12,2534.5,2350.0,269.52
+ENT-00432,individual,Ricky Ashley,salaried,Region E,2022-02-15,3928.76,2575.0,150.67
+ENT-00433,individual,Michelle Young,salaried,Region D,2022-03-05,1303.1,1825.0,205.45
+ENT-00434,individual,Faith Houston,salaried,Region B,2023-05-05,2123.07,1400.0,172.4
+ENT-00435,individual,Timothy Rodriguez,salaried,Region C,2024-03-17,1868.77,1500.0,124.89
+ENT-00436,individual,Kimberly Murphy,salaried,Region A,2024-10-18,3460.56,2400.0,416.13
+ENT-00437,individual,David Walter,self_employed,Region C,2021-12-04,1421.2,1225.0,227.6
+ENT-00438,individual,Timothy Warren,salaried,Region A,2021-12-12,2520.88,2550.0,218.19
+ENT-00439,individual,Rachel Griffin,salaried,Region B,2023-10-31,2510.8,3175.0,350.38
+ENT-00440,individual,Kristin Stevens,salaried,Region F,2022-09-17,2104.33,3175.0,41.93
+ENT-00441,individual,Scott Rose,salaried,Region F,2024-09-04,2352.8,3100.0,100.29
+ENT-00442,individual,Michael Medina,salaried,Region F,2025-04-16,3326.13,1075.0,196.74
+ENT-00443,individual,Susan Perez,salaried,Region A,2021-06-12,1393.14,1050.0,170.99
+ENT-00444,individual,Scott Hall,salaried,Region C,2021-12-23,781.18,1550.0,354.75
+ENT-00445,individual,Christine Miller,salaried,Region B,2023-07-21,3376.22,2925.0,234.4
+ENT-00446,individual,Dale Rogers,salaried,Region D,2025-06-20,1230.02,1675.0,121.1
+ENT-00447,individual,Shelby Scott,self_employed,Region B,2022-12-12,3338.48,3325.0,256.2
+ENT-00448,individual,Miguel Kemp,retired,Region D,2024-06-13,2891.36,2200.0,141.66
+ENT-00449,individual,Joshua Mann,salaried,Region A,2023-08-25,1836.28,2450.0,157.71
+ENT-00450,individual,Jill Wallace,salaried,Region B,2022-08-15,1802.17,1675.0,269.68
+ENT-00451,individual,Jennifer Phillips,salaried,Region B,2020-12-05,2554.51,1075.0,346.28
+ENT-00452,individual,Sarah Young,self_employed,Region A,2024-10-20,1810.69,1775.0,152.62
+ENT-00453,individual,Erica Knight,gig,Region B,2024-04-02,1253.3,3150.0,289.6
+ENT-00454,individual,Michael York,gig,Region F,2022-02-01,2420.07,2900.0,119.77
+ENT-00455,individual,Andrew Phillips,salaried,Region F,2022-04-02,2641.3,1525.0,324.04
+ENT-00456,individual,Andrea Gallagher,self_employed,Region F,2022-05-05,2386.83,1200.0,234.87
+ENT-00457,individual,Mark Miller,self_employed,Region F,2025-06-07,2449.44,3175.0,195.69
+ENT-00458,individual,Troy Brown,salaried,Region A,2021-10-30,1975.73,2225.0,335.56
+ENT-00459,individual,Corey Summers,retired,Region D,2020-09-02,1448.29,1950.0,285.92
+ENT-00460,individual,Johnny Bell,self_employed,Region E,2024-04-10,2507.73,1550.0,254.99
+ENT-00461,individual,Paula Humphrey,salaried,Region B,2023-08-10,2493.86,1275.0,154.65
+ENT-00462,individual,Renee Martin,self_employed,Region A,2021-02-28,2803.93,1150.0,152.2
+ENT-00463,individual,George Vargas,salaried,Region B,2022-05-12,1883.97,1250.0,172.62
+ENT-00464,individual,Shawn Yoder,salaried,Region E,2021-08-23,2257.06,1800.0,349.73
+ENT-00465,individual,Lauren Matthews,gig,Region D,2024-05-16,1852.9,1475.0,113.96
+ENT-00466,individual,Richard Johnson,gig,Region E,2021-09-07,3007.38,2200.0,152.05
+ENT-00467,individual,Angela Suarez DDS,salaried,Region B,2024-02-26,1814.84,1850.0,169.6
+ENT-00468,individual,Carlos Reynolds,salaried,Region E,2024-10-13,2358.86,1050.0,312.74
+ENT-00469,individual,David West,salaried,Region E,2021-11-28,1880.44,3150.0,155.76
+ENT-00470,individual,Caitlin Tran,self_employed,Region B,2021-04-01,1881.97,2350.0,105.35
+ENT-00471,individual,Cheyenne Rios,gig,Region D,2022-09-21,2328.01,1175.0,210.95
+ENT-00472,individual,Nathaniel West,gig,Region B,2023-02-05,2944.15,2225.0,127.29
+ENT-00473,individual,Lori Leonard,retired,Region F,2024-05-25,1428.16,2500.0,205.12
+ENT-00474,individual,Kenneth Clark,retired,Region B,2023-07-19,1678.22,2500.0,245.37
+ENT-00475,individual,Ryan Holt Jr.,salaried,Region F,2021-07-27,2731.35,1975.0,405.28
+ENT-00476,individual,Erica Diaz,self_employed,Region E,2024-03-18,1820.75,2450.0,125.89
+ENT-00477,individual,Lisa Evans,salaried,Region F,2024-03-19,1432.45,1975.0,165.47
+ENT-00478,individual,Austin Green,salaried,Region D,2025-03-12,1728.54,950.0,152.85
+ENT-00479,individual,Tracey May,salaried,Region D,2021-11-29,2090.15,1925.0,305.09
+ENT-00480,individual,Terrence Banks,salaried,Region A,2021-01-06,1584.13,2450.0,174.15
+ENT-00481,individual,Benjamin Tucker,salaried,Region D,2024-10-04,2583.36,1325.0,170.61
+ENT-00482,individual,Christopher Sutton,gig,Region F,2022-11-06,2087.8,2400.0,217.79
+ENT-00483,individual,Amber Russell,salaried,Region F,2025-01-04,2337.9,2825.0,613.24
+ENT-00484,individual,Virginia Cain,salaried,Region C,2025-06-29,2227.96,1450.0,187.16
+ENT-00485,individual,Jonathan Taylor,salaried,Region F,2021-04-12,1332.26,3200.0,99.34
+ENT-00486,individual,Brenda Walton,salaried,Region A,2024-12-19,3469.08,2550.0,169.51
+ENT-00487,individual,Peter Powers,salaried,Region A,2024-04-10,2794.0,2650.0,109.83
+ENT-00488,individual,Amanda Bryant,self_employed,Region D,2021-09-03,1111.31,2375.0,114.28
+ENT-00489,individual,Cynthia Best,salaried,Region E,2022-10-15,4576.91,1375.0,193.57
+ENT-00490,individual,Mary Foley,self_employed,Region C,2022-12-21,3723.03,2125.0,226.74
+ENT-00491,individual,Randy Schmitt,self_employed,Region A,2021-10-18,2752.89,2025.0,163.22
+ENT-00492,individual,Dr. Lori Rodriguez,salaried,Region B,2021-07-12,3810.71,1200.0,182.12
+ENT-00493,individual,Donald Mann,salaried,Region B,2021-03-01,3911.32,3175.0,159.02
+ENT-00494,individual,Daniel Mora,salaried,Region F,2023-07-01,2135.46,1225.0,121.56
+ENT-00495,individual,Erica Wright,self_employed,Region F,2023-08-01,2042.46,1825.0,264.24
+ENT-00496,individual,Steven Ferguson,salaried,Region C,2023-06-20,1580.33,2275.0,334.2
+ENT-00497,individual,Joe Franklin,salaried,Region D,2021-08-19,2400.32,2325.0,158.84
+ENT-00498,individual,Thomas Smith,gig,Region E,2023-09-03,2586.83,1125.0,148.62
+ENT-00499,individual,Alexis Reid,salaried,Region F,2022-04-18,2187.88,2450.0,351.75
+ENT-00500,individual,Hunter Sanchez,self_employed,Region E,2024-02-07,2664.69,3400.0,433.45
+ENT-00501,individual,Spencer Keith,salaried,Region A,2024-04-08,2014.14,1925.0,158.36
+ENT-00502,individual,Sarah Barron,salaried,Region F,2022-10-08,2910.43,2700.0,153.19
+ENT-00503,individual,Karina Holmes,gig,Region D,2020-10-19,3502.81,2325.0,210.06
+ENT-00504,individual,Donna Jones,gig,Region A,2020-09-07,2350.51,3175.0,137.02
+ENT-00505,individual,Stephanie Andrews,gig,Region E,2021-10-31,3423.38,3350.0,228.86
+ENT-00506,individual,Daisy Ho,gig,Region C,2022-12-30,2120.33,2550.0,70.13
+ENT-00507,individual,Justin Mckinney,salaried,Region D,2023-02-10,1741.84,1425.0,360.89
+ENT-00508,individual,Jeffrey Espinoza,salaried,Region F,2021-09-30,2213.07,3250.0,281.4
+ENT-00509,individual,Daniel Swanson,salaried,Region C,2021-12-04,2513.27,1275.0,339.13
+ENT-00510,individual,Deborah Yoder,salaried,Region B,2021-12-07,3266.44,1625.0,289.27
+ENT-00511,individual,Kenneth Jones,gig,Region A,2024-11-16,1154.83,2925.0,234.66
+ENT-00512,individual,Shawn Norman,salaried,Region F,2023-08-14,2946.87,2200.0,144.61
+ENT-00513,individual,Peter Adams,retired,Region E,2020-09-24,2359.1,1975.0,250.88
+ENT-00514,individual,Teresa Lopez,gig,Region D,2024-01-31,1545.31,2575.0,266.03
+ENT-00515,individual,Linda White,salaried,Region C,2020-09-16,1635.21,2300.0,160.92
+ENT-00516,individual,Kathleen Gray,self_employed,Region E,2023-12-28,1455.73,2625.0,148.39
+ENT-00517,individual,Lori Holt,salaried,Region C,2021-09-01,2573.41,2375.0,314.76
+ENT-00518,individual,Cody Marquez,salaried,Region E,2020-08-10,4189.24,1275.0,120.61
+ENT-00519,individual,Ryan Ellis,self_employed,Region C,2025-03-16,1940.56,3000.0,62.62
+ENT-00520,individual,Debra Carlson,salaried,Region A,2022-10-30,1763.89,1800.0,196.58
+ENT-00521,individual,Beth Young,salaried,Region C,2021-09-23,2998.11,2525.0,234.57
+ENT-00522,individual,Ashley Harrison,gig,Region E,2024-10-29,4054.3,3300.0,176.0
+ENT-00523,individual,Kristine Campbell,salaried,Region F,2021-04-19,2617.89,1250.0,343.1
+ENT-00524,individual,Veronica Edwards,salaried,Region D,2025-02-01,2835.74,1600.0,216.53
+ENT-00525,individual,Tina Smith,salaried,Region D,2023-08-12,2285.07,1300.0,396.48
+ENT-00526,individual,James Flores,salaried,Region E,2020-11-26,2782.05,1000.0,188.56
+ENT-00527,individual,Calvin Yates,salaried,Region E,2021-05-30,1267.83,2075.0,299.44
+ENT-00528,individual,Katherine Gonzalez,gig,Region F,2021-04-22,1528.28,1975.0,108.93
+ENT-00529,individual,Scott Zamora,salaried,Region E,2022-12-03,1906.33,1900.0,153.4
+ENT-00530,individual,Hector Park,gig,Region D,2022-06-18,3180.07,1725.0,440.62
+ENT-00531,individual,Zachary Dixon,salaried,Region D,2021-06-20,2523.02,2950.0,465.17
+ENT-00532,individual,Joseph Medina,retired,Region E,2025-06-18,994.43,3350.0,102.12
+ENT-00533,individual,Brandon Cox,salaried,Region B,2021-04-07,1537.58,2125.0,141.52
+ENT-00534,individual,Melissa Sampson,salaried,Region F,2020-11-16,1832.3,2375.0,165.72
+ENT-00535,individual,Charles Wilson,salaried,Region C,2020-08-04,1551.36,2475.0,66.3
+ENT-00536,individual,Heather Sanders,self_employed,Region C,2023-11-15,1698.01,2950.0,158.9
+ENT-00537,individual,Rodney Gray,self_employed,Region D,2022-01-23,2450.65,2100.0,131.25
+ENT-00538,individual,Amber Acosta,salaried,Region C,2022-02-05,1846.89,1375.0,108.12
+ENT-00539,individual,Melissa Davis,self_employed,Region D,2022-11-25,3795.29,1725.0,136.73
+ENT-00540,individual,Ariel Goodman,salaried,Region D,2021-04-02,1312.46,1850.0,231.34
+ENT-00541,individual,David Barnes,salaried,Region F,2025-04-18,1324.4,2800.0,421.76
+ENT-00542,individual,Anthony Williams,gig,Region C,2022-09-09,1222.13,2350.0,160.2
+ENT-00543,individual,Eric Combs,salaried,Region C,2022-08-10,2495.35,1025.0,143.35
+ENT-00544,individual,Christopher Randall,self_employed,Region F,2024-10-17,2145.58,2700.0,145.56
+ENT-00545,individual,Lindsey Davis,self_employed,Region F,2024-04-26,3002.5,1975.0,296.3
+ENT-00546,individual,Teresa Lawson,salaried,Region E,2021-02-25,2929.45,3250.0,132.78
+ENT-00547,individual,Eric Yoder,salaried,Region E,2021-02-14,2836.38,2125.0,241.16
+ENT-00548,individual,Matthew Clark,salaried,Region E,2022-04-02,1518.71,1175.0,156.96
+ENT-00549,individual,Jared Flores,salaried,Region B,2022-08-20,2094.8,3000.0,253.88
+ENT-00550,individual,Michael Rodriguez,gig,Region F,2023-02-22,975.1,2900.0,187.67
+ENT-00551,individual,Marissa Bush,salaried,Region C,2021-05-31,2539.39,2450.0,87.69
+ENT-00552,individual,Nicholas Leblanc,salaried,Region E,2021-08-13,2381.56,1600.0,132.81
+ENT-00553,individual,Lisa Oneal,gig,Region A,2023-11-18,2169.92,2425.0,77.33
+ENT-00554,individual,Marvin Curry,salaried,Region E,2023-03-25,1959.26,2700.0,166.54
+ENT-00555,individual,Tara Hancock,salaried,Region D,2020-08-17,2454.14,950.0,252.63
+ENT-00556,individual,Nathaniel Barnett,salaried,Region A,2025-05-19,2091.2,2100.0,174.04
+ENT-00557,individual,Dr. Marie Davis,gig,Region B,2023-02-05,2363.5,3200.0,111.78
+ENT-00558,individual,Jeffrey Boyle,gig,Region C,2022-09-23,1905.53,1875.0,160.45
+ENT-00559,individual,Gregory Kelly,self_employed,Region F,2024-01-14,1516.18,1375.0,244.1
+ENT-00560,individual,Stephanie Alexander,salaried,Region F,2024-02-17,3142.27,3150.0,256.89
+ENT-00561,individual,Sheila Walker,salaried,Region F,2023-09-15,1854.19,2325.0,281.35
+ENT-00562,individual,Sharon Pope,retired,Region E,2024-01-28,1901.19,2350.0,209.6
+ENT-00563,individual,Paul Grant,salaried,Region A,2023-11-14,1682.58,1200.0,218.84
+ENT-00564,individual,Riley Molina,self_employed,Region C,2021-08-29,1917.68,2000.0,142.27
+ENT-00565,individual,Aaron Smith,self_employed,Region F,2021-12-29,1374.88,2675.0,562.56
+ENT-00566,individual,Todd Ingram,self_employed,Region D,2021-06-19,2801.93,1450.0,456.4
+ENT-00567,individual,Brianna Burns,retired,Region B,2024-12-26,1997.63,1700.0,301.98
+ENT-00568,individual,Charles Mitchell,salaried,Region C,2025-02-26,4586.07,1275.0,215.29
+ENT-00569,individual,Samantha Williams,gig,Region B,2020-10-15,1957.67,2900.0,209.04
+ENT-00570,individual,David Taylor,gig,Region F,2025-06-13,810.79,1775.0,59.05
+ENT-00571,individual,Sonia Mccall,self_employed,Region F,2024-04-21,3750.69,2000.0,134.45
+ENT-00572,individual,Diane Ball,salaried,Region B,2024-11-19,1209.71,2450.0,189.66
+ENT-00573,individual,Ashley Robinson,salaried,Region B,2025-06-04,1240.94,1675.0,236.62
+ENT-00574,individual,Robert Allison,self_employed,Region A,2022-01-31,3458.28,2525.0,281.49
+ENT-00575,individual,Nancy Lawson,self_employed,Region A,2021-03-29,1845.55,2800.0,109.29
+ENT-00576,individual,Regina Martin,salaried,Region B,2025-01-27,1865.98,3325.0,312.81
+ENT-00577,individual,Patrick Turner,gig,Region C,2023-01-20,1894.93,2550.0,328.28
+ENT-00578,individual,Dana Mays,retired,Region B,2022-03-16,1952.53,2900.0,269.35
+ENT-00579,individual,Amy Tran MD,salaried,Region B,2020-09-01,2297.96,3200.0,202.78
+ENT-00580,individual,Nathaniel Costa,self_employed,Region C,2023-06-10,2404.26,2100.0,374.24
+ENT-00581,individual,Joshua Rivera,salaried,Region F,2021-08-24,2734.48,2300.0,174.53
+ENT-00582,individual,David Young,salaried,Region A,2025-06-30,3070.06,2250.0,121.87
+ENT-00583,individual,Christopher Cortez,self_employed,Region B,2023-08-10,2463.37,3275.0,182.63
+ENT-00584,individual,Candace Johnston,salaried,Region D,2024-12-15,2475.48,1125.0,205.39
+ENT-00585,individual,Corey Pierce,self_employed,Region A,2021-12-28,1452.37,2450.0,425.84
+ENT-00586,individual,Annette Stanley,self_employed,Region B,2023-09-25,1842.6,2450.0,161.16
+ENT-00587,individual,Ronald Lopez,salaried,Region F,2023-10-10,1797.02,2400.0,159.18
+ENT-00588,individual,Mary Carey,retired,Region E,2024-01-21,3358.3,1650.0,214.62
+ENT-00589,individual,Laura White,salaried,Region D,2022-02-13,1633.47,1400.0,306.05
+ENT-00590,individual,Steven Henson,salaried,Region D,2022-05-31,1269.18,1825.0,99.83
+ENT-00591,individual,Monica Brady,salaried,Region E,2024-11-08,2108.6,3150.0,258.82
+ENT-00592,individual,Jennifer Robertson,salaried,Region F,2025-03-12,2240.07,3225.0,119.92
+ENT-00593,individual,Daniel Wilson,retired,Region A,2024-08-25,4210.8,3375.0,234.53
+ENT-00594,individual,Karla Nolan,salaried,Region D,2021-11-23,2416.33,1225.0,138.12
+ENT-00595,individual,Dr. Sheila Fisher,salaried,Region B,2022-02-07,4354.73,3300.0,123.44
+ENT-00596,individual,Robin Edwards,self_employed,Region E,2024-12-22,2983.5,1350.0,284.34
+ENT-00597,individual,Devon Roach,salaried,Region C,2020-10-10,3127.29,3250.0,111.69
+ENT-00598,individual,Brenda Garcia,salaried,Region F,2024-01-04,1631.28,1125.0,242.5
+ENT-00599,individual,Joanna Smith,retired,Region E,2024-12-10,2142.5,950.0,239.72
+ENT-00600,individual,Amy Smith,salaried,Region D,2022-04-02,2475.84,2775.0,253.31
+ENT-00601,individual,Michelle Reeves,gig,Region C,2023-11-15,3873.94,1100.0,168.77
+ENT-00602,individual,Samuel Banks,salaried,Region F,2024-10-17,2216.23,2925.0,136.02
+ENT-00603,individual,Michael Logan,self_employed,Region F,2024-02-26,3345.31,3050.0,248.84
+ENT-00604,individual,Mark Phillips,salaried,Region F,2022-02-10,2243.83,3025.0,589.19
+ENT-00605,individual,Ryan Edwards,salaried,Region F,2021-05-04,2080.63,1550.0,244.01
+ENT-00606,individual,Teresa Gentry,salaried,Region F,2022-07-04,1326.96,3175.0,559.86
+ENT-00607,individual,Thomas Davenport,self_employed,Region E,2022-07-26,1346.34,3175.0,338.74
+ENT-00608,individual,Colleen Terry,salaried,Region C,2023-01-18,1071.53,1850.0,340.9
+ENT-00609,individual,Harold Taylor,salaried,Region F,2022-04-22,7850.21,3350.0,344.71
+ENT-00610,individual,Jeremy Jackson,self_employed,Region D,2021-06-02,4058.17,2600.0,409.46
+ENT-00611,individual,Shannon Moore,salaried,Region A,2022-09-25,1800.9,3350.0,181.66
+ENT-00612,individual,Johnny Rodgers,salaried,Region E,2021-09-30,1791.65,1550.0,84.96
+ENT-00613,individual,Jane Contreras,salaried,Region E,2024-10-06,2626.5,3375.0,196.05
+ENT-00614,individual,Andrea Skinner,salaried,Region E,2021-11-19,1580.6,1650.0,337.04
+ENT-00615,individual,Robert Sims,salaried,Region D,2025-03-09,3092.72,2900.0,172.69
+ENT-00616,individual,Roger Short,salaried,Region A,2023-08-23,2003.85,1225.0,211.44
+ENT-00617,individual,Todd Hall,self_employed,Region C,2021-03-19,4725.55,2275.0,485.24
+ENT-00618,individual,Jason Brennan,salaried,Region D,2021-01-31,1863.91,1625.0,327.4
+ENT-00619,individual,Melissa Doyle,salaried,Region D,2023-12-25,1641.49,1600.0,187.83
+ENT-00620,individual,Teresa Barnes,salaried,Region E,2024-05-23,3338.44,1775.0,133.83
+ENT-00621,individual,Joseph Harmon,self_employed,Region F,2022-01-06,2314.8,1225.0,160.28
+ENT-00622,individual,Michael Grant,salaried,Region F,2025-04-14,1630.3,1800.0,148.07
+ENT-00623,individual,Andrew Smith,self_employed,Region A,2025-02-01,1603.55,3200.0,125.45
+ENT-00624,individual,Jason Mann,retired,Region B,2024-08-03,1830.5,3000.0,215.06
+ENT-00625,individual,Melissa Williams,salaried,Region A,2025-05-15,2165.6,1925.0,199.09
+ENT-00626,individual,Roy Robinson,self_employed,Region B,2022-09-10,2547.52,1800.0,140.8
+ENT-00627,individual,Judy Gutierrez,salaried,Region E,2022-05-13,1695.26,3375.0,123.25
+ENT-00628,individual,Joseph Bowen,salaried,Region E,2023-12-24,2023.71,1475.0,208.94
+ENT-00629,individual,Stacey Jones,salaried,Region A,2021-09-17,3222.75,1950.0,104.02
+ENT-00630,individual,Kenneth Patrick,salaried,Region B,2025-01-26,3784.21,2000.0,121.38
+ENT-00631,individual,Jesse Kramer,salaried,Region A,2022-05-05,2393.63,3050.0,96.62
+ENT-00632,individual,Jared Graham,salaried,Region B,2020-08-19,1952.03,2800.0,259.62
+ENT-00633,individual,Ryan Mitchell,salaried,Region E,2023-08-18,1703.22,1225.0,263.05
+ENT-00634,individual,Matthew Rios,salaried,Region E,2021-12-12,2656.21,2825.0,97.43
+ENT-00635,individual,Randy Martin,self_employed,Region F,2021-07-14,1939.1,2975.0,58.95
+ENT-00636,individual,Dr. Philip Morales,salaried,Region F,2024-08-26,3947.79,1325.0,214.4
+ENT-00637,individual,Jose Mitchell,self_employed,Region D,2025-03-26,1760.54,3325.0,53.22
+ENT-00638,individual,Lucas White,salaried,Region A,2022-12-10,3491.87,2125.0,77.11
+ENT-00639,individual,Lisa White,retired,Region F,2024-09-15,4301.09,2225.0,75.76
+ENT-00640,individual,Daniel Walters,salaried,Region E,2024-09-17,3042.69,1725.0,380.32
+ENT-00641,individual,Joel Burnett,salaried,Region F,2021-12-29,2396.37,3025.0,304.75
+ENT-00642,individual,Amy Johnson,self_employed,Region D,2021-02-17,1662.92,1325.0,111.77
+ENT-00643,individual,Mark Thompson,gig,Region B,2020-12-11,3689.59,2550.0,156.09
+ENT-00644,individual,Joyce Larson,salaried,Region A,2023-06-29,1962.32,1075.0,246.89
+ENT-00645,individual,Dr. Kevin Miller,salaried,Region B,2022-03-25,2029.24,3075.0,92.73
+ENT-00646,individual,Patricia Webb,self_employed,Region E,2020-11-19,2813.71,3075.0,142.8
+ENT-00647,individual,Alexis White,retired,Region F,2024-05-07,2007.62,2700.0,465.77
+ENT-00648,individual,David Small III,salaried,Region A,2023-03-08,3106.99,2050.0,215.59
+ENT-00649,individual,Thomas Davis,salaried,Region E,2020-08-31,2023.49,1500.0,140.0
+ENT-00650,individual,Erica Becker,retired,Region E,2024-08-21,1856.49,3275.0,706.98
+ENT-00651,individual,Sarah Weeks,salaried,Region A,2025-03-25,2837.04,1025.0,300.34
+ENT-00652,individual,Wendy Kelly,gig,Region D,2021-06-02,1978.58,1225.0,129.79
+ENT-00653,individual,Jacob Jacobs,gig,Region F,2020-10-19,1954.94,1450.0,106.1
+ENT-00654,individual,Lauren Howard,salaried,Region B,2020-11-30,2112.32,2400.0,405.77
+ENT-00655,individual,James Campbell,salaried,Region B,2022-03-07,4266.77,1125.0,168.14
+ENT-00656,individual,Brandy Juarez,salaried,Region D,2021-10-09,1785.71,1750.0,196.66
+ENT-00657,individual,Kenneth Santiago,self_employed,Region A,2021-12-12,3053.55,2250.0,339.28
+ENT-00658,individual,Jason Fisher,salaried,Region D,2022-12-28,2247.32,1250.0,123.51
+ENT-00659,individual,Jennifer Olson,gig,Region C,2022-11-13,2210.65,1625.0,230.39
+ENT-00660,individual,Jessica Brown,salaried,Region B,2022-12-30,1624.87,2025.0,254.03
+ENT-00661,individual,Andrea Hinton,retired,Region B,2021-08-31,2611.84,1650.0,224.04
+ENT-00662,individual,Jacqueline Howard,salaried,Region E,2021-05-13,1788.93,975.0,152.82
+ENT-00663,individual,Brittany Reyes,salaried,Region B,2023-04-27,1205.67,3350.0,130.51
+ENT-00664,individual,Joseph Anderson,salaried,Region E,2022-03-08,1989.75,1875.0,113.35
+ENT-00665,individual,Brooke Johnson,salaried,Region E,2023-12-23,1878.4,1475.0,299.83
+ENT-00666,individual,Grace Thompson,self_employed,Region A,2023-07-08,3669.42,1425.0,513.47
+ENT-00667,individual,Christian Black,salaried,Region F,2022-10-03,1575.76,1850.0,188.19
+ENT-00668,individual,Brandon Mitchell,salaried,Region E,2023-09-18,2582.58,2475.0,105.14
+ENT-00669,individual,Jason Carter,salaried,Region A,2023-11-15,1971.37,1800.0,165.44
+ENT-00670,individual,Rebecca Mays,salaried,Region F,2024-11-15,1980.87,2800.0,276.08
+ENT-00671,individual,Kelsey Castillo,salaried,Region E,2025-06-16,2201.44,2400.0,280.51
+ENT-00672,individual,Peter Castillo,salaried,Region A,2022-11-05,3664.64,1450.0,75.95
+ENT-00673,individual,Jack Velasquez,salaried,Region F,2022-04-03,1839.2,3175.0,191.75
+ENT-00674,individual,Gregory Harvey,salaried,Region B,2023-02-15,2027.37,3325.0,105.09
+ENT-00675,individual,Rebecca Hall,gig,Region B,2024-02-16,1814.35,1900.0,154.93
+ENT-00676,individual,Michael Robertson,salaried,Region F,2022-01-08,1129.66,3175.0,193.72
+ENT-00677,individual,Elizabeth Jarvis,salaried,Region C,2025-04-16,1420.39,3000.0,485.74
+ENT-00678,individual,Tyrone Bishop,salaried,Region B,2024-06-11,2465.34,1175.0,176.29
+ENT-00679,individual,Alexis Guerra DVM,salaried,Region F,2024-11-18,4235.98,2525.0,126.68
+ENT-00680,individual,Amanda Phillips,salaried,Region D,2022-05-19,2081.53,2625.0,303.58
+ENT-00681,individual,Christina Rodgers,salaried,Region E,2021-02-23,2678.4,1175.0,298.26
+ENT-00682,individual,Lisa Burton,salaried,Region E,2023-11-14,2639.86,1825.0,140.48
+ENT-00683,individual,Jeffery Gomez,gig,Region F,2021-05-26,1771.81,1875.0,208.72
+ENT-00684,individual,Brian Bush,salaried,Region C,2021-09-10,1011.22,1975.0,131.51
+ENT-00685,individual,Gina Thomas,salaried,Region D,2021-05-11,1553.32,925.0,83.28
+ENT-00686,individual,Lisa Ingram,self_employed,Region F,2022-07-30,1804.16,1850.0,109.83
+ENT-00687,individual,Terry Austin,salaried,Region F,2022-09-30,1478.17,2275.0,160.68
+ENT-00688,individual,Daniel Campos,salaried,Region D,2023-08-16,3880.67,1000.0,92.36
+ENT-00689,individual,David Pennington,gig,Region D,2023-02-13,1313.45,2150.0,154.38
+ENT-00690,individual,Krystal Howard,self_employed,Region C,2024-01-20,3483.52,2850.0,110.32
+ENT-00691,individual,Ashley Simpson,retired,Region A,2021-11-01,2102.74,2150.0,177.25
+ENT-00692,individual,Suzanne Brewer,retired,Region B,2025-05-08,2041.19,1300.0,316.19
+ENT-00693,individual,Jeremy Hayes,salaried,Region A,2024-12-16,1594.11,1025.0,182.07
+ENT-00694,individual,Martin Zhang,salaried,Region D,2021-05-31,3940.43,1000.0,81.89
+ENT-00695,individual,Derek Adams,salaried,Region E,2021-09-21,2665.81,1750.0,111.87
+ENT-00696,individual,Zachary Trevino MD,self_employed,Region A,2025-03-18,2886.62,1725.0,153.08
+ENT-00697,individual,Heather Mitchell DVM,salaried,Region A,2025-03-01,2413.01,1200.0,160.07
+ENT-00698,individual,Keith Lewis,salaried,Region F,2023-12-13,3579.42,3000.0,269.15
+ENT-00699,individual,Eric Frazier DVM,salaried,Region D,2024-07-21,2343.83,1050.0,118.23
+ENT-00700,individual,Christopher Sanchez,salaried,Region B,2022-04-02,1539.22,1900.0,57.25
+ENT-00701,individual,Paul Jefferson,self_employed,Region C,2024-11-14,1558.54,2850.0,232.2
+ENT-00702,individual,Beverly Ramos,retired,Region A,2025-02-09,2560.59,2425.0,264.13
+ENT-00703,individual,Elizabeth Ramirez,salaried,Region A,2020-08-24,4206.81,2325.0,209.42
+ENT-00704,individual,Casey Caldwell,salaried,Region E,2024-05-06,2318.3,3150.0,39.65
+ENT-00705,individual,Denise Sanders,salaried,Region E,2023-06-11,1361.66,3325.0,180.3
+ENT-00706,individual,Christopher Adkins,gig,Region D,2024-07-14,2420.03,1500.0,131.32
+ENT-00707,individual,Tammy Hall,salaried,Region B,2022-08-19,1879.98,1450.0,167.42
+ENT-00708,individual,Michael Nelson,gig,Region F,2022-05-07,1386.75,1425.0,263.49
+ENT-00709,individual,Denise Mcguire,salaried,Region B,2023-12-17,3184.64,1450.0,349.21
+ENT-00710,individual,Jamie Brown,salaried,Region E,2024-06-26,3171.5,1075.0,167.06
+ENT-00711,individual,Christine Juarez,retired,Region D,2021-04-07,1289.25,1150.0,255.12
+ENT-00712,individual,Kathleen Mays MD,salaried,Region E,2025-02-06,4012.09,1975.0,278.97
+ENT-00713,individual,Tammy Garcia,self_employed,Region F,2025-04-02,2667.04,2525.0,137.82
+ENT-00714,individual,Susan Wilson,self_employed,Region A,2023-07-20,1292.56,2575.0,62.51
+ENT-00715,individual,Brian Holloway,salaried,Region E,2025-04-06,1638.33,1050.0,341.74
+ENT-00716,individual,Lisa Mejia,salaried,Region E,2021-03-05,3953.02,2525.0,104.17
+ENT-00717,individual,Austin Kelly,salaried,Region C,2020-09-24,3147.57,3100.0,239.59
+ENT-00718,individual,Patricia Harris,salaried,Region C,2024-11-10,2105.93,925.0,200.43
+ENT-00719,individual,Brian Mendez,salaried,Region C,2021-11-28,1626.45,1125.0,388.91
+ENT-00720,individual,Jasmine Green,gig,Region A,2022-03-09,861.02,3075.0,68.37
+ENT-00721,individual,Daniel Evans,salaried,Region A,2022-06-24,2963.25,1900.0,160.47
+ENT-00722,individual,Meagan Duke,self_employed,Region E,2022-06-27,3676.23,2050.0,130.44
+ENT-00723,individual,Andrew Crane,salaried,Region B,2024-08-06,2139.38,2800.0,137.44
+ENT-00724,individual,Dr. Phillip Avila DDS,gig,Region D,2021-11-05,2308.16,3100.0,198.71
+ENT-00725,individual,Robin Richardson,salaried,Region A,2021-02-09,2455.51,1700.0,574.93
+ENT-00726,individual,Mallory Mayo,salaried,Region A,2023-07-26,1876.78,3075.0,129.23
+ENT-00727,individual,Ryan Perez,self_employed,Region F,2023-07-13,1489.39,2850.0,156.74
+ENT-00728,individual,Lauren Peters,salaried,Region F,2022-06-14,1773.44,1300.0,311.99
+ENT-00729,individual,Brittany Adams,salaried,Region E,2021-02-01,1203.49,1050.0,200.9
+ENT-00730,individual,Dakota Everett,salaried,Region C,2023-07-11,1463.61,2800.0,198.93
+ENT-00731,individual,Manuel Frazier,self_employed,Region E,2024-04-24,3305.47,1850.0,71.84
+ENT-00732,individual,Ryan Richardson,salaried,Region B,2022-06-05,2431.24,1925.0,247.72
+ENT-00733,individual,Jermaine Shaw,salaried,Region A,2024-02-13,4777.91,2175.0,326.94
+ENT-00734,individual,Patricia Wagner,salaried,Region B,2021-09-22,1370.07,3325.0,84.09
+ENT-00735,individual,Julie Reeves,salaried,Region D,2024-09-30,1408.71,1475.0,259.82
+ENT-00736,individual,Shelly Ward,salaried,Region C,2021-09-26,2933.42,2275.0,62.2
+ENT-00737,individual,Tiffany Parsons,salaried,Region D,2022-05-27,886.21,2600.0,256.57
+ENT-00738,individual,Rebecca Villanueva,salaried,Region E,2022-08-21,1837.34,1300.0,132.13
+ENT-00739,individual,Renee Fisher,salaried,Region C,2023-05-29,3299.18,2600.0,135.38
+ENT-00740,individual,Eugene Smith,salaried,Region C,2024-04-11,1929.06,2150.0,64.58
+ENT-00741,individual,Ashley Little,self_employed,Region E,2023-01-27,3300.94,1825.0,134.02
+ENT-00742,individual,Deborah Taylor,salaried,Region B,2021-07-31,2938.76,1925.0,330.39
+ENT-00743,individual,Caitlin Chavez,self_employed,Region E,2023-03-18,2861.02,2375.0,138.56
+ENT-00744,individual,Jeffrey Pacheco,salaried,Region A,2022-03-07,1955.36,2800.0,128.94
+ENT-00745,individual,Thomas Alvarez,self_employed,Region E,2024-03-30,2169.65,2775.0,91.32
+ENT-00746,individual,Thomas Cabrera,gig,Region E,2022-11-14,893.65,1325.0,186.76
+ENT-00747,individual,Patrick Diaz,salaried,Region C,2022-08-25,1956.57,2700.0,243.53
+ENT-00748,individual,Diana Moore,salaried,Region E,2025-04-26,3465.46,1725.0,114.44
+ENT-00749,individual,Bailey Haynes,salaried,Region F,2021-04-17,2819.55,1225.0,51.03
+ENT-00750,individual,John White,salaried,Region B,2022-06-10,2952.24,2675.0,176.14
+ENT-00751,individual,Vanessa Parrish,salaried,Region A,2023-02-24,1646.44,2225.0,468.29
+ENT-00752,individual,Christopher Mitchell,retired,Region F,2022-12-31,3931.47,2900.0,229.9
+ENT-00753,individual,Benjamin Boyd,retired,Region B,2024-08-19,2635.14,2275.0,97.75
+ENT-00754,individual,Marisa Harris,gig,Region A,2021-08-24,1487.85,1150.0,325.84
+ENT-00755,individual,Aaron Rodriguez,salaried,Region D,2021-10-19,2490.64,2650.0,166.83
+ENT-00756,individual,Aaron Lewis,retired,Region A,2022-11-03,3210.83,2100.0,107.63
+ENT-00757,individual,Amy Morton,salaried,Region E,2022-06-26,1340.0,2825.0,136.16
+ENT-00758,individual,Christine Perkins,retired,Region D,2021-11-21,2081.75,3400.0,39.89
+ENT-00759,individual,Danny Turner,retired,Region C,2025-06-19,1744.55,2300.0,152.16
+ENT-00760,individual,Stephanie Hanson,salaried,Region C,2024-11-05,1902.48,2525.0,162.19
+ENT-00761,individual,Bonnie Harrington,self_employed,Region E,2023-02-25,1872.46,3300.0,59.41
+ENT-00762,individual,Jose Blake,self_employed,Region D,2025-05-10,2135.81,2775.0,96.31
+ENT-00763,individual,Carly Lewis,retired,Region E,2022-01-01,1794.42,2950.0,97.03
+ENT-00764,individual,Peggy Parker,salaried,Region D,2021-03-31,3867.91,1125.0,134.22
+ENT-00765,individual,Laura Griffin,salaried,Region B,2025-06-11,3329.21,1950.0,231.78
+ENT-00766,individual,Lori Goodwin,salaried,Region E,2024-12-19,949.88,1225.0,109.69
+ENT-00767,individual,David Graham,self_employed,Region D,2025-01-12,1884.2,1200.0,72.63
+ENT-00768,individual,Christopher Carrillo,retired,Region F,2023-01-11,1646.6,3350.0,233.32
+ENT-00769,individual,Dennis Gonzalez,salaried,Region F,2021-04-03,4714.73,3100.0,154.13
+ENT-00770,individual,Matthew Robertson,salaried,Region F,2022-09-29,3000.66,925.0,307.19
+ENT-00771,individual,Destiny Hartman,self_employed,Region D,2022-07-25,2640.07,1675.0,248.34
+ENT-00772,individual,Christopher Garcia,salaried,Region E,2023-01-11,3104.14,2575.0,157.07
+ENT-00773,individual,Jessica Underwood,self_employed,Region F,2023-10-24,2166.1,3125.0,311.74
+ENT-00774,individual,Jessica Ellison,self_employed,Region B,2021-11-20,1434.82,1150.0,146.37
+ENT-00775,individual,Ms. Jennifer Terry,salaried,Region B,2023-12-20,2361.07,1350.0,178.73
+ENT-00776,individual,Michelle Quinn,salaried,Region B,2025-02-22,2826.28,2225.0,112.78
+ENT-00777,individual,Dennis Tran,salaried,Region C,2023-05-30,2823.6,2300.0,285.09
+ENT-00778,individual,Betty Gregory,salaried,Region F,2021-10-28,2703.95,2650.0,230.38
+ENT-00779,individual,Jason Bullock,salaried,Region C,2021-04-27,1804.16,3225.0,184.26
+ENT-00780,individual,Jared Black,self_employed,Region F,2025-02-19,1525.24,1825.0,147.1
+ENT-00781,individual,Jasmine Bell,self_employed,Region E,2023-05-31,1495.18,2025.0,137.89
+ENT-00782,individual,Crystal Robinson,salaried,Region A,2020-09-25,3533.68,3350.0,123.82
+ENT-00783,individual,Chad Castro,self_employed,Region B,2021-12-21,3708.99,1175.0,83.9
+ENT-00784,individual,Ann Brown,salaried,Region E,2022-03-11,2513.66,1200.0,298.85
+ENT-00785,individual,Melanie Johnson,salaried,Region E,2024-04-09,2172.11,2600.0,360.47
+ENT-00786,individual,Jennifer Collins,salaried,Region F,2024-06-25,1081.12,2100.0,200.93
+ENT-00787,individual,Matthew Michael,self_employed,Region C,2024-08-19,1589.41,2975.0,336.35
+ENT-00788,individual,Nicole Robertson,self_employed,Region C,2023-03-14,4101.31,1800.0,152.63
+ENT-00789,individual,Ashley Barnes,salaried,Region C,2025-04-14,1926.67,1375.0,61.57
+ENT-00790,individual,John Bullock,self_employed,Region D,2022-02-27,2313.06,2300.0,76.74
+ENT-00791,individual,Denise King,salaried,Region F,2022-07-06,1559.23,1075.0,451.29
+ENT-00792,individual,Andrea Powell,salaried,Region C,2024-05-12,3175.29,2375.0,121.01
+ENT-00793,individual,Peter Lutz,gig,Region E,2024-10-16,5442.86,3125.0,150.97
+ENT-00794,individual,Kristen Cowan,salaried,Region A,2022-04-29,2410.29,1550.0,216.14
+ENT-00795,individual,Emily Greer,salaried,Region E,2025-01-23,1532.33,1550.0,81.14
+ENT-00796,individual,Wendy Lara,salaried,Region E,2021-01-14,2762.32,2775.0,214.45
+ENT-00797,individual,Dr. Brian Summers,self_employed,Region D,2025-02-17,1212.56,3275.0,112.42
+ENT-00798,individual,Michael Stone,salaried,Region F,2022-11-19,3536.67,3300.0,395.02
+ENT-00799,individual,Samantha Brown,gig,Region F,2022-05-08,2368.93,1575.0,226.75
+ENT-00800,individual,Bob Owen,self_employed,Region D,2021-11-14,1327.33,1275.0,305.11
+ENT-00801,individual,Elizabeth Ramirez,salaried,Region F,2021-09-17,1572.57,3250.0,212.8
+ENT-00802,individual,Thomas Brown,salaried,Region C,2024-05-01,2157.14,1900.0,56.9
+ENT-00803,individual,Eric Smith,retired,Region C,2024-09-10,1707.98,3175.0,157.0
+ENT-00804,individual,Carla Moss,self_employed,Region B,2022-04-26,2589.41,1150.0,117.5
+ENT-00805,individual,Tammy Khan,self_employed,Region C,2021-12-21,1517.32,2925.0,199.46
+ENT-00806,individual,Leslie Jackson,retired,Region C,2022-04-08,1320.99,1225.0,109.4
+ENT-00807,individual,Sarah Schneider,salaried,Region B,2021-09-14,1658.24,2500.0,200.59
+ENT-00808,individual,William Mercer,salaried,Region A,2021-03-17,1995.96,2950.0,119.95
+ENT-00809,individual,Christopher Nelson,retired,Region F,2020-10-31,2071.88,1075.0,225.46
+ENT-00810,individual,Michael Gallagher,salaried,Region D,2021-03-01,2876.86,1925.0,64.01
+ENT-00811,individual,Mark Hawkins,salaried,Region B,2022-07-30,4262.53,2725.0,141.89
+ENT-00812,individual,Eric Atkinson,self_employed,Region A,2024-07-10,2205.69,2125.0,237.56
+ENT-00813,individual,Tammy Murphy,salaried,Region D,2023-10-04,1327.57,2925.0,212.26
+ENT-00814,individual,Ronald Boyle,retired,Region B,2021-10-22,2751.86,950.0,76.39
+ENT-00815,individual,Sandra Johnson,salaried,Region F,2021-05-29,3155.92,1800.0,391.29
+ENT-00816,individual,Sabrina Atkins,salaried,Region F,2024-07-08,945.69,1750.0,438.82
+ENT-00817,individual,Jerry Porter,salaried,Region E,2022-05-19,1728.38,2175.0,256.82
+ENT-00818,individual,Ryan Anderson,salaried,Region F,2021-08-01,1689.51,2300.0,114.16
+ENT-00819,individual,Sandra Cox,self_employed,Region F,2021-03-12,2566.79,1425.0,155.9
+ENT-00820,individual,Timothy Stewart,gig,Region C,2022-11-02,1621.43,2875.0,144.41
+ENT-00821,individual,Rachel Lopez,retired,Region E,2023-01-18,848.97,2750.0,113.56
+ENT-00822,individual,Sandra Butler,retired,Region C,2024-05-23,2542.06,975.0,57.58
+ENT-00823,individual,Karen Mitchell,self_employed,Region C,2021-08-01,2038.66,2475.0,41.9
+ENT-00824,individual,Billy Long,salaried,Region F,2022-03-10,2031.91,2575.0,317.6
+ENT-00825,individual,Matthew Kim,salaried,Region C,2023-05-09,2056.65,3100.0,185.73
+ENT-00826,individual,Anthony Larson,self_employed,Region E,2022-06-24,2446.25,1125.0,129.09
+ENT-00827,individual,Kelly Parker,salaried,Region A,2021-11-15,4320.03,1975.0,373.91
+ENT-00828,individual,Thomas James,retired,Region E,2023-02-27,2400.99,1250.0,142.34
+ENT-00829,individual,Kristina Aguirre,self_employed,Region E,2021-05-11,1366.01,3325.0,112.0
+ENT-00830,individual,Dr. Lauren Andrews,self_employed,Region F,2024-10-24,1855.27,2800.0,307.26
+ENT-00831,individual,Christina Harris,salaried,Region F,2021-03-28,2284.15,2275.0,100.67
+ENT-00832,individual,Gary Stokes,salaried,Region F,2023-01-04,2771.84,950.0,357.77
+ENT-00833,individual,Stacy Snyder,salaried,Region F,2024-05-14,2369.58,1775.0,145.95
+ENT-00834,individual,Shannon Moore,salaried,Region B,2022-05-20,2639.4,975.0,637.76
+ENT-00835,individual,Kathy Perry,gig,Region A,2020-10-14,2690.23,1500.0,100.3
+ENT-00836,individual,Terry Moore,self_employed,Region D,2025-06-14,2069.84,1450.0,204.31
+ENT-00837,individual,Christopher Stewart,salaried,Region A,2022-02-09,2677.19,2400.0,73.64
+ENT-00838,individual,Vincent Key,salaried,Region F,2024-07-26,2372.91,3025.0,222.4
+ENT-00839,individual,Brent Baker,self_employed,Region C,2024-01-17,3108.01,3300.0,316.05
+ENT-00840,individual,Ivan Wiley,salaried,Region E,2022-01-02,1950.34,2150.0,145.14
+ENT-00841,individual,Paula Lopez,salaried,Region D,2023-06-22,2892.7,2875.0,258.82
+ENT-00842,individual,Andrew Nelson,salaried,Region E,2022-02-26,2707.4,1100.0,124.21
+ENT-00843,individual,Donna Torres,salaried,Region A,2023-03-07,1807.98,3050.0,268.51
+ENT-00844,individual,William Smith,salaried,Region B,2023-12-10,1296.74,1800.0,335.49
+ENT-00845,individual,Jordan Wood,self_employed,Region F,2022-06-21,2123.26,3025.0,165.94
+ENT-00846,individual,Stephanie Smith,self_employed,Region F,2021-04-06,2324.21,1750.0,48.81
+ENT-00847,individual,Kathy Swanson,gig,Region C,2023-06-23,2367.98,1225.0,149.3
+ENT-00848,individual,Julia Henry,salaried,Region A,2021-09-10,2584.2,3250.0,251.86
+ENT-00849,individual,Joseph Thomas,salaried,Region A,2022-09-14,2257.68,1200.0,419.75
+ENT-00850,individual,Erin Guerrero,salaried,Region A,2022-03-02,2756.42,2875.0,236.32
+ENT-00851,individual,Todd Foster,self_employed,Region F,2021-02-25,2138.92,1875.0,77.44
+ENT-00852,individual,Bianca White,gig,Region B,2022-07-18,1546.77,3075.0,102.62
+ENT-00853,individual,Robert Stephens,self_employed,Region B,2022-06-02,1158.63,2250.0,196.39
+ENT-00854,individual,Micheal Boone,salaried,Region E,2020-11-30,3593.59,1700.0,479.53
+ENT-00855,individual,Janet Reed,self_employed,Region E,2021-03-14,2316.23,1925.0,486.3
+ENT-00856,individual,Timothy Bowman,gig,Region D,2025-06-10,1823.1,2000.0,132.87
+ENT-00857,individual,Kathryn Gray,self_employed,Region A,2020-08-21,2073.5,1950.0,199.65
+ENT-00858,individual,Aaron Brown,salaried,Region F,2021-10-17,2163.47,1975.0,174.53
+ENT-00859,individual,Jordan Rogers,self_employed,Region F,2022-12-14,2684.96,3100.0,109.28
+ENT-00860,individual,Justin Lawson,retired,Region B,2022-04-10,4253.76,2275.0,154.03
+ENT-00861,individual,Lisa Lucas,gig,Region E,2021-12-26,2497.66,2500.0,141.93
+ENT-00862,individual,Brenda Espinoza,salaried,Region E,2021-01-30,1875.41,1575.0,236.44
+ENT-00863,individual,Eric Williams,salaried,Region E,2024-02-14,1545.85,2700.0,513.23
+ENT-00864,individual,Michael Lee,retired,Region F,2022-04-15,3947.45,1875.0,154.48
+ENT-00865,individual,Scott Russell,salaried,Region A,2021-11-18,1844.38,1550.0,165.17
+ENT-00866,individual,Trevor Greene,salaried,Region D,2023-05-07,2604.93,1300.0,187.69
+ENT-00867,individual,Linda Allen,salaried,Region E,2023-12-25,2164.29,3400.0,118.01
+ENT-00868,individual,George Humphrey,salaried,Region F,2024-06-12,1753.48,2275.0,145.24
+ENT-00869,individual,Michael Cortez,salaried,Region A,2025-01-18,2205.06,2575.0,181.48
+ENT-00870,individual,Carlos Martinez,salaried,Region E,2022-04-24,1902.31,3225.0,175.13
+ENT-00871,individual,Matthew Davis,salaried,Region D,2024-09-12,1769.21,1225.0,127.97
+ENT-00872,individual,Abigail Coffey,salaried,Region A,2021-03-09,1492.8,3200.0,230.47
+ENT-00873,individual,Debra Miller,self_employed,Region B,2020-10-01,2217.86,1950.0,415.6
+ENT-00874,individual,Julia Douglas,self_employed,Region F,2021-10-30,3932.1,2575.0,56.58
+ENT-00875,individual,Angela Peterson,self_employed,Region E,2020-10-11,2534.73,2250.0,118.57
+ENT-00876,individual,Crystal Ramirez,salaried,Region F,2023-06-03,4162.98,3250.0,389.6
+ENT-00877,individual,James Mooney,gig,Region C,2025-03-03,1134.35,2400.0,58.45
+ENT-00878,individual,Elizabeth Torres,salaried,Region A,2023-05-01,610.86,1175.0,467.38
+ENT-00879,individual,Christina Smith,salaried,Region A,2024-02-22,2973.21,2775.0,106.57
+ENT-00880,individual,Tiffany Jones,self_employed,Region B,2024-06-15,1545.04,1475.0,182.31
+ENT-00881,individual,Alan Leach,salaried,Region A,2021-03-26,2357.32,2500.0,65.14
+ENT-00882,individual,Krista Velasquez,retired,Region A,2020-10-25,3122.19,1600.0,311.66
+ENT-00883,individual,Amanda Butler,salaried,Region D,2023-12-21,1860.13,1350.0,223.45
+ENT-00884,individual,Alexis Adams,salaried,Region B,2021-02-05,2784.45,2600.0,194.1
+ENT-00885,individual,Julia Thomas,self_employed,Region A,2023-08-05,3366.35,2875.0,186.02
+ENT-00886,individual,Elijah Allen,salaried,Region B,2023-02-05,1588.4,1450.0,66.0
+ENT-00887,individual,Brian Morgan,salaried,Region B,2024-12-04,1515.27,2075.0,321.36
+ENT-00888,individual,Alejandro Vang,salaried,Region C,2025-02-20,2920.59,2675.0,336.82
+ENT-00889,individual,Michael Hartman,self_employed,Region A,2021-01-24,2090.27,2075.0,307.76
+ENT-00890,individual,Sandra Hernandez,gig,Region B,2022-01-19,2327.83,1325.0,229.71
+ENT-00891,individual,Samantha Kennedy,salaried,Region E,2023-10-14,2095.8,3100.0,419.49
+ENT-00892,individual,Laura Holden,gig,Region A,2021-03-21,1881.64,2700.0,133.25
+ENT-00893,individual,Juan Gibson,retired,Region B,2021-07-19,1634.38,1500.0,97.67
+ENT-00894,individual,William Waller,salaried,Region C,2022-11-17,1939.06,2650.0,117.86
+ENT-00895,individual,Loretta Hobbs,self_employed,Region A,2021-07-04,2303.87,2500.0,164.76
+ENT-00896,individual,Ms. Maria Russell,salaried,Region D,2023-02-24,2388.87,1975.0,145.05
+ENT-00897,individual,Antonio Thomas,self_employed,Region C,2023-11-14,2910.78,2925.0,227.72
+ENT-00898,individual,Connie Santos,salaried,Region D,2025-06-29,1440.41,1200.0,421.98
+ENT-00899,individual,Brittany Carroll,salaried,Region F,2021-05-17,2451.71,3275.0,140.22
+ENT-00900,individual,Sandra Johnson,self_employed,Region A,2023-02-02,4028.22,2750.0,112.14
+ENT-00901,individual,Robert Johnson,salaried,Region E,2023-01-25,2495.68,1025.0,132.94
+ENT-00902,individual,Brett Shah,self_employed,Region C,2023-09-25,3506.77,2725.0,142.02
+ENT-00903,individual,Mary Roberts,salaried,Region F,2024-05-27,2793.57,2750.0,179.58
+ENT-00904,individual,April Bender,salaried,Region B,2021-07-20,1814.13,2325.0,205.55
+ENT-00905,individual,Pamela Bush,salaried,Region E,2023-02-13,2528.42,1775.0,100.56
+ENT-00906,individual,Felicia Sandoval,self_employed,Region A,2024-04-03,2572.57,3225.0,175.05
+ENT-00907,individual,Dawn Carter,salaried,Region A,2023-10-16,2216.53,1425.0,163.34
+ENT-00908,individual,Miguel Barnes,retired,Region A,2021-09-12,3643.0,2625.0,182.73
+ENT-00909,individual,Austin Miller,salaried,Region E,2025-06-24,1168.43,3150.0,139.04
+ENT-00910,individual,Emily Hodges,salaried,Region A,2023-12-13,3480.08,1725.0,219.93
+ENT-00911,individual,Mckenzie Johnson,salaried,Region A,2023-05-23,1570.79,1350.0,336.47
+ENT-00912,individual,Erika Hamilton,salaried,Region E,2025-07-02,439.96,1075.0,250.54
+ENT-00913,individual,Mark Roman,gig,Region B,2023-07-22,1538.77,2275.0,385.69
+ENT-00914,individual,Mary Gutierrez,salaried,Region C,2022-05-31,2869.12,1975.0,259.68
+ENT-00915,individual,Shannon Warner,salaried,Region F,2023-07-09,745.81,2900.0,226.52
+ENT-00916,individual,Wendy Marquez,salaried,Region A,2024-11-26,2154.35,2025.0,236.36
+ENT-00917,individual,Brittany Lee,salaried,Region D,2021-11-04,3472.61,1450.0,79.28
+ENT-00918,individual,Emily Clark,salaried,Region C,2020-11-16,1962.91,2250.0,297.63
+ENT-00919,individual,Andrew Castillo,self_employed,Region C,2022-01-18,1776.62,2100.0,175.1
+ENT-00920,individual,Justin Smith,salaried,Region C,2023-01-21,2615.72,1425.0,205.13
+ENT-00921,individual,Amanda Massey,retired,Region E,2025-06-25,1991.69,2425.0,364.15
+ENT-00922,individual,Michael Harrison,salaried,Region C,2023-01-26,2557.28,925.0,246.69
+ENT-00923,individual,Adriana Lewis,salaried,Region F,2023-01-16,1942.41,3050.0,222.28
+ENT-00924,individual,Angela Manning,salaried,Region C,2021-12-06,2390.63,1575.0,96.48
+ENT-00925,individual,Marc Cruz,gig,Region C,2021-02-12,1624.53,1725.0,192.68
+ENT-00926,individual,Joseph Davidson,self_employed,Region B,2022-04-02,2801.86,1825.0,212.58
+ENT-00927,individual,Devin Daugherty,self_employed,Region E,2021-01-10,1728.22,975.0,202.73
+ENT-00928,individual,James Rodriguez,self_employed,Region B,2021-03-26,1095.28,2725.0,168.3
+ENT-00929,individual,Samuel Brown,salaried,Region F,2024-04-18,1555.05,2200.0,88.26
+ENT-00930,individual,David Lopez,self_employed,Region E,2022-07-24,3364.75,1000.0,94.38
+ENT-00931,individual,Robyn Mcpherson,self_employed,Region C,2023-04-10,2332.26,1775.0,180.53
+ENT-00932,individual,Danielle Davis,gig,Region E,2023-12-22,1783.44,3100.0,136.72
+ENT-00933,individual,Patricia Gill,salaried,Region C,2021-12-16,1452.97,1850.0,80.67
+ENT-00934,individual,Cheryl Mccarthy,salaried,Region A,2024-06-02,2271.98,1550.0,241.92
+ENT-00935,individual,Michele Johnson,self_employed,Region D,2022-10-29,1957.54,1025.0,193.26
+ENT-00936,individual,Marc Rodriguez,salaried,Region D,2023-09-24,1030.03,2125.0,261.88
+ENT-00937,individual,Timothy Schultz MD,self_employed,Region D,2024-06-19,1945.15,2600.0,328.17
+ENT-00938,individual,Jeremy Henry,salaried,Region C,2022-05-13,2094.75,2100.0,77.95
+ENT-00939,individual,Phillip Simmons,salaried,Region B,2021-09-02,2038.03,1675.0,422.68
+ENT-00940,individual,Courtney Mitchell,gig,Region C,2020-12-10,2109.37,1400.0,203.0
+ENT-00941,individual,Melissa Escobar PhD,salaried,Region C,2024-06-26,1355.37,1800.0,449.74
+ENT-00942,individual,David Castro,salaried,Region C,2021-03-04,2317.93,2500.0,225.76
+ENT-00943,individual,Amanda Cooper,salaried,Region F,2024-09-18,2883.72,2150.0,125.37
+ENT-00944,individual,Lance Johnson,self_employed,Region C,2023-11-04,1887.48,1775.0,311.22
+ENT-00945,individual,Rachel Robinson,self_employed,Region B,2024-02-01,1927.65,3275.0,256.0
+ENT-00946,individual,Susan Brown,self_employed,Region F,2020-08-14,1521.36,1500.0,97.13
+ENT-00947,individual,Jacob Wood,retired,Region B,2024-01-25,2062.89,1600.0,320.62
+ENT-00948,individual,Dr. Bryan Taylor,salaried,Region E,2023-01-25,1527.8,1050.0,160.92
+ENT-00949,individual,Randy Mitchell,salaried,Region C,2023-08-15,5196.6,1075.0,85.16
+ENT-00950,individual,Michael Wagner,gig,Region E,2023-05-08,1523.43,1600.0,68.39
+ENT-00951,individual,Deborah Baker,salaried,Region F,2021-11-24,2693.86,900.0,129.84
+ENT-00952,individual,Joseph Evans,salaried,Region D,2024-02-03,3630.62,2750.0,197.16
+ENT-00953,individual,Matthew Brennan,salaried,Region F,2024-10-18,2975.61,1275.0,219.98
+ENT-00954,individual,Andrea Davis,salaried,Region E,2024-04-18,1776.91,2925.0,425.75
+ENT-00955,individual,Andrea Kim,salaried,Region D,2020-11-21,1645.24,3275.0,204.83
+ENT-00956,individual,Heather Wilson,self_employed,Region C,2024-07-10,1349.3,1825.0,255.83
+ENT-00957,individual,Victoria Medina,salaried,Region F,2023-03-13,1724.95,2125.0,311.76
+ENT-00958,individual,Mark Adams,salaried,Region E,2021-07-03,1873.11,2850.0,123.82
+ENT-00959,individual,Vanessa Patterson DDS,salaried,Region E,2024-07-25,3274.77,1175.0,144.9
+ENT-00960,individual,Elizabeth Walker,salaried,Region C,2020-12-11,2567.84,2750.0,97.2
+ENT-00961,individual,James Phillips,salaried,Region D,2025-01-19,1972.49,1100.0,105.88
+ENT-00962,individual,Carlos Rivers,salaried,Region F,2025-01-04,1914.83,3300.0,122.3
+ENT-00963,individual,Kathleen James,gig,Region D,2023-06-03,2231.49,2825.0,200.14
+ENT-00964,individual,Sarah Mckee,salaried,Region B,2023-02-24,2499.51,3050.0,88.18
+ENT-00965,individual,Jeremiah Hernandez,gig,Region D,2024-03-31,2826.39,3200.0,305.04
+ENT-00966,individual,Laura Cross,gig,Region F,2023-07-03,2442.06,1250.0,182.47
+ENT-00967,individual,Whitney Sanders,salaried,Region B,2022-08-09,2198.75,1875.0,73.01
+ENT-00968,individual,Eric Morris,salaried,Region A,2022-03-16,3187.6,1725.0,477.68
+ENT-00969,individual,Katherine Jones,salaried,Region D,2024-10-29,2500.53,1950.0,144.59
+ENT-00970,individual,Travis Wilson,self_employed,Region F,2022-11-21,2596.7,1575.0,127.06
+ENT-00971,individual,Jonathan Parker,salaried,Region A,2022-03-05,2805.69,1875.0,230.32
+ENT-00972,individual,Martin Williamson,salaried,Region A,2021-07-22,1988.28,1325.0,164.52
+ENT-00973,individual,Andrea Montgomery,retired,Region F,2025-02-18,2926.79,3225.0,315.32
+ENT-00974,individual,Connor Jones,self_employed,Region F,2025-04-18,1153.23,2625.0,115.29
+ENT-00975,individual,Matthew Poole,salaried,Region A,2021-12-05,1285.54,1675.0,163.75
+ENT-00976,individual,Jennifer Myers,gig,Region D,2021-08-03,1268.89,1850.0,85.69
+ENT-00977,individual,April Williams,salaried,Region C,2022-11-09,4773.93,2975.0,425.48
+ENT-00978,individual,Laura Vazquez,salaried,Region E,2024-04-27,2814.73,2475.0,292.21
+ENT-00979,individual,Eric Moran,gig,Region B,2021-12-31,1438.17,3325.0,70.24
+ENT-00980,individual,Sharon Lopez,salaried,Region F,2020-11-30,1811.54,2250.0,218.54
+ENT-00981,individual,Alec Smith,salaried,Region F,2024-06-20,1974.62,3000.0,141.56
+ENT-00982,individual,Allen Lee,salaried,Region C,2025-06-21,1270.44,1725.0,175.45
+ENT-00983,individual,Andre Gonzalez,salaried,Region C,2023-06-13,2151.86,1775.0,308.44
+ENT-00984,individual,Peggy Long,salaried,Region E,2025-06-05,1972.42,2100.0,209.62
+ENT-00985,individual,Christina Smith DVM,salaried,Region A,2023-10-30,1470.6,2900.0,89.35
+ENT-00986,individual,Lori Roth,self_employed,Region B,2021-03-09,1169.47,3300.0,201.32
+ENT-00987,individual,Katie Miller,self_employed,Region A,2024-04-09,1438.47,1875.0,78.8
+ENT-00988,individual,Charles Curtis,salaried,Region C,2023-03-10,2717.36,1875.0,103.08
+ENT-00989,individual,Justin Moore,salaried,Region C,2024-06-15,3060.6,1325.0,324.34
+ENT-00990,individual,John Patel,salaried,Region D,2022-10-13,1563.28,1325.0,200.31
+ENT-00991,individual,Melissa Baxter,gig,Region E,2021-05-27,1305.74,1275.0,256.44
+ENT-00992,individual,Mrs. Brittany Rodriguez,salaried,Region F,2024-05-11,2001.34,2475.0,167.4
+ENT-00993,individual,Taylor Jackson,retired,Region C,2022-03-26,1458.72,2675.0,188.3
+ENT-00994,individual,Stephanie Logan,salaried,Region E,2021-12-22,1332.02,2425.0,137.47
+ENT-00995,individual,Michael Carpenter,salaried,Region F,2024-10-21,1117.72,2400.0,139.5
+ENT-00996,individual,Mark Bailey,salaried,Region A,2021-07-19,2781.87,1600.0,232.43
+ENT-00997,individual,Michael Robinson MD,retired,Region B,2023-04-08,1289.83,3225.0,337.22
+ENT-00998,individual,Patricia Christensen,salaried,Region D,2023-02-28,1189.93,2425.0,473.54
+ENT-00999,individual,Shirley Moran,salaried,Region C,2024-01-26,1969.06,2800.0,98.17
+ENT-01000,individual,Julie Lopez,gig,Region C,2024-08-23,1672.65,2450.0,137.87
+ENT-01001,individual,Rose Hughes,salaried,Region F,2021-08-30,1636.97,3175.0,753.42
+ENT-01002,individual,Theresa Martinez,salaried,Region E,2025-04-03,2768.57,2700.0,111.93
+ENT-01003,individual,Debbie Cobb,salaried,Region E,2021-03-31,1693.6,2475.0,206.25
+ENT-01004,individual,Daniel Wallace,salaried,Region C,2024-03-29,1968.53,1525.0,289.08
+ENT-01005,individual,Cody Gonzales,salaried,Region B,2020-11-11,3889.76,3000.0,396.78
+ENT-01006,individual,Melissa Cook,self_employed,Region A,2022-05-27,3123.34,3025.0,134.16
+ENT-01007,individual,Jeffery Boyd,salaried,Region D,2023-09-13,1726.54,2700.0,106.86
+ENT-01008,individual,Anthony Conrad,salaried,Region D,2021-11-03,2025.13,925.0,104.9
+ENT-01009,individual,Scott Smith,salaried,Region B,2022-12-22,1501.02,3400.0,115.09
+ENT-01010,individual,Ryan Conner,self_employed,Region F,2020-08-20,3584.79,2675.0,79.01
+ENT-01011,individual,Rebekah Jenkins,salaried,Region B,2024-03-25,2091.38,1675.0,61.75
+ENT-01012,individual,Donna Padilla,salaried,Region F,2021-10-29,1860.5,2125.0,375.99
+ENT-01013,individual,Jessica Mills,salaried,Region F,2025-02-28,1510.9,2050.0,350.31
+ENT-01014,individual,Jason Allen,salaried,Region C,2023-02-28,2305.62,2375.0,61.31
+ENT-01015,individual,Tammy Hill,salaried,Region E,2022-06-28,2568.33,1125.0,85.76
+ENT-01016,individual,James Brown,salaried,Region B,2025-01-23,2038.4,1400.0,62.84
+ENT-01017,individual,Austin Scott,salaried,Region B,2024-03-18,3501.75,2700.0,167.76
+ENT-01018,individual,Natasha Morris,salaried,Region B,2025-02-03,1342.1,3075.0,104.61
+ENT-01019,individual,Brandon Blake,salaried,Region A,2021-02-28,1526.4,2825.0,248.18
+ENT-01020,individual,Richard Sanders,retired,Region B,2024-02-04,2553.27,1600.0,80.51
+ENT-01021,individual,Patrick Daugherty Jr.,salaried,Region A,2022-01-19,3195.49,2250.0,133.36
+ENT-01022,individual,Juan Sanders,gig,Region C,2025-04-06,1590.14,2700.0,322.0
+ENT-01023,individual,Joshua Brown,gig,Region E,2025-03-23,2314.54,2325.0,367.16
+ENT-01024,individual,Lawrence Clark,salaried,Region F,2022-09-30,3075.56,2925.0,110.03
+ENT-01025,individual,Edward Haynes,salaried,Region F,2024-12-17,2249.4,1625.0,167.9
+ENT-01026,individual,Douglas Johnson,salaried,Region C,2025-05-06,1786.19,1825.0,122.26
+ENT-01027,individual,Lisa Velez,retired,Region D,2020-08-10,2035.69,2075.0,125.35
+ENT-01028,individual,Diane Carter,salaried,Region F,2022-07-23,1501.82,1400.0,69.3
+ENT-01029,individual,James White,salaried,Region D,2024-12-19,3091.32,1875.0,173.45
+ENT-01030,individual,Lisa Collins,salaried,Region D,2021-12-04,2266.1,2425.0,78.98
+ENT-01031,individual,Brian Mendoza,salaried,Region C,2025-02-24,1467.25,2100.0,221.42
+ENT-01032,individual,Lauren Marks,gig,Region B,2022-11-11,1896.3,925.0,89.3
+ENT-01033,individual,Dana Lopez,salaried,Region A,2021-04-27,2437.0,2950.0,145.19
+ENT-01034,individual,Julie Cox,salaried,Region D,2023-10-28,2802.27,1025.0,894.54
+ENT-01035,individual,Breanna Mcintosh,salaried,Region D,2024-03-26,2421.38,2875.0,153.04
+ENT-01036,individual,Debbie Collins,salaried,Region A,2022-10-30,2375.51,2875.0,294.33
+ENT-01037,individual,Jonathan Fields,salaried,Region F,2025-02-28,2893.46,2725.0,276.76
+ENT-01038,individual,Veronica Reid,salaried,Region C,2023-02-02,2652.38,2550.0,168.76
+ENT-01039,individual,Julia Leach,self_employed,Region C,2021-04-22,2413.94,1350.0,248.4
+ENT-01040,individual,Brandon Tyler,self_employed,Region D,2021-02-07,2957.89,2575.0,139.71
+ENT-01041,individual,Jaime Ellis,salaried,Region F,2021-09-08,2331.25,1050.0,129.75
+ENT-01042,individual,Kyle Rose,salaried,Region E,2021-08-01,1655.21,1175.0,355.85
+ENT-01043,individual,Kirsten Smith MD,retired,Region F,2021-06-30,2320.89,2275.0,75.42
+ENT-01044,individual,Jessica Rogers,retired,Region E,2022-09-19,2450.84,1025.0,110.85
+ENT-01045,individual,Jimmy Brown,salaried,Region C,2025-04-28,1539.18,2225.0,209.11
+ENT-01046,individual,Jason Olson,self_employed,Region A,2024-01-07,2425.56,2850.0,222.91
+ENT-01047,individual,Kristin Wall,self_employed,Region C,2021-07-21,1463.71,1475.0,213.9
+ENT-01048,individual,Debbie Contreras,salaried,Region C,2023-03-10,2641.95,2400.0,270.85
+ENT-01049,individual,Jack Wyatt,salaried,Region E,2024-10-13,2151.71,1075.0,495.08
+ENT-01050,individual,Tyler Johnston,salaried,Region A,2023-07-20,2603.82,1750.0,264.65
+ENT-01051,business,Smith-Hardy 0001,wholesale,Region E,2024-10-21,0.0,0.0,6421.0
+ENT-01052,business,"Fleming, Thomas and Kelley 0002",professional_services,Region D,2022-04-01,0.0,0.0,477.72
+ENT-01053,business,Lopez-Simpson 0003,retail_cash_intensive,Region B,2021-06-23,0.0,0.0,9854.59
+ENT-01054,business,Gillespie-Rice 0004,ecommerce,Region F,2024-04-06,0.0,0.0,1332.63
+ENT-01055,business,Henry-Anderson 0005,wholesale,Region C,2023-12-15,0.0,0.0,5945.96
+ENT-01056,business,Anderson-Thomas 0006,retail_cash_intensive,Region C,2024-05-30,0.0,0.0,4032.15
+ENT-01057,business,Brennan-Smith 0007,professional_services,Region E,2022-06-28,0.0,0.0,6886.96
+ENT-01058,business,Thomas Ltd 0008,professional_services,Region C,2024-11-17,0.0,0.0,898.44
+ENT-01059,business,Moore-Miller 0009,wholesale,Region D,2021-06-25,0.0,0.0,4878.75
+ENT-01060,business,"Martin, Rasmussen and Miller 0010",wholesale,Region E,2024-01-23,0.0,0.0,6991.41
+ENT-01061,business,"Soto, Spence and Johnson 0011",professional_services,Region B,2020-08-19,0.0,0.0,10269.36
+ENT-01062,business,Frederick-Brock 0012,wholesale,Region A,2023-02-05,0.0,0.0,3093.94
+ENT-01063,business,King Ltd 0013,professional_services,Region F,2021-08-26,0.0,0.0,3566.53
+ENT-01064,business,Anderson-Smith 0014,retail_cash_intensive,Region D,2020-12-09,0.0,0.0,1480.27
+ENT-01065,business,Carney-Nguyen 0015,professional_services,Region B,2021-01-29,0.0,0.0,2155.63
+ENT-01066,business,"Smith, Davis and Silva 0016",professional_services,Region D,2025-03-25,0.0,0.0,1611.41
+ENT-01067,business,Parker-Pope 0017,wholesale,Region C,2021-11-01,0.0,0.0,1781.43
+ENT-01068,business,Nichols Ltd 0018,professional_services,Region B,2022-11-15,0.0,0.0,1552.38
+ENT-01069,business,"Moore, Graham and Campbell 0019",wholesale,Region B,2021-03-10,0.0,0.0,756.89
+ENT-01070,business,Scott-Smith 0020,professional_services,Region A,2020-11-28,0.0,0.0,2494.76
+ENT-01071,business,"Rodriguez, Morrison and Allen 0021",ecommerce,Region D,2023-09-13,0.0,0.0,1064.76
+ENT-01072,business,Carpenter Inc 0022,retail_cash_intensive,Region B,2023-06-04,0.0,0.0,988.8
+ENT-01073,business,Whitehead-Henderson 0023,professional_services,Region B,2024-11-12,0.0,0.0,1906.52
+ENT-01074,business,"Lara, Mckenzie and Chavez 0024",professional_services,Region A,2021-03-07,0.0,0.0,1115.09
+ENT-01075,business,Hodges-Hayes 0025,ecommerce,Region B,2022-01-12,0.0,0.0,535.92
+ENT-01076,business,Pearson and Sons 0026,professional_services,Region F,2022-06-20,0.0,0.0,3824.98
+ENT-01077,business,Diaz-Smith 0027,professional_services,Region D,2024-04-08,0.0,0.0,3003.75
+ENT-01078,business,Bentley-Long 0028,professional_services,Region D,2025-03-03,0.0,0.0,2276.61
+ENT-01079,business,Zimmerman-Rowe 0029,wholesale,Region A,2025-01-02,0.0,0.0,3592.29
+ENT-01080,business,Gonzales Group 0030,ecommerce,Region C,2024-12-15,0.0,0.0,805.82
+ENT-01081,business,Jones Group 0031,wholesale,Region B,2021-11-01,0.0,0.0,1865.59
+ENT-01082,business,"Newman, Peterson and Andrade 0032",retail_cash_intensive,Region F,2023-09-28,0.0,0.0,4003.21
+ENT-01083,business,Vega-Jackson 0033,ecommerce,Region C,2021-04-14,0.0,0.0,1888.95
+ENT-01084,business,Allen and Sons 0034,ecommerce,Region F,2024-10-07,0.0,0.0,7044.94
+ENT-01085,business,Reeves Group 0035,professional_services,Region E,2024-02-23,0.0,0.0,1620.98
+ENT-01086,business,"Jones, Villarreal and Gaines 0036",ecommerce,Region F,2023-03-28,0.0,0.0,2437.5
+ENT-01087,business,Pearson Ltd 0037,professional_services,Region D,2025-05-28,0.0,0.0,2967.48
+ENT-01088,business,Cole Inc 0038,ecommerce,Region B,2023-06-15,0.0,0.0,2247.12
+ENT-01089,business,Weber Inc 0039,ecommerce,Region E,2024-04-09,0.0,0.0,1616.79
+ENT-01090,business,Orr Inc 0040,retail_cash_intensive,Region B,2023-05-22,0.0,0.0,8132.92
+ENT-01091,business,Downs LLC 0041,retail_cash_intensive,Region E,2024-05-15,0.0,0.0,5457.07
+ENT-01092,business,Vargas-Miller 0042,wholesale,Region C,2025-06-22,0.0,0.0,3897.54
+ENT-01093,business,Fisher-Kelly 0043,wholesale,Region E,2020-10-05,0.0,0.0,1816.02
+ENT-01094,business,"Watkins, Chapman and Thompson 0044",wholesale,Region F,2024-04-14,0.0,0.0,1664.32
+ENT-01095,business,Shaw-Murray 0045,retail_cash_intensive,Region D,2023-12-31,0.0,0.0,2257.17
+ENT-01096,business,Stout-Sheppard 0046,ecommerce,Region E,2024-10-05,0.0,0.0,4571.7
+ENT-01097,business,Fleming-Castillo 0047,retail_cash_intensive,Region F,2023-04-10,0.0,0.0,6603.73
+ENT-01098,business,Wiggins Ltd 0048,professional_services,Region A,2025-02-01,0.0,0.0,4438.37
+ENT-01099,business,"Wilson, Jordan and Briggs 0049",ecommerce,Region C,2024-12-27,0.0,0.0,3673.52
+ENT-01100,business,"Burns, Carpenter and Gillespie 0050",wholesale,Region D,2022-07-12,0.0,0.0,2106.0
+ENT-01101,business,Wilson and Sons 0051,retail_cash_intensive,Region E,2025-01-19,0.0,0.0,1580.95
+ENT-01102,business,Scott-Sanchez 0052,ecommerce,Region D,2024-07-10,0.0,0.0,457.13
+ENT-01103,business,Craig-Doyle 0053,professional_services,Region C,2021-12-09,0.0,0.0,1271.76
+ENT-01104,business,"Davis, Blackburn and Reed 0054",professional_services,Region E,2021-12-16,0.0,0.0,2999.35
+ENT-01105,business,Marquez-Russell 0055,professional_services,Region D,2022-10-20,0.0,0.0,988.13
+ENT-01106,business,"Baker, Valdez and Morrison 0056",ecommerce,Region B,2022-11-20,0.0,0.0,2115.56
+ENT-01107,business,Bradford Inc 0057,wholesale,Region C,2022-05-31,0.0,0.0,1435.4
+ENT-01108,business,Rhodes PLC 0058,wholesale,Region D,2022-10-02,0.0,0.0,1149.7
+ENT-01109,business,"Hall, Diaz and Smith 0059",ecommerce,Region C,2024-09-18,0.0,0.0,2018.53
+ENT-01110,business,White-Page 0060,professional_services,Region E,2024-12-15,0.0,0.0,3843.23
+ENT-01111,business,Barnes LLC 0061,wholesale,Region C,2024-05-24,0.0,0.0,12193.83
+ENT-01112,business,Novak PLC 0062,professional_services,Region A,2024-09-27,0.0,0.0,4984.07
+ENT-01113,business,"Taylor, Young and Fowler 0063",professional_services,Region A,2023-03-14,0.0,0.0,4919.2
+ENT-01114,business,Turner-Diaz 0064,retail_cash_intensive,Region B,2021-02-04,0.0,0.0,541.52
+ENT-01115,business,Gates-Hernandez 0065,ecommerce,Region E,2024-02-15,0.0,0.0,1370.36
+ENT-01116,business,Decker Inc 0066,professional_services,Region C,2025-05-20,0.0,0.0,3610.3
+ENT-01117,business,Green-Williams 0067,ecommerce,Region B,2024-03-24,0.0,0.0,3767.66
+ENT-01118,business,"Allen, Walker and Graham 0068",professional_services,Region E,2021-07-11,0.0,0.0,1579.56
+ENT-01119,business,Barry-Munoz 0069,wholesale,Region C,2021-02-14,0.0,0.0,1116.21
+ENT-01120,business,"Hurley, Lucas and Williams 0070",wholesale,Region C,2020-08-20,0.0,0.0,3762.78
+ENT-01121,business,Meadows-Lawrence 0071,retail_cash_intensive,Region F,2023-10-12,0.0,0.0,3022.97
+ENT-01122,business,Munoz and Sons 0072,wholesale,Region B,2023-05-27,0.0,0.0,1418.42
+ENT-01123,business,Hayes LLC 0073,ecommerce,Region B,2024-03-25,0.0,0.0,4822.44
+ENT-01124,business,Collins-Jenkins 0074,retail_cash_intensive,Region A,2021-11-25,0.0,0.0,1977.37
+ENT-01125,business,Gross-Murphy 0075,wholesale,Region A,2024-02-27,0.0,0.0,2074.58
+ENT-01126,business,Diaz PLC 0076,wholesale,Region D,2023-07-17,0.0,0.0,3546.15
+ENT-01127,business,Williams and Sons 0077,professional_services,Region C,2022-03-18,0.0,0.0,3987.46
+ENT-01128,business,"Castillo, Malone and Bryan 0078",retail_cash_intensive,Region A,2023-06-16,0.0,0.0,1747.74
+ENT-01129,business,Hurst-Newton 0079,ecommerce,Region D,2022-02-02,0.0,0.0,1005.7
+ENT-01130,business,Miranda-Perkins 0080,wholesale,Region B,2025-04-19,0.0,0.0,1497.22
+ENT-01131,business,"Davis, Fisher and Jacobs 0081",wholesale,Region D,2021-09-24,0.0,0.0,16705.72
+ENT-01132,business,"Jones, Casey and Robinson 0082",wholesale,Region F,2022-02-21,0.0,0.0,3144.48
+ENT-01133,business,Mann-Young 0083,wholesale,Region B,2023-06-24,0.0,0.0,3150.65
+ENT-01134,business,Morales-Sanders 0084,professional_services,Region E,2024-10-20,0.0,0.0,1789.64
+ENT-01135,business,"Robinson, Martinez and Obrien 0085",wholesale,Region F,2024-02-05,0.0,0.0,1116.19
+ENT-01136,business,"Ewing, Johns and David 0086",wholesale,Region E,2022-12-18,0.0,0.0,1228.59
+ENT-01137,business,Lee PLC 0087,wholesale,Region A,2023-02-25,0.0,0.0,2360.33
+ENT-01138,business,Perry-Evans 0088,retail_cash_intensive,Region F,2020-09-07,0.0,0.0,1081.51
+ENT-01139,business,Brown-Nunez 0089,professional_services,Region D,2021-06-03,0.0,0.0,4508.28
+ENT-01140,business,Gibson Group 0090,wholesale,Region D,2025-01-12,0.0,0.0,1845.69
+ENT-01141,business,Murphy-Eaton 0091,wholesale,Region F,2024-12-09,0.0,0.0,5556.46
+ENT-01142,business,Hill-Sanchez 0092,ecommerce,Region D,2023-06-14,0.0,0.0,4557.72
+ENT-01143,business,"Howard, Jones and Berry 0093",retail_cash_intensive,Region E,2024-10-12,0.0,0.0,3492.16
+ENT-01144,business,"Rice, Wood and Thomas 0094",ecommerce,Region A,2023-11-30,0.0,0.0,5202.55
+ENT-01145,business,Clark Group 0095,ecommerce,Region D,2022-03-22,0.0,0.0,6128.62
+ENT-01146,business,Herrera Inc 0096,wholesale,Region E,2021-08-19,0.0,0.0,1582.19
+ENT-01147,business,"Harris, Villarreal and Mason 0097",professional_services,Region E,2020-08-18,0.0,0.0,1877.21
+ENT-01148,business,"Lucero, Collier and Cisneros 0098",wholesale,Region B,2023-03-26,0.0,0.0,2547.71
+ENT-01149,business,"Moore, Pearson and Cooley 0099",professional_services,Region F,2023-02-22,0.0,0.0,1381.36
+ENT-01150,business,"Young, Lopez and Mccarthy 0100",ecommerce,Region B,2021-11-29,0.0,0.0,812.33
+ENT-01151,business,"Potter, Thomas and Barrett 0101",wholesale,Region D,2024-05-12,0.0,0.0,3142.37
+ENT-01152,business,Byrd Ltd 0102,professional_services,Region A,2021-12-28,0.0,0.0,5865.77
+ENT-01153,business,"Novak, Powell and Smith 0103",ecommerce,Region B,2022-05-27,0.0,0.0,12939.24
+ENT-01154,business,Lee-Mcmahon 0104,professional_services,Region C,2021-06-16,0.0,0.0,2954.01
+ENT-01155,business,Lee-Mclean 0105,professional_services,Region D,2020-10-15,0.0,0.0,2553.37
+ENT-01156,business,Schwartz-Long 0106,professional_services,Region F,2022-10-20,0.0,0.0,7142.4
+ENT-01157,business,"Anderson, Carter and Swanson 0107",ecommerce,Region F,2024-05-18,0.0,0.0,3376.23
+ENT-01158,business,Shannon Ltd 0108,professional_services,Region C,2021-11-09,0.0,0.0,4487.66
+ENT-01159,business,Mckenzie LLC 0109,wholesale,Region F,2021-09-21,0.0,0.0,2118.08
+ENT-01160,business,"Luna, Walker and Proctor 0110",professional_services,Region D,2024-10-02,0.0,0.0,3591.49
+ENT-01161,business,Rojas LLC 0111,wholesale,Region C,2022-02-07,0.0,0.0,1181.14
+ENT-01162,business,Roberts-White 0112,ecommerce,Region D,2023-03-18,0.0,0.0,635.48
+ENT-01163,business,Jordan Inc 0113,retail_cash_intensive,Region A,2022-05-08,0.0,0.0,1739.33
+ENT-01164,business,Roberts-Suarez 0114,ecommerce,Region A,2023-09-04,0.0,0.0,4465.98
+ENT-01165,business,Villarreal LLC 0115,ecommerce,Region C,2020-09-18,0.0,0.0,1845.25
+ENT-01166,business,"Hoffman, Chen and Ayers 0116",professional_services,Region A,2024-05-07,0.0,0.0,3852.76
+ENT-01167,business,Velazquez Ltd 0117,professional_services,Region E,2023-03-03,0.0,0.0,3973.23
+ENT-01168,business,Hodge Group 0118,retail_cash_intensive,Region A,2021-08-04,0.0,0.0,755.31
+ENT-01169,business,"Fuller, Johnson and Reid 0119",professional_services,Region F,2023-08-13,0.0,0.0,1859.05
+ENT-01170,business,Nunez Group 0120,wholesale,Region C,2021-12-18,0.0,0.0,1993.36
+ENT-01171,business,"Munoz, Rogers and Brown 0121",professional_services,Region E,2022-07-04,0.0,0.0,1977.43
+ENT-01172,business,"Bradley, Miller and Howard 0122",ecommerce,Region D,2021-05-05,0.0,0.0,5067.31
+ENT-01173,business,Daugherty-Savage 0123,retail_cash_intensive,Region A,2024-04-19,0.0,0.0,2527.92
+ENT-01174,business,Green-Page 0124,professional_services,Region F,2022-07-20,0.0,0.0,7233.1
+ENT-01175,business,Martinez Group 0125,professional_services,Region E,2023-08-23,0.0,0.0,1332.59
+ENT-01176,business,Cabrera and Sons 0126,wholesale,Region C,2020-09-04,0.0,0.0,3038.67
+ENT-01177,business,Gibson-Watson 0127,ecommerce,Region B,2022-03-02,0.0,0.0,1316.7
+ENT-01178,business,"Coffey, Hughes and Terry 0128",wholesale,Region F,2024-07-11,0.0,0.0,2219.78
+ENT-01179,business,"Smith, Brown and Barker 0129",professional_services,Region C,2021-08-26,0.0,0.0,402.53
+ENT-01180,business,"Boyle, Crosby and Foster 0130",retail_cash_intensive,Region E,2023-05-02,0.0,0.0,1631.37
+ENT-01181,business,Rice LLC 0131,professional_services,Region F,2022-02-13,0.0,0.0,2249.36
+ENT-01182,business,Bautista-Willis 0132,wholesale,Region F,2021-01-18,0.0,0.0,552.11
+ENT-01183,business,"Meadows, Ho and Peck 0133",professional_services,Region D,2022-02-11,0.0,0.0,2032.27
+ENT-01184,business,Arnold-Mckenzie 0134,wholesale,Region D,2021-10-10,0.0,0.0,1851.83
+ENT-01185,business,Knight LLC 0135,retail_cash_intensive,Region F,2023-01-26,0.0,0.0,3257.26
+ENT-01186,business,"Dawson, Miller and Edwards 0136",professional_services,Region C,2025-04-15,0.0,0.0,4435.69
+ENT-01187,business,"Harrell, Baker and Robinson 0137",professional_services,Region A,2022-12-01,0.0,0.0,1896.01
+ENT-01188,business,Bell-Wise 0138,wholesale,Region B,2022-11-06,0.0,0.0,2763.87
+ENT-01189,business,"Soto, Guerra and White 0139",wholesale,Region D,2023-07-24,0.0,0.0,2926.31
+ENT-01190,business,Barber-Davila 0140,wholesale,Region F,2023-12-02,0.0,0.0,4179.34
+ENT-01191,business,Brown-Marsh 0141,professional_services,Region E,2022-11-09,0.0,0.0,4110.06
+ENT-01192,business,Gonzalez Inc 0142,professional_services,Region F,2024-12-10,0.0,0.0,4205.26
+ENT-01193,business,Lozano PLC 0143,retail_cash_intensive,Region A,2022-12-14,0.0,0.0,2093.92
+ENT-01194,business,"Gutierrez, Walker and Holland 0144",wholesale,Region C,2023-09-15,0.0,0.0,1976.18
+ENT-01195,business,"Kelly, Walton and Ochoa 0145",professional_services,Region E,2025-06-11,0.0,0.0,695.02
+ENT-01196,business,Figueroa Inc 0146,wholesale,Region D,2024-01-03,0.0,0.0,1999.32
+ENT-01197,business,"Kline, Duke and Olson 0147",ecommerce,Region A,2023-01-11,0.0,0.0,2883.48
+ENT-01198,business,Thompson-Allen 0148,professional_services,Region A,2021-01-24,0.0,0.0,452.18
+ENT-01199,business,Martinez LLC 0149,professional_services,Region B,2025-01-02,0.0,0.0,1946.57
+ENT-01200,business,"Burch, Dunn and Woods 0150",wholesale,Region C,2024-02-20,0.0,0.0,2054.42
+ENT-01201,business,Copeland LLC 0151,wholesale,Region C,2022-03-19,0.0,0.0,2811.52
+ENT-01202,business,Hamilton and Sons 0152,professional_services,Region E,2025-02-24,0.0,0.0,1088.07
+ENT-01203,business,"Evans, Gilbert and Mercado 0153",wholesale,Region A,2023-08-18,0.0,0.0,6797.23
+ENT-01204,business,"Daugherty, Mahoney and Sullivan 0154",wholesale,Region E,2021-09-23,0.0,0.0,2845.31
+ENT-01205,business,Ruiz Group 0155,professional_services,Region A,2024-03-23,0.0,0.0,4312.13
+ENT-01206,business,"Huang, Cochran and Jones 0156",ecommerce,Region A,2022-03-15,0.0,0.0,1999.24
+ENT-01207,business,Thomas Group 0157,retail_cash_intensive,Region A,2023-08-06,0.0,0.0,4043.35
+ENT-01208,business,"Murphy, Young and Garcia 0158",ecommerce,Region F,2021-04-29,0.0,0.0,3152.15
+ENT-01209,business,Smith PLC 0159,ecommerce,Region E,2022-02-12,0.0,0.0,2845.62
+ENT-01210,business,"Jones, Chase and Atkins 0160",retail_cash_intensive,Region F,2021-11-04,0.0,0.0,1439.85
+ENT-01211,business,Porter Group 0161,professional_services,Region C,2023-10-27,0.0,0.0,5542.57
+ENT-01212,business,"Williams, Edwards and Smith 0162",ecommerce,Region F,2021-02-07,0.0,0.0,1149.83
+ENT-01213,business,Barnes and Sons 0163,retail_cash_intensive,Region E,2023-06-08,0.0,0.0,5861.29
+ENT-01214,business,Yates PLC 0164,professional_services,Region F,2022-10-03,0.0,0.0,2302.93
+ENT-01215,business,"Mcmillan, Peterson and Sherman 0165",ecommerce,Region E,2022-08-19,0.0,0.0,5785.71
+ENT-01216,business,"Patton, Sanders and Carpenter 0166",retail_cash_intensive,Region D,2024-05-01,0.0,0.0,2766.81
+ENT-01217,business,Johnson-Higgins 0167,ecommerce,Region F,2024-08-29,0.0,0.0,2419.86
+ENT-01218,business,Juarez Group 0168,professional_services,Region C,2022-04-12,0.0,0.0,3490.43
+ENT-01219,business,Johnson and Sons 0169,ecommerce,Region E,2025-03-04,0.0,0.0,2159.18
+ENT-01220,business,Brown-Kennedy 0170,wholesale,Region D,2023-07-05,0.0,0.0,2464.58
+ENT-01221,business,Hicks-Pierce 0171,ecommerce,Region B,2025-01-17,0.0,0.0,1907.49
+ENT-01222,business,Miller-Lane 0172,wholesale,Region C,2025-06-12,0.0,0.0,3442.97
+ENT-01223,business,"Cruz, Garcia and Mercado 0173",professional_services,Region D,2024-06-12,0.0,0.0,3726.02
+ENT-01224,business,Martinez Ltd 0174,professional_services,Region F,2021-11-25,0.0,0.0,1252.15
+ENT-01225,business,Beasley Ltd 0175,wholesale,Region E,2021-10-09,0.0,0.0,1281.38
+ENT-01226,business,Patel-Holmes 0176,wholesale,Region A,2021-01-24,0.0,0.0,5509.18
+ENT-01227,business,Murphy Inc 0177,retail_cash_intensive,Region B,2025-07-01,0.0,0.0,3614.76
+ENT-01228,business,"Martin, Castro and Ross 0178",wholesale,Region B,2022-05-29,0.0,0.0,1072.66
+ENT-01229,business,Sloan Group 0179,wholesale,Region B,2024-01-13,0.0,0.0,893.97
+ENT-01230,business,Murphy Inc 0180,professional_services,Region E,2025-03-12,0.0,0.0,1222.17
+ENT-01231,business,"Sawyer, Sanchez and Horn 0181",ecommerce,Region E,2024-09-03,0.0,0.0,5832.59
+ENT-01232,business,Jones LLC 0182,ecommerce,Region A,2022-08-25,0.0,0.0,1428.45
+ENT-01233,business,"Gardner, Giles and Wong 0183",wholesale,Region E,2024-12-28,0.0,0.0,3762.07
+ENT-01234,business,Sweeney Group 0184,professional_services,Region D,2024-03-05,0.0,0.0,2477.31
+ENT-01235,business,Bryant-Scott 0185,professional_services,Region F,2023-12-29,0.0,0.0,2792.89
+ENT-01236,business,King Ltd 0186,professional_services,Region E,2020-12-07,0.0,0.0,2276.31
+ENT-01237,business,Fowler-Mcgrath 0187,wholesale,Region A,2024-11-06,0.0,0.0,1476.94
+ENT-01238,business,"Cardenas, Mcclure and Martinez 0188",professional_services,Region C,2021-11-15,0.0,0.0,1925.51
+ENT-01239,business,Rogers-Gonzalez 0189,ecommerce,Region A,2022-02-11,0.0,0.0,4813.75
+ENT-01240,business,Williams-Ward 0190,professional_services,Region B,2025-03-14,0.0,0.0,2461.36
+ENT-01241,business,Barber PLC 0191,professional_services,Region A,2025-05-24,0.0,0.0,1623.27
+ENT-01242,business,Reid Group 0192,wholesale,Region F,2021-11-26,0.0,0.0,3094.45
+ENT-01243,business,"Rasmussen, Hull and Johnson 0193",professional_services,Region D,2021-08-10,0.0,0.0,6828.69
+ENT-01244,business,Whitaker-Arroyo 0194,professional_services,Region E,2022-03-23,0.0,0.0,1569.13
+ENT-01245,business,Johnson-Macias 0195,wholesale,Region D,2023-12-29,0.0,0.0,1343.62
+ENT-01246,business,Perez LLC 0196,retail_cash_intensive,Region B,2021-04-09,0.0,0.0,2808.48
+ENT-01247,business,Fisher-White 0197,wholesale,Region F,2020-12-30,0.0,0.0,4507.58
+ENT-01248,business,Cannon Group 0198,professional_services,Region B,2024-04-08,0.0,0.0,2435.22
+ENT-01249,business,Rosario-Maldonado 0199,retail_cash_intensive,Region D,2022-04-28,0.0,0.0,956.15
+ENT-01250,business,"Perez, Franklin and Peters 0200",retail_cash_intensive,Region B,2025-04-11,0.0,0.0,5137.54
+ENT-01251,business,Peterson and Sons 0201,ecommerce,Region A,2024-10-12,0.0,0.0,1678.9
+ENT-01252,business,"Edwards, Lewis and Singh 0202",wholesale,Region F,2021-11-28,0.0,0.0,801.33
+ENT-01253,business,"Valentine, Stephens and Smith 0203",ecommerce,Region A,2021-11-07,0.0,0.0,798.05
+ENT-01254,business,"Reeves, Smith and Anderson 0204",professional_services,Region C,2021-04-11,0.0,0.0,1377.49
+ENT-01255,business,Green-Love 0205,professional_services,Region E,2023-11-22,0.0,0.0,1219.8
+ENT-01256,business,Salinas-Payne 0206,professional_services,Region E,2023-09-22,0.0,0.0,2713.75
+ENT-01257,business,"Hunt, Morris and Gibson 0207",wholesale,Region E,2024-05-14,0.0,0.0,2009.54
+ENT-01258,business,Brady PLC 0208,professional_services,Region B,2021-09-03,0.0,0.0,949.73
+ENT-01259,business,Young Group 0209,wholesale,Region A,2022-01-25,0.0,0.0,2085.39
+ENT-01260,business,Miller PLC 0210,wholesale,Region B,2023-03-17,0.0,0.0,1546.31
+ENT-01261,business,Burns PLC 0211,ecommerce,Region F,2021-05-27,0.0,0.0,1549.76
+ENT-01262,business,"Gilbert, Lopez and Schultz 0212",ecommerce,Region E,2024-05-09,0.0,0.0,2534.84
+ENT-01263,business,Perez-Williams 0213,wholesale,Region E,2025-01-12,0.0,0.0,557.23
+ENT-01264,business,"Booth, Campbell and Ramirez 0214",ecommerce,Region D,2022-01-31,0.0,0.0,13223.12
+ENT-01265,business,"Campbell, Andrade and Mendoza 0215",wholesale,Region D,2024-09-21,0.0,0.0,5388.37
+ENT-01266,business,"Watkins, Gonzalez and Castillo 0216",professional_services,Region B,2024-12-04,0.0,0.0,1146.7
+ENT-01267,business,"Bender, Flores and Atkins 0217",professional_services,Region B,2024-09-29,0.0,0.0,2693.1
+ENT-01268,business,Bell LLC 0218,retail_cash_intensive,Region E,2022-07-25,0.0,0.0,1656.01
+ENT-01269,business,Anderson PLC 0219,retail_cash_intensive,Region F,2023-08-07,0.0,0.0,6819.12
+ENT-01270,business,"Lopez, Martinez and Evans 0220",retail_cash_intensive,Region A,2021-06-22,0.0,0.0,2526.48
+ENT-01271,business,"Potter, Jennings and Jones 0221",retail_cash_intensive,Region B,2020-09-27,0.0,0.0,2695.19
+ENT-01272,business,"Vasquez, Maldonado and Reilly 0222",ecommerce,Region E,2023-08-14,0.0,0.0,1225.21
+ENT-01273,business,Johnson-Carrillo 0223,retail_cash_intensive,Region C,2025-03-02,0.0,0.0,610.87
+ENT-01274,business,Gibson-Jordan 0224,professional_services,Region C,2024-07-30,0.0,0.0,4248.02
+ENT-01275,business,Hayes-Evans 0225,retail_cash_intensive,Region B,2025-02-26,0.0,0.0,1432.39
+ENT-01276,business,Cole LLC 0226,retail_cash_intensive,Region E,2023-09-19,0.0,0.0,4169.58
+ENT-01277,business,Flynn and Sons 0227,wholesale,Region B,2024-08-04,0.0,0.0,3350.52
+ENT-01278,business,Williams LLC 0228,wholesale,Region E,2020-12-15,0.0,0.0,2035.29
+ENT-01279,business,"Glass, Bright and Sharp 0229",ecommerce,Region C,2024-11-06,0.0,0.0,1726.74
+ENT-01280,business,Stevens-Williams 0230,professional_services,Region D,2025-01-01,0.0,0.0,3095.86
+ENT-01281,business,Davis-Lewis 0231,ecommerce,Region F,2022-09-16,0.0,0.0,4521.44
+ENT-01282,business,Delgado-Peck 0232,ecommerce,Region B,2024-04-20,0.0,0.0,5024.43
+ENT-01283,business,"Sutton, Morgan and Edwards 0233",ecommerce,Region C,2022-01-11,0.0,0.0,3587.06
+ENT-01284,business,Hernandez-Davis 0234,professional_services,Region E,2022-03-26,0.0,0.0,1169.35
+ENT-01285,business,"Johnson, Singleton and Silva 0235",professional_services,Region C,2024-02-11,0.0,0.0,1726.6
+ENT-01286,business,Kerr PLC 0236,ecommerce,Region F,2024-02-25,0.0,0.0,3346.9
+ENT-01287,business,Calderon-Mendoza 0237,wholesale,Region E,2025-05-17,0.0,0.0,7032.21
+ENT-01288,business,"Gutierrez, Moore and Schmidt 0238",retail_cash_intensive,Region D,2022-12-02,0.0,0.0,2255.07
+ENT-01289,business,"Randall, Valenzuela and Conner 0239",wholesale,Region C,2022-02-16,0.0,0.0,4952.97
+ENT-01290,business,Carey Inc 0240,retail_cash_intensive,Region F,2024-04-16,0.0,0.0,2780.23
+ENT-01291,business,Vaughan Ltd 0241,wholesale,Region F,2022-08-19,0.0,0.0,2995.18
+ENT-01292,business,"Palmer, Berry and Roach 0242",professional_services,Region C,2023-06-01,0.0,0.0,3868.98
+ENT-01293,business,Lane Inc 0243,ecommerce,Region E,2024-05-25,0.0,0.0,4814.22
+ENT-01294,business,Williams PLC 0244,professional_services,Region D,2022-09-17,0.0,0.0,2954.3
+ENT-01295,business,Hopkins Inc 0245,professional_services,Region C,2025-02-07,0.0,0.0,3067.8
+ENT-01296,business,Stanton Ltd 0246,ecommerce,Region D,2022-03-13,0.0,0.0,450.08
+ENT-01297,business,"Lin, Vincent and Fuentes 0247",professional_services,Region D,2024-09-11,0.0,0.0,1786.97
+ENT-01298,business,Miller-Wang 0248,professional_services,Region A,2022-05-21,0.0,0.0,1024.3
+ENT-01299,business,"Castillo, Sweeney and Russell 0249",professional_services,Region B,2022-01-08,0.0,0.0,2920.51
+ENT-01300,business,Fisher-Santana 0250,ecommerce,Region C,2023-05-08,0.0,0.0,3035.1
+ENT-01301,business,Salinas and Sons 0251,retail_cash_intensive,Region F,2023-05-30,0.0,0.0,2742.41
+ENT-01302,business,Kemp Ltd 0252,professional_services,Region A,2020-11-02,0.0,0.0,1121.6
+ENT-01303,business,Rodriguez LLC 0253,ecommerce,Region F,2024-10-31,0.0,0.0,2300.99
+ENT-01304,business,Conley and Sons 0254,retail_cash_intensive,Region F,2025-02-12,0.0,0.0,752.57
+ENT-01305,business,"Morgan, Payne and Walsh 0255",wholesale,Region A,2020-11-20,0.0,0.0,2702.54
+ENT-01306,business,"Johnson, Sanchez and Andrade 0256",professional_services,Region A,2022-05-19,0.0,0.0,1275.81
+ENT-01307,business,Joyce-Perez 0257,professional_services,Region C,2023-05-24,0.0,0.0,2027.48
+ENT-01308,business,Conner PLC 0258,professional_services,Region D,2021-07-27,0.0,0.0,4118.44
+ENT-01309,business,Sanders Group 0259,ecommerce,Region C,2024-12-08,0.0,0.0,3114.88
+ENT-01310,business,Ho-Jackson 0260,ecommerce,Region E,2021-05-25,0.0,0.0,446.14
+ENT-01311,business,Mclean-Taylor 0261,wholesale,Region A,2024-11-20,0.0,0.0,1328.89
+ENT-01312,business,Sexton PLC 0262,professional_services,Region D,2024-12-26,0.0,0.0,1819.38
+ENT-01313,business,Reynolds and Sons 0263,retail_cash_intensive,Region A,2022-06-04,0.0,0.0,857.99
+ENT-01314,business,"Miller, Hill and Webb 0264",professional_services,Region C,2024-12-22,0.0,0.0,3060.96
+ENT-01315,business,"King, Miller and Todd 0265",ecommerce,Region E,2021-07-11,0.0,0.0,3591.27
+ENT-01316,business,Patterson LLC 0266,wholesale,Region F,2020-10-20,0.0,0.0,2104.97
+ENT-01317,business,Edwards-Watkins 0267,retail_cash_intensive,Region E,2024-05-24,0.0,0.0,3057.48
+ENT-01318,business,"Bradshaw, Hess and Gibson 0268",wholesale,Region F,2023-01-11,0.0,0.0,3171.88
+ENT-01319,business,Clark LLC 0269,professional_services,Region A,2022-05-31,0.0,0.0,3881.18
+ENT-01320,business,Simpson LLC 0270,wholesale,Region E,2021-07-13,0.0,0.0,1630.87
+ENT-01321,business,Arias-Goodman 0271,professional_services,Region B,2023-10-03,0.0,0.0,2383.21
+ENT-01322,business,Simpson-Flores 0272,professional_services,Region B,2020-08-26,0.0,0.0,1641.08
+ENT-01323,business,Hardy Group 0273,ecommerce,Region C,2023-10-21,0.0,0.0,3334.64
+ENT-01324,business,"Perry, Kidd and Adkins 0274",professional_services,Region C,2023-03-12,0.0,0.0,1346.25
+ENT-01325,business,"Gilbert, Wilcox and Baldwin 0275",wholesale,Region E,2024-04-25,0.0,0.0,5021.0
+ENT-01326,business,"Lewis, Deleon and Banks 0276",retail_cash_intensive,Region E,2021-05-09,0.0,0.0,2159.34
+ENT-01327,business,Berry-Scott 0277,ecommerce,Region E,2024-07-21,0.0,0.0,878.62
+ENT-01328,business,"Hawkins, Harris and Elliott 0278",wholesale,Region C,2023-11-13,0.0,0.0,1136.22
+ENT-01329,business,"Levine, Gaines and Blake 0279",professional_services,Region E,2022-01-15,0.0,0.0,2481.26
+ENT-01330,business,Benson-Mccarthy 0280,professional_services,Region A,2024-06-25,0.0,0.0,3521.87
+ENT-01331,business,Mccoy PLC 0281,ecommerce,Region D,2024-04-17,0.0,0.0,2725.28
+ENT-01332,business,"Gaines, Webb and Coleman 0282",professional_services,Region B,2022-04-23,0.0,0.0,2609.25
+ENT-01333,business,Green Group 0283,professional_services,Region A,2023-10-19,0.0,0.0,2500.92
+ENT-01334,business,Rocha PLC 0284,professional_services,Region C,2022-02-07,0.0,0.0,1779.95
+ENT-01335,business,"Tran, Mendoza and Alexander 0285",professional_services,Region F,2021-04-09,0.0,0.0,1744.93
+ENT-01336,business,"Callahan, Morris and Mendoza 0286",professional_services,Region D,2025-06-07,0.0,0.0,652.96
+ENT-01337,business,Smith-Robinson 0287,professional_services,Region F,2024-05-29,0.0,0.0,2809.67
+ENT-01338,business,"Mcbride, Bryan and Martinez 0288",professional_services,Region D,2023-02-08,0.0,0.0,2152.07
+ENT-01339,business,Phillips-Sanchez 0289,professional_services,Region A,2022-03-12,0.0,0.0,3990.62
+ENT-01340,business,"Davis, Buchanan and Martinez 0290",ecommerce,Region D,2020-09-10,0.0,0.0,3064.69
+ENT-01341,business,Rogers-Hartman 0291,ecommerce,Region E,2022-03-23,0.0,0.0,3990.33
+ENT-01342,business,"Flores, Burns and Nicholson 0292",professional_services,Region E,2022-08-29,0.0,0.0,3241.5
+ENT-01343,business,Wagner-Blackburn 0293,professional_services,Region E,2021-02-23,0.0,0.0,3122.3
+ENT-01344,business,Short Ltd 0294,retail_cash_intensive,Region C,2020-12-14,0.0,0.0,3917.19
+ENT-01345,business,Hall PLC 0295,wholesale,Region C,2024-11-23,0.0,0.0,1269.21
+ENT-01346,business,Aguilar and Sons 0296,wholesale,Region F,2024-11-19,0.0,0.0,1828.46
+ENT-01347,business,Barnes Ltd 0297,professional_services,Region D,2025-06-21,0.0,0.0,3564.82
+ENT-01348,business,Stewart PLC 0298,professional_services,Region E,2020-10-21,0.0,0.0,2556.35
+ENT-01349,business,Gomez-Clarke 0299,professional_services,Region C,2021-05-30,0.0,0.0,1878.22
+ENT-01350,business,Clay Inc 0300,ecommerce,Region D,2021-02-22,0.0,0.0,517.1
+ENT-01351,business,Brown-Olsen 0301,wholesale,Region D,2023-02-11,0.0,0.0,5760.99
+ENT-01352,business,Lee Inc 0302,wholesale,Region E,2022-08-12,0.0,0.0,1200.17
+ENT-01353,business,Harmon-Dougherty 0303,wholesale,Region F,2024-07-15,0.0,0.0,10969.74
+ENT-01354,business,"Deleon, Smith and Allen 0304",wholesale,Region D,2022-07-17,0.0,0.0,1969.37
+ENT-01355,business,"Miranda, Walton and Wolfe 0305",ecommerce,Region B,2022-04-17,0.0,0.0,6114.16
+ENT-01356,business,Johnston and Sons 0306,wholesale,Region A,2021-01-03,0.0,0.0,4950.46
+ENT-01357,business,"Hunt, Lawrence and Becker 0307",retail_cash_intensive,Region B,2022-03-24,0.0,0.0,1843.81
+ENT-01358,business,"Robertson, Gonzalez and Smith 0308",wholesale,Region C,2023-11-14,0.0,0.0,3273.64
+ENT-01359,business,Medina LLC 0309,wholesale,Region E,2024-05-09,0.0,0.0,1573.9
+ENT-01360,business,Robinson and Sons 0310,professional_services,Region E,2024-07-15,0.0,0.0,10561.4
+ENT-01361,business,Hall LLC 0311,wholesale,Region A,2021-12-07,0.0,0.0,2209.77
+ENT-01362,business,Hernandez-Shaw 0312,wholesale,Region C,2024-08-24,0.0,0.0,1415.74
+ENT-01363,business,Pearson-Patel 0313,professional_services,Region B,2021-02-14,0.0,0.0,1845.32
+ENT-01364,business,"Brady, Price and Booth 0314",professional_services,Region B,2024-10-04,0.0,0.0,2391.74
+ENT-01365,business,Murray LLC 0315,wholesale,Region F,2021-08-13,0.0,0.0,1229.98
+ENT-01366,business,"Green, Lawson and David 0316",wholesale,Region C,2021-02-16,0.0,0.0,2178.22
+ENT-01367,business,Gibson and Sons 0317,wholesale,Region F,2024-05-05,0.0,0.0,2754.48
+ENT-01368,business,Jones and Sons 0318,professional_services,Region D,2021-11-02,0.0,0.0,3405.07
+ENT-01369,business,"Scott, Smith and Black 0319",ecommerce,Region B,2025-04-02,0.0,0.0,1282.97
+ENT-01370,business,Morris-Weaver 0320,retail_cash_intensive,Region F,2023-05-25,0.0,0.0,2389.35
+ENT-01371,business,Griffin-Sutton 0321,ecommerce,Region B,2022-05-24,0.0,0.0,1041.84
+ENT-01372,business,"Powell, Roman and Erickson 0322",professional_services,Region B,2020-10-19,0.0,0.0,1287.87
+ENT-01373,business,"Mendez, Owen and Bean 0323",retail_cash_intensive,Region C,2023-06-15,0.0,0.0,3015.77
+ENT-01374,business,Smith Group 0324,wholesale,Region B,2024-04-20,0.0,0.0,871.75
+ENT-01375,business,Mccarthy-Robertson 0325,wholesale,Region E,2024-12-16,0.0,0.0,4529.8
+ENT-01376,business,Shaw Inc 0326,professional_services,Region A,2020-10-03,0.0,0.0,3319.44
+ENT-01377,business,Hansen-Freeman 0327,wholesale,Region C,2023-02-02,0.0,0.0,1578.82
+ENT-01378,business,"James, Moon and Smith 0328",professional_services,Region E,2021-08-30,0.0,0.0,2577.67
+ENT-01379,business,"Reeves, Larson and Lynch 0329",wholesale,Region D,2023-06-22,0.0,0.0,631.91
+ENT-01380,business,Taylor Ltd 0330,ecommerce,Region A,2024-03-19,0.0,0.0,2236.7
+ENT-01381,business,"Mcintyre, Byrd and Krueger 0331",retail_cash_intensive,Region A,2024-03-03,0.0,0.0,4265.3
+ENT-01382,business,Burton LLC 0332,retail_cash_intensive,Region D,2025-04-24,0.0,0.0,2054.7
+ENT-01383,business,Branch PLC 0333,ecommerce,Region B,2024-11-08,0.0,0.0,3138.58
+ENT-01384,business,Gibbs-Welch 0334,retail_cash_intensive,Region B,2025-03-15,0.0,0.0,1320.59
+ENT-01385,business,"Sims, Lewis and Anderson 0335",wholesale,Region A,2025-03-03,0.0,0.0,3560.08
+ENT-01386,business,Vazquez-Freeman 0336,professional_services,Region F,2022-01-11,0.0,0.0,1599.83
+ENT-01387,business,"Tapia, Harper and Harding 0337",wholesale,Region D,2021-08-27,0.0,0.0,6586.17
+ENT-01388,business,Cook-Mack 0338,retail_cash_intensive,Region A,2021-05-21,0.0,0.0,1786.52
+ENT-01389,business,"Valencia, Wood and Douglas 0339",professional_services,Region D,2025-06-15,0.0,0.0,1436.34
+ENT-01390,business,Rollins-Gonzales 0340,professional_services,Region B,2022-01-24,0.0,0.0,6273.85
+ENT-01391,business,Moore Ltd 0341,retail_cash_intensive,Region B,2024-10-24,0.0,0.0,2143.73
+ENT-01392,business,"Jones, Carroll and Young 0342",professional_services,Region D,2021-11-08,0.0,0.0,1024.23
+ENT-01393,business,"Donovan, Buck and Rogers 0343",wholesale,Region F,2021-09-04,0.0,0.0,1583.76
+ENT-01394,business,Kennedy PLC 0344,professional_services,Region A,2024-01-24,0.0,0.0,2243.52
+ENT-01395,business,Sloan-Rogers 0345,professional_services,Region A,2024-10-19,0.0,0.0,7996.42
+ENT-01396,business,Davidson-Blankenship 0346,professional_services,Region F,2021-01-22,0.0,0.0,1160.89
+ENT-01397,business,Thomas LLC 0347,professional_services,Region D,2021-10-28,0.0,0.0,3367.82
+ENT-01398,business,Day-Nelson 0348,wholesale,Region C,2023-11-29,0.0,0.0,3636.53
+ENT-01399,business,"Michael, Bruce and Marshall 0349",retail_cash_intensive,Region C,2023-09-12,0.0,0.0,2485.53
+ENT-01400,business,"Butler, Steele and Short 0350",ecommerce,Region E,2022-09-01,0.0,0.0,2096.17
+ENT-01401,business,Calderon PLC 0351,retail_cash_intensive,Region B,2023-07-17,0.0,0.0,2181.79
+ENT-01402,business,Powell-Stephens 0352,wholesale,Region A,2020-10-21,0.0,0.0,1051.36
+ENT-01403,business,"Harris, Kramer and Washington 0353",wholesale,Region B,2022-12-20,0.0,0.0,2701.26
+ENT-01404,business,"Price, Acosta and Evans 0354",professional_services,Region F,2022-09-03,0.0,0.0,2225.35
+ENT-01405,business,Lee PLC 0355,professional_services,Region A,2021-11-27,0.0,0.0,3315.7
+ENT-01406,business,"Gaines, Chan and Kim 0356",ecommerce,Region D,2024-01-24,0.0,0.0,2397.95
+ENT-01407,business,Rose-Johnson 0357,wholesale,Region F,2023-10-21,0.0,0.0,1381.13
+ENT-01408,business,Lyons-Peck 0358,wholesale,Region B,2022-03-28,0.0,0.0,5523.57
+ENT-01409,business,Berger-Smith 0359,ecommerce,Region C,2024-03-31,0.0,0.0,2071.94
+ENT-01410,business,Coleman-Sexton 0360,professional_services,Region C,2023-11-25,0.0,0.0,2464.14
+ENT-01411,business,Spencer-Rollins 0361,ecommerce,Region B,2023-04-30,0.0,0.0,571.77
+ENT-01412,business,"Bowen, Pearson and Alvarez 0362",professional_services,Region F,2024-01-04,0.0,0.0,1113.42
+ENT-01413,business,"Krueger, Mcbride and Valdez 0363",retail_cash_intensive,Region E,2020-12-07,0.0,0.0,3387.74
+ENT-01414,business,Roberts Group 0364,wholesale,Region F,2021-10-12,0.0,0.0,2371.31
+ENT-01415,business,Herring LLC 0365,wholesale,Region B,2021-11-23,0.0,0.0,1503.72
+ENT-01416,business,Baker-Fry 0366,retail_cash_intensive,Region A,2022-02-15,0.0,0.0,2329.96
+ENT-01417,business,Hill PLC 0367,retail_cash_intensive,Region F,2021-11-05,0.0,0.0,884.84
+ENT-01418,business,Farmer and Sons 0368,retail_cash_intensive,Region E,2024-08-15,0.0,0.0,4244.62
+ENT-01419,business,"Hamilton, Thompson and Nelson 0369",professional_services,Region A,2024-12-14,0.0,0.0,3801.14
+ENT-01420,business,Robles-Robinson 0370,professional_services,Region F,2023-12-28,0.0,0.0,2225.21
+ENT-01421,business,Hill-Merritt 0371,retail_cash_intensive,Region B,2021-04-16,0.0,0.0,2781.26
+ENT-01422,business,"Cole, Thompson and Garcia 0372",professional_services,Region A,2022-12-03,0.0,0.0,5108.94
+ENT-01423,business,Lopez Group 0373,wholesale,Region E,2023-09-30,0.0,0.0,2272.11
+ENT-01424,business,Scott-Moss 0374,wholesale,Region E,2023-10-21,0.0,0.0,635.64
+ENT-01425,business,Norman PLC 0375,ecommerce,Region B,2025-06-20,0.0,0.0,2654.73
+ENT-01426,business,"Chavez, Wright and Williams 0376",wholesale,Region D,2024-09-18,0.0,0.0,2680.64
+ENT-01427,business,Hill-French 0377,ecommerce,Region D,2023-09-14,0.0,0.0,2305.09
+ENT-01428,business,"Martinez, Hurley and Gates 0378",retail_cash_intensive,Region F,2021-08-21,0.0,0.0,1216.21
+ENT-01429,business,Franklin LLC 0379,professional_services,Region B,2024-03-14,0.0,0.0,5102.86
+ENT-01430,business,"Watson, Garcia and Atkinson 0380",retail_cash_intensive,Region C,2024-07-26,0.0,0.0,1452.01
+ENT-01431,business,"Crawford, Oconnor and Rodriguez 0381",professional_services,Region E,2020-12-19,0.0,0.0,2312.26
+ENT-01432,business,Craig-Sharp 0382,professional_services,Region C,2024-01-21,0.0,0.0,1914.7
+ENT-01433,business,Taylor Ltd 0383,ecommerce,Region D,2024-08-12,0.0,0.0,1687.36
+ENT-01434,business,Barnes-Olson 0384,professional_services,Region F,2024-02-05,0.0,0.0,6657.27
+ENT-01435,business,"King, Reed and Perry 0385",wholesale,Region A,2022-08-20,0.0,0.0,1010.71
+ENT-01436,business,Anderson-Greene 0386,professional_services,Region A,2022-11-24,0.0,0.0,6888.03
+ENT-01437,business,Harrison PLC 0387,professional_services,Region D,2023-11-17,0.0,0.0,991.52
+ENT-01438,business,Anderson PLC 0388,wholesale,Region B,2022-03-22,0.0,0.0,1558.04
+ENT-01439,business,Wilson-Nelson 0389,wholesale,Region A,2025-06-06,0.0,0.0,2971.19
+ENT-01440,business,Soto-Richardson 0390,professional_services,Region E,2021-10-06,0.0,0.0,3942.9
+ENT-01441,business,Wilcox-Long 0391,wholesale,Region D,2021-01-06,0.0,0.0,4132.81
+ENT-01442,business,Myers-Rodgers 0392,professional_services,Region F,2022-06-30,0.0,0.0,1676.49
+ENT-01443,business,Downs Group 0393,professional_services,Region E,2022-11-06,0.0,0.0,1201.0
+ENT-01444,business,Morgan-White 0394,professional_services,Region F,2021-02-18,0.0,0.0,3544.63
+ENT-01445,business,Green-Smith 0395,professional_services,Region C,2024-12-07,0.0,0.0,6442.45
+ENT-01446,business,Mooney Inc 0396,retail_cash_intensive,Region B,2020-11-28,0.0,0.0,2456.5
+ENT-01447,business,Wilson and Sons 0397,professional_services,Region F,2024-12-02,0.0,0.0,2721.38
+ENT-01448,business,"Smith, Hall and White 0398",wholesale,Region C,2025-03-06,0.0,0.0,3501.16
+ENT-01449,business,Fletcher-Smith 0399,professional_services,Region C,2025-03-04,0.0,0.0,4390.94
+ENT-01450,business,Estes-Jones 0400,retail_cash_intensive,Region A,2024-07-03,0.0,0.0,3035.22
+ENT-01451,business,"Edwards, Santana and Li 0401",ecommerce,Region A,2025-02-05,0.0,0.0,5099.65
+ENT-01452,business,"West, Holmes and Nelson 0402",wholesale,Region F,2025-06-10,0.0,0.0,3450.91
+ENT-01453,business,"Schroeder, Robinson and Brown 0403",wholesale,Region E,2020-12-10,0.0,0.0,1585.03
+ENT-01454,business,Owen Inc 0404,wholesale,Region B,2022-08-05,0.0,0.0,3387.4
+ENT-01455,business,"Arellano, Rodriguez and Miranda 0405",ecommerce,Region A,2020-12-01,0.0,0.0,1295.31
+ENT-01456,business,Olson-Jordan 0406,ecommerce,Region F,2022-08-08,0.0,0.0,2406.09
+ENT-01457,business,Torres-Terrell 0407,retail_cash_intensive,Region D,2024-09-24,0.0,0.0,4155.85
+ENT-01458,business,"Barrera, Long and Alexander 0408",ecommerce,Region D,2020-08-22,0.0,0.0,2488.0
+ENT-01459,business,"Cole, Liu and Irwin 0409",wholesale,Region D,2023-06-13,0.0,0.0,5580.95
+ENT-01460,business,Kim-Johnson 0410,wholesale,Region B,2021-05-16,0.0,0.0,1318.74
+ENT-01461,business,Singleton Inc 0411,ecommerce,Region F,2023-06-27,0.0,0.0,3808.94
+ENT-01462,business,Barnes Group 0412,wholesale,Region A,2023-01-31,0.0,0.0,4989.36
+ENT-01463,business,Burton-Gilbert 0413,ecommerce,Region D,2024-03-24,0.0,0.0,3787.69
+ENT-01464,business,"Jimenez, Shah and Woodward 0414",retail_cash_intensive,Region D,2025-04-28,0.0,0.0,1619.83
+ENT-01465,business,Greene-Stanton 0415,wholesale,Region A,2024-09-27,0.0,0.0,2680.9
+ENT-01466,business,Johnson-English 0416,professional_services,Region B,2020-11-02,0.0,0.0,5875.4
+ENT-01467,business,Rice LLC 0417,wholesale,Region E,2025-01-18,0.0,0.0,691.7
+ENT-01468,business,Mcintyre-Pittman 0418,wholesale,Region C,2022-08-18,0.0,0.0,1546.7
+ENT-01469,business,Fletcher-Wright 0419,professional_services,Region B,2024-05-13,0.0,0.0,2896.83
+ENT-01470,business,Compton Inc 0420,ecommerce,Region B,2024-02-27,0.0,0.0,3051.83
+ENT-01471,business,Gonzalez Group 0421,wholesale,Region D,2021-02-22,0.0,0.0,4990.86
+ENT-01472,business,Patel-Salinas 0422,wholesale,Region C,2025-03-07,0.0,0.0,5152.18
+ENT-01473,business,"Davis, Horn and Lewis 0423",professional_services,Region B,2023-11-29,0.0,0.0,2866.43
+ENT-01474,business,Lopez Group 0424,retail_cash_intensive,Region C,2022-03-27,0.0,0.0,1634.68
+ENT-01475,business,Hunt Group 0425,wholesale,Region E,2025-03-22,0.0,0.0,2731.5
+ENT-01476,business,"Clements, George and Williams 0426",professional_services,Region F,2022-03-20,0.0,0.0,2123.14
+ENT-01477,business,Hernandez-Perez 0427,retail_cash_intensive,Region B,2021-12-06,0.0,0.0,2600.34
+ENT-01478,business,"Dickerson, Myers and Myers 0428",professional_services,Region A,2023-09-04,0.0,0.0,3572.43
+ENT-01479,business,Jones-Williams 0429,retail_cash_intensive,Region A,2025-02-10,0.0,0.0,2015.46
+ENT-01480,business,Woods Group 0430,retail_cash_intensive,Region D,2023-08-20,0.0,0.0,1126.5
+ENT-01481,business,Gardner-Carroll 0431,professional_services,Region C,2025-03-03,0.0,0.0,1772.43
+ENT-01482,business,"Armstrong, Nelson and Herrera 0432",professional_services,Region C,2022-12-31,0.0,0.0,3351.81
+ENT-01483,business,"Anderson, Hayes and Fox 0433",wholesale,Region B,2020-12-12,0.0,0.0,2664.53
+ENT-01484,business,White-Patterson 0434,wholesale,Region F,2021-12-05,0.0,0.0,1391.08
+ENT-01485,business,Austin-Garcia 0435,retail_cash_intensive,Region A,2022-04-21,0.0,0.0,4021.81
+ENT-01486,business,Woodward-Hunter 0436,wholesale,Region F,2021-03-14,0.0,0.0,2353.46
+ENT-01487,business,Romero Group 0437,retail_cash_intensive,Region A,2022-12-12,0.0,0.0,3367.05
+ENT-01488,business,Tyler-Preston 0438,professional_services,Region F,2024-07-28,0.0,0.0,3907.77
+ENT-01489,business,Kemp-Eaton 0439,retail_cash_intensive,Region F,2023-01-16,0.0,0.0,2159.44
+ENT-01490,business,Daniels-Harris 0440,ecommerce,Region D,2023-12-09,0.0,0.0,2502.94
+ENT-01491,business,Cameron and Sons 0441,ecommerce,Region C,2024-06-24,0.0,0.0,1528.24
+ENT-01492,business,Ayala and Sons 0442,wholesale,Region E,2024-05-19,0.0,0.0,1755.77
+ENT-01493,business,Sanchez PLC 0443,wholesale,Region C,2024-03-15,0.0,0.0,1883.39
+ENT-01494,business,"Fox, Ross and Brown 0444",wholesale,Region A,2025-01-10,0.0,0.0,2003.12
+ENT-01495,business,"Williams, Gomez and Odonnell 0445",wholesale,Region B,2022-05-26,0.0,0.0,8649.5
+ENT-01496,business,"Morrow, Christensen and Stanley 0446",wholesale,Region F,2022-02-19,0.0,0.0,992.81
+ENT-01497,business,"Smith, Bailey and Johnson 0447",ecommerce,Region C,2021-01-03,0.0,0.0,3072.18
+ENT-01498,business,Delacruz-Wilson 0448,ecommerce,Region D,2023-03-19,0.0,0.0,4734.84
+ENT-01499,business,Moore-Burns 0449,professional_services,Region C,2023-12-15,0.0,0.0,4063.52
+ENT-01500,business,Harding Ltd 0450,ecommerce,Region D,2023-04-28,0.0,0.0,2495.02

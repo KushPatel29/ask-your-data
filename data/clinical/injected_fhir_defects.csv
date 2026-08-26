@@ -1,0 +1,25 @@
+resource_type,resource_id,source_ref,line_number,defect_class,expected_reason_fragment
+Patient,702bf7c7-42f6-c7c8-ff5b-b13cda841a51,Patient.ndjson,20,code_outside_value_set,value set
+Patient,a9fe6f41-c422-bd4a-e83f-cafdd278cdf9,Patient.ndjson,4,code_outside_value_set,value set
+Patient,b0fee7dd-615b-16b3-7e86-f2dff346f05c,Patient.ndjson,12,code_outside_value_set,value set
+Condition,013e1631-8af6-1016-c0b0-40b83517c4b6,Condition.ndjson,22,coding_absent,coding
+Condition,2a163519-bc8f-9e1d-d518-d83fe38571c6,Condition.ndjson,6,coding_absent,coding
+Condition,36dc68bb-5c5e-91ad-f2a3-e6e0d8cd5e2d,Condition.ndjson,14,coding_absent,coding
+Encounter,49a5e03d-58b8-350e-5878-19079aea474c,Encounter.ndjson,24,malformed_id,valid FHIR id
+Encounter,4f419647-8da9-dc47-da15-2677700c5354,Encounter.ndjson,8,malformed_id,valid FHIR id
+Encounter,ac580d34-79e0-6d9c-67a3-3294cf1bb3fb,Encounter.ndjson,16,malformed_id,valid FHIR id
+Observation,fd08efaa-aef4-8102-165c-b9fa37c0f2ff,Observation.ndjson,2,malformed_json,not valid JSON
+Observation,fd08efaa-aef4-8102-56dc-e9a20f0f4827,Observation.ndjson,18,malformed_json,not valid JSON
+Observation,fd08efaa-aef4-8102-7792-2e43438d083e,Observation.ndjson,10,malformed_json,not valid JSON
+MedicationRequest,06819d63-1c64-185e-9e92-fb59ffe0d3e1,MedicationRequest.ndjson,21,medication_choice_both_branches,medication[x]
+MedicationRequest,5611ee23-4d70-304f-2191-63c561835a85,MedicationRequest.ndjson,13,medication_choice_both_branches,medication[x]
+MedicationRequest,e667450c-9f12-f518-1eac-3859aecd8a94,MedicationRequest.ndjson,5,medication_choice_both_branches,medication[x]
+Observation,fd08efaa-aef4-8102-25ea-4869c1bc6db8,Observation.ndjson,11,missing_required_status,status
+Observation,fd08efaa-aef4-8102-98d4-ac593d957a68,Observation.ndjson,3,missing_required_status,status
+Observation,fd08efaa-aef4-8102-d2bb-4d8b6f60056d,Observation.ndjson,19,missing_required_status,status
+Organization,b6eeaaf7-1683-3bcb-b6ee-81ce304636ef,Organization.1785955759767.ndjson,9,organization_without_name,org-1
+Organization,d140ed3f-2696-3e78-bd77-1c959ec4fc4d,Organization.1785955759767.ndjson,25,organization_without_name,org-1
+Organization,ecadbc11-930c-3903-b706-f8ef4bc9089e,Organization.1785955759767.ndjson,17,organization_without_name,org-1
+Procedure,083563aa-d1e4-5201-eebf-082844b5649c,Procedure.ndjson,23,unmodelled_resource_type,not modelled
+Procedure,4f419647-8da9-dc47-6bf9-3f2e471b6d6c,Procedure.ndjson,15,unmodelled_resource_type,not modelled
+Procedure,fd08efaa-aef4-8102-0eba-d77856b0bcec,Procedure.ndjson,7,unmodelled_resource_type,not modelled

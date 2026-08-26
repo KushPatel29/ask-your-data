@@ -104,7 +104,7 @@ def main(argv: list[str] | None = None) -> int:
 
     for k in ks:
         rows = []
-        for strategy in ("keyword", "vector"):
+        for strategy in ("keyword", "vector", "hybrid"):
             hit = 0
             missed_tables = 0
             total_tables = 0
@@ -117,6 +117,8 @@ def main(argv: list[str] | None = None) -> int:
                         retrieval.retrieve_keyword(case["question"], k=k, con=con)
                         if strategy == "keyword"
                         else retrieval.retrieve(case["question"], k=k, con=con)
+                        if strategy == "vector"
+                        else retrieval.retrieve_hybrid(case["question"], k=k, con=con)
                     )
                 }
                 need = case["needed"]

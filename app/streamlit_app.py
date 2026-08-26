@@ -26,9 +26,13 @@ sys.path.insert(0, str(ROOT))
 
 from data_manifest import DOMAINS  # noqa: E402
 from engine import demo_mode  # noqa: E402
-from engine.warehouse import build_warehouse, table_names  # noqa: E402
+from engine.warehouse import build_warehouse, schema_catalog, table_names  # noqa: E402
+from engine import retrieval  # noqa: E402
+from app import ui  # noqa: E402
 
 st.set_page_config(page_title="Ask Your Data", page_icon="💬", layout="wide")
+
+ui.inject()
 
 LIVE_MODE = demo_mode.has_api_key()
 
@@ -53,15 +57,34 @@ assistant = get_assistant(con) if LIVE_MODE else None
 st.session_state.setdefault("turns", [])      # engine context (Turn objects)
 st.session_state.setdefault("transcript", [])  # everything we rendered, incl. refusals
 
-st.title("💬 Ask Your Data")
-st.caption("A natural-language layer over the analytics datasets from my portfolio "
-           "projects. Ask in plain English — it writes the SQL, runs it, and shows "
-           "its work. Follow-up questions welcome.")
+ui.masthead(tables=len(table_names(con)), domains=len(DOMAINS), live=LIVE_MODE)
+
+
+@st.cache_data(show_spinner=False)
+def _full_catalog_tokens() -> int:
+    """Cost of the un-retrieved prompt block, for the grounding readout."""
+    return max(1, len(schema_catalog(con)) // 4)
+
+
+def _show_grounding(question: str) -> None:
+    """Which tables the retriever selected for this question, and what it saved."""
+    try:
+        # Hybrid is what schema_catalog_for() actually uses, so the readout
+        # shows the ranking the model was really given - not a prettier one.
+        hits = retrieval.retrieve_hybrid(question, con=con)
+        used = max(1, len(retrieval.schema_catalog_for(question, con)) // 4)
+    except Exception:
+        # Retrieval is an optimisation, not a dependency: if the index cannot be
+        # built the assistant still answers from the full catalogue, and the
+        # panel simply does not render.
+        return
+    ui.grounding(hits, total_tables=len(table_names(con)),
+                 tokens_used=used, tokens_full=_full_catalog_tokens())
 
 with st.sidebar:
     st.subheader("What you can ask about")
     for domain, blurb in DOMAINS.items():
-        st.markdown(f"**{domain}** — {blurb}")
+        ui.domain_card(domain, blurb)
     st.divider()
     st.caption(f"{len(table_names(con))} tables loaded across {len(DOMAINS)} domains.")
     if st.button("Start a new conversation"):
@@ -107,15 +130,20 @@ def render_demo_mode(connection) -> None:
     st.chat_message("user").write(active["question"])
     with st.chat_message("assistant"):
         if not result.ok:
+            ui.pipeline(retrieved=True, generated=False, guarded=False, executed="fail")
             st.error(f"Reference SQL failed: {result.result.error}")
         else:
-            st.markdown(f"## {result.headline}")
-            if result.matches_contract:
-                st.caption(
-                    "Matches the value asserted in `evals/golden_questions.yaml`, "
-                    "which CI re-checks on every push."
-                )
-            else:
+            # Demo mode runs committed SQL, so GENERATE is honestly dark: no
+            # model wrote this. Lighting it would be the one lie this app
+            # cannot afford.
+            ui.pipeline(retrieved=True, generated=False, guarded=True, executed=True)
+            _show_grounding(active["question"])
+            ui.answer(
+                result.headline,
+                verified=result.matches_contract,
+                verified_note="Asserted in evals/golden_questions.yaml and re-checked by CI on every push.",
+            )
+            if not result.matches_contract:
                 st.warning(
                     "This does not match the contract's expected value — the "
                     "vendored data has drifted and the golden test should be red."
@@ -164,12 +192,17 @@ def render_entry(entry):
     st.chat_message("user").write(entry["question"])
     with st.chat_message("assistant"):
         if entry["refused"]:
+            ui.pipeline(retrieved=True, generated=True, guarded=False, executed=False)
             st.warning(f"I can't answer that from the loaded data: {entry['reason']}")
             return
-        st.markdown(f"**{entry['answer']}**")
+        ui.pipeline(retrieved=True, generated=True,
+                    guarded=True if entry["attempts"] == 1 else "fail",
+                    executed=True, attempts=entry["attempts"])
+        _show_grounding(entry["question"])
+        ui.answer(entry["answer"])
         if entry["attempts"] > 1:
-            st.caption(f"Self-corrected after {entry['attempts']} attempts "
-                       f"(first error: {entry['corrections'][0]})")
+            ui.note(f"Self-corrected after {entry['attempts']} attempts "
+                    f"(first error: {entry['corrections'][0]})")
         with st.expander("Show the SQL and the data behind this answer"):
             st.code(entry["sql"], language="sql")
             if entry["rows"] is not None:

@@ -1,0 +1,6 @@
+site_id,queries_raised,queries_open,queries_closed,close_rate,median_days_to_close
+SITE-101,5,1,4,0.8,7
+SITE-102,10,6,4,0.4,8
+SITE-103,5,0,5,1.0,7
+SITE-104,17,3,14,0.8235,6
+SITE-105,12,6,6,0.5,17

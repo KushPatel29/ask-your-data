@@ -1,0 +1,641 @@
+dictionary,subject_id,site_id,visit_id,form_id,record_num,verbatim,status,coded_term,soc
+MedDRA,SITE-105-001,SITE-105,WK12,AE,1,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+MedDRA,SITE-105-001,SITE-105,EOS,AE,1,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-105-001,SITE-105,EOS,AE,2,not himself,uncoded,,
+MedDRA,SITE-105-001,SITE-105,EOS,AE,3,Fatigue,auto,Fatigue,General disorders and administration site conditions
+WHODrug,SITE-105-001,SITE-105,EOS,CM,1,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-103-002,SITE-103,WK12,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-103-002,SITE-103,WK12,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-102-003,SITE-102,BASE,AE,1,Fatigue,auto,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-102-003,SITE-102,BASE,AE,2,head ache,synonym,Headache,Nervous system disorders
+WHODrug,SITE-102-003,SITE-102,WK4,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-105-004,SITE-105,WK12,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-103-005,SITE-103,BASE,AE,1,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-103-005,SITE-103,BASE,AE,2,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+WHODrug,SITE-103-005,SITE-103,WK4,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-103-006,SITE-103,WK4,AE,1,head ache,synonym,Headache,Nervous system disorders
+WHODrug,SITE-103-006,SITE-103,WK12,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-103-006,SITE-103,WK12,CM,2,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-103-006,SITE-103,WK12,CM,3,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-103-006,SITE-103,EOS,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-104-007,SITE-104,BASE,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-104-008,SITE-104,BASE,AE,1,felt off,uncoded,,
+MedDRA,SITE-104-008,SITE-104,BASE,AE,2,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-104-008,SITE-104,WK12,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-104-008,SITE-104,WK12,AE,2,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+WHODrug,SITE-104-008,SITE-104,WK12,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-104-008,SITE-104,WK12,CM,2,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-103-009,SITE-103,WK4,AE,1,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-103-009,SITE-103,WK4,AE,2,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+WHODrug,SITE-103-009,SITE-103,WK12,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-103-009,SITE-103,EOS,AE,1,felt off,uncoded,,
+MedDRA,SITE-103-009,SITE-103,EOS,AE,2,felt off,uncoded,,
+MedDRA,SITE-102-010,SITE-102,BASE,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+MedDRA,SITE-102-010,SITE-102,BASE,AE,2,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-105-011,SITE-105,BASE,AE,1,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+WHODrug,SITE-105-011,SITE-105,WK12,CM,1,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-105-011,SITE-105,EOS,AE,1,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-105-011,SITE-105,EOS,AE,2,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+MedDRA,SITE-105-011,SITE-105,EOS,AE,3,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-105-011,SITE-105,EOS,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-105-011,SITE-105,EOS,CM,2,Metformin,auto,Metformin,A10BA02
+WHODrug,SITE-105-011,SITE-105,EOS,CM,3,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-101-012,SITE-101,BASE,AE,1,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-101-012,SITE-101,WK4,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+WHODrug,SITE-101-012,SITE-101,WK4,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-101-012,SITE-101,WK4,CM,2,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-101-012,SITE-101,WK12,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-101-012,SITE-101,WK12,AE,2,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-101-012,SITE-101,WK12,AE,3,Nausea,auto,Nausea,Gastrointestinal disorders
+WHODrug,SITE-101-012,SITE-101,WK12,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-101-012,SITE-101,EOS,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-104-013,SITE-104,BASE,AE,1,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-104-013,SITE-104,BASE,AE,2,Headache,auto,Headache,Nervous system disorders
+MedDRA,SITE-104-013,SITE-104,BASE,AE,3,Fatigue,auto,Fatigue,General disorders and administration site conditions
+WHODrug,SITE-104-013,SITE-104,WK4,CM,1,Metformin,auto,Metformin,A10BA02
+WHODrug,SITE-104-013,SITE-104,WK4,CM,2,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-104-013,SITE-104,EOS,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-104-013,SITE-104,EOS,CM,2,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-101-014,SITE-101,WK4,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+WHODrug,SITE-101-014,SITE-101,WK4,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-101-014,SITE-101,WK12,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+WHODrug,SITE-101-014,SITE-101,WK12,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+WHODrug,SITE-101-014,SITE-101,WK12,CM,2,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-101-014,SITE-101,EOS,AE,1,Insomnia,auto,Insomnia,Psychiatric disorders
+MedDRA,SITE-101-014,SITE-101,EOS,AE,2,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-101-014,SITE-101,EOS,AE,3,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+WHODrug,SITE-101-014,SITE-101,EOS,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-101-014,SITE-101,EOS,CM,2,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-101-014,SITE-101,EOS,CM,3,advil,synonym,Ibuprofen,M01AE01
+WHODrug,SITE-104-015,SITE-104,WK12,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+MedDRA,SITE-104-015,SITE-104,EOS,AE,1,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-104-015,SITE-104,EOS,AE,2,Insomnia,auto,Insomnia,Psychiatric disorders
+MedDRA,SITE-104-015,SITE-104,EOS,AE,3,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+WHODrug,SITE-104-015,SITE-104,EOS,CM,1,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-104-016,SITE-104,WK4,AE,1,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+WHODrug,SITE-104-016,SITE-104,WK4,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-104-016,SITE-104,WK4,CM,2,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-104-016,SITE-104,EOS,CM,1,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-105-017,SITE-105,WK4,AE,1,Rash,auto,Rash,Skin and subcutaneous tissue disorders
+WHODrug,SITE-105-017,SITE-105,WK4,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-105-017,SITE-105,WK4,CM,2,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-105-017,SITE-105,WK12,CM,1,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-105-017,SITE-105,EOS,AE,1,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-105-017,SITE-105,EOS,AE,2,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-105-017,SITE-105,EOS,AE,3,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+WHODrug,SITE-105-017,SITE-105,EOS,CM,1,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-101-018,SITE-101,BASE,AE,1,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+MedDRA,SITE-101-018,SITE-101,BASE,AE,2,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-101-018,SITE-101,BASE,AE,3,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-101-018,SITE-101,WK4,AE,1,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+MedDRA,SITE-101-018,SITE-101,EOS,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-101-018,SITE-101,EOS,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-104-019,SITE-104,WK4,AE,1,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-104-019,SITE-104,WK12,AE,1,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+WHODrug,SITE-104-019,SITE-104,EOS,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-104-020,SITE-104,WK4,AE,1,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+WHODrug,SITE-104-020,SITE-104,WK4,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-104-020,SITE-104,WK12,AE,1,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+WHODrug,SITE-104-020,SITE-104,WK12,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-104-020,SITE-104,WK12,CM,2,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-104-020,SITE-104,WK12,CM,3,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-104-020,SITE-104,EOS,AE,1,BP high,ambiguous,Hypertension | Blood pressure increased,
+WHODrug,SITE-104-020,SITE-104,EOS,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-104-020,SITE-104,EOS,CM,2,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-104-020,SITE-104,EOS,CM,3,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-103-021,SITE-103,WK4,CM,1,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-102-023,SITE-102,BASE,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-102-023,SITE-102,BASE,AE,2,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-102-023,SITE-102,WK4,AE,1,Fatigue,auto,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-102-023,SITE-102,WK4,AE,2,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+WHODrug,SITE-102-023,SITE-102,WK4,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-102-023,SITE-102,WK4,CM,2,Metformin,auto,Metformin,A10BA02
+WHODrug,SITE-102-023,SITE-102,WK12,CM,1,Metformin,auto,Metformin,A10BA02
+WHODrug,SITE-102-023,SITE-102,WK12,CM,2,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-102-023,SITE-102,WK12,CM,3,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-102-023,SITE-102,EOS,AE,1,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-102-023,SITE-102,EOS,AE,2,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-102-024,SITE-102,BASE,AE,1,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+MedDRA,SITE-102-024,SITE-102,BASE,AE,2,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-102-024,SITE-102,WK4,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-102-024,SITE-102,WK12,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-102-024,SITE-102,EOS,AE,1,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-102-025,SITE-102,BASE,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-102-025,SITE-102,WK4,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+MedDRA,SITE-102-025,SITE-102,WK4,AE,2,Insomnia,auto,Insomnia,Psychiatric disorders
+MedDRA,SITE-102-025,SITE-102,WK4,AE,3,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-102-025,SITE-102,WK4,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-102-025,SITE-102,WK4,CM,2,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-102-025,SITE-102,WK12,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-102-025,SITE-102,WK12,AE,2,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-102-025,SITE-102,EOS,AE,1,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-102-025,SITE-102,EOS,AE,2,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-102-026,SITE-102,BASE,AE,1,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-102-026,SITE-102,BASE,AE,2,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-102-026,SITE-102,WK4,AE,1,Headache,auto,Headache,Nervous system disorders
+MedDRA,SITE-102-026,SITE-102,WK4,AE,2,Vomiting,auto,Vomiting,Gastrointestinal disorders
+MedDRA,SITE-102-026,SITE-102,WK12,AE,1,Nausea,auto,Nausea,Gastrointestinal disorders
+WHODrug,SITE-102-026,SITE-102,WK12,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+WHODrug,SITE-102-026,SITE-102,WK12,CM,2,Paracetamol,auto,Paracetamol,N02BE01
+WHODrug,SITE-102-026,SITE-102,WK12,CM,3,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-102-026,SITE-102,EOS,AE,1,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+MedDRA,SITE-102-026,SITE-102,EOS,AE,2,Fatigue,auto,Fatigue,General disorders and administration site conditions
+WHODrug,SITE-102-026,SITE-102,EOS,CM,1,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-102-027,SITE-102,BASE,AE,1,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-102-027,SITE-102,WK4,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-102-027,SITE-102,WK4,CM,2,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-102-027,SITE-102,WK12,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-102-028,SITE-102,WK12,AE,1,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-102-028,SITE-102,EOS,AE,1,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-102-028,SITE-102,EOS,AE,2,felt off,uncoded,,
+WHODrug,SITE-102-028,SITE-102,EOS,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+MedDRA,SITE-104-029,SITE-104,BASE,AE,1,Rash,auto,Rash,Skin and subcutaneous tissue disorders
+MedDRA,SITE-104-029,SITE-104,WK4,AE,1,felt off,uncoded,,
+MedDRA,SITE-104-029,SITE-104,WK4,AE,2,Dizziness,auto,Dizziness,Nervous system disorders
+WHODrug,SITE-104-029,SITE-104,WK4,CM,1,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-104-029,SITE-104,WK12,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-104-029,SITE-104,WK12,CM,2,Metformin,auto,Metformin,A10BA02
+WHODrug,SITE-104-029,SITE-104,WK12,CM,3,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-104-029,SITE-104,EOS,AE,1,BP high,ambiguous,Hypertension | Blood pressure increased,
+MedDRA,SITE-104-029,SITE-104,EOS,AE,2,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-104-029,SITE-104,EOS,AE,3,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+WHODrug,SITE-104-029,SITE-104,EOS,CM,1,advil,synonym,Ibuprofen,M01AE01
+WHODrug,SITE-105-030,SITE-105,WK4,CM,1,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-105-030,SITE-105,WK12,AE,1,felt off,uncoded,,
+MedDRA,SITE-105-030,SITE-105,WK12,AE,2,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-105-030,SITE-105,EOS,AE,1,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-105-031,SITE-105,WK4,AE,1,Fatigue,auto,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-104-032,SITE-104,BASE,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+MedDRA,SITE-104-032,SITE-104,BASE,AE,2,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-104-032,SITE-104,BASE,AE,3,Vomiting,auto,Vomiting,Gastrointestinal disorders
+WHODrug,SITE-104-032,SITE-104,WK4,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-104-032,SITE-104,WK4,CM,2,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-104-032,SITE-104,WK4,CM,3,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-104-032,SITE-104,WK12,AE,1,Insomnia,auto,Insomnia,Psychiatric disorders
+WHODrug,SITE-104-032,SITE-104,WK12,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-104-032,SITE-104,WK12,CM,2,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-104-032,SITE-104,EOS,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-104-032,SITE-104,EOS,AE,2,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-104-032,SITE-104,EOS,AE,3,Rash,auto,Rash,Skin and subcutaneous tissue disorders
+WHODrug,SITE-104-032,SITE-104,EOS,CM,1,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-105-034,SITE-105,WK12,AE,1,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-105-034,SITE-105,WK12,AE,2,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+WHODrug,SITE-105-034,SITE-105,WK12,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+WHODrug,SITE-105-034,SITE-105,WK12,CM,2,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-105-034,SITE-105,EOS,CM,1,Metformin,auto,Metformin,A10BA02
+WHODrug,SITE-105-034,SITE-105,EOS,CM,2,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-104-035,SITE-104,BASE,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+MedDRA,SITE-104-035,SITE-104,BASE,AE,2,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+MedDRA,SITE-104-035,SITE-104,WK4,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-104-035,SITE-104,WK4,AE,2,Rash,auto,Rash,Skin and subcutaneous tissue disorders
+WHODrug,SITE-104-035,SITE-104,WK4,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-104-035,SITE-104,WK12,AE,1,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-104-035,SITE-104,EOS,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-104-035,SITE-104,EOS,CM,2,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-104-035,SITE-104,EOS,CM,3,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-105-036,SITE-105,BASE,AE,1,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-105-036,SITE-105,BASE,AE,2,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-105-036,SITE-105,BASE,AE,3,felt off,uncoded,,
+MedDRA,SITE-105-036,SITE-105,WK4,AE,1,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-105-036,SITE-105,WK4,AE,2,Headache,auto,Headache,Nervous system disorders
+MedDRA,SITE-105-036,SITE-105,WK4,AE,3,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-105-036,SITE-105,WK12,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+MedDRA,SITE-105-036,SITE-105,WK12,AE,2,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+WHODrug,SITE-105-036,SITE-105,WK12,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-105-036,SITE-105,EOS,AE,1,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+MedDRA,SITE-105-036,SITE-105,EOS,AE,2,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-105-037,SITE-105,WK4,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-105-037,SITE-105,WK4,AE,2,Insomnia,auto,Insomnia,Psychiatric disorders
+WHODrug,SITE-105-037,SITE-105,WK4,CM,1,Metformin,auto,Metformin,A10BA02
+WHODrug,SITE-105-037,SITE-105,WK4,CM,2,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-105-037,SITE-105,WK12,AE,1,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-105-037,SITE-105,WK12,AE,2,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+WHODrug,SITE-105-037,SITE-105,WK12,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-104-038,SITE-104,BASE,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+WHODrug,SITE-104-038,SITE-104,WK4,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-104-038,SITE-104,WK4,CM,2,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-104-038,SITE-104,EOS,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-104-039,SITE-104,WK4,AE,1,BP high,ambiguous,Hypertension | Blood pressure increased,
+MedDRA,SITE-104-039,SITE-104,WK12,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-104-039,SITE-104,WK12,AE,2,head ache,synonym,Headache,Nervous system disorders
+WHODrug,SITE-104-039,SITE-104,WK12,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-103-040,SITE-103,BASE,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+MedDRA,SITE-103-040,SITE-103,BASE,AE,2,Rash,auto,Rash,Skin and subcutaneous tissue disorders
+MedDRA,SITE-103-040,SITE-103,WK4,AE,1,not himself,uncoded,,
+WHODrug,SITE-103-040,SITE-103,WK4,CM,1,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-105-041,SITE-105,BASE,AE,1,Fatigue,auto,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-105-041,SITE-105,WK4,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-105-041,SITE-105,WK12,AE,1,Insomnia,auto,Insomnia,Psychiatric disorders
+MedDRA,SITE-105-041,SITE-105,WK12,AE,2,Fatigue,auto,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-105-041,SITE-105,WK12,AE,3,BP high,ambiguous,Hypertension | Blood pressure increased,
+WHODrug,SITE-105-041,SITE-105,EOS,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-105-041,SITE-105,EOS,CM,2,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-105-042,SITE-105,WK12,AE,1,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-105-042,SITE-105,WK12,AE,2,BP high,ambiguous,Hypertension | Blood pressure increased,
+MedDRA,SITE-105-042,SITE-105,WK12,AE,3,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-105-042,SITE-105,EOS,AE,1,not himself,uncoded,,
+WHODrug,SITE-105-042,SITE-105,EOS,CM,1,Metformin,auto,Metformin,A10BA02
+WHODrug,SITE-103-043,SITE-103,WK4,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-103-043,SITE-103,WK12,AE,1,Headache,auto,Headache,Nervous system disorders
+WHODrug,SITE-103-043,SITE-103,WK12,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+WHODrug,SITE-103-043,SITE-103,EOS,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-103-043,SITE-103,EOS,CM,2,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-103-043,SITE-103,EOS,CM,3,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-105-044,SITE-105,BASE,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+WHODrug,SITE-105-044,SITE-105,WK4,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-105-044,SITE-105,WK4,CM,2,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-105-044,SITE-105,WK12,AE,1,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-105-044,SITE-105,WK12,AE,2,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-105-044,SITE-105,WK12,AE,3,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-105-044,SITE-105,EOS,AE,1,Rash,auto,Rash,Skin and subcutaneous tissue disorders
+MedDRA,SITE-105-044,SITE-105,EOS,AE,2,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+WHODrug,SITE-105-044,SITE-105,EOS,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-105-044,SITE-105,EOS,CM,2,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-104-045,SITE-104,BASE,AE,1,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-104-045,SITE-104,BASE,AE,2,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+WHODrug,SITE-104-045,SITE-104,WK4,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+MedDRA,SITE-104-045,SITE-104,WK12,AE,1,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+WHODrug,SITE-104-045,SITE-104,WK12,CM,1,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-104-045,SITE-104,EOS,AE,1,felt off,uncoded,,
+WHODrug,SITE-104-045,SITE-104,EOS,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-102-046,SITE-102,WK4,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-102-046,SITE-102,EOS,CM,1,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-104-047,SITE-104,BASE,AE,1,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+WHODrug,SITE-104-047,SITE-104,WK12,CM,1,advil,synonym,Ibuprofen,M01AE01
+WHODrug,SITE-104-047,SITE-104,WK12,CM,2,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-104-047,SITE-104,WK12,CM,3,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-104-047,SITE-104,EOS,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-104-047,SITE-104,EOS,AE,2,not himself,uncoded,,
+WHODrug,SITE-104-047,SITE-104,EOS,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-104-047,SITE-104,EOS,CM,2,advil,synonym,Ibuprofen,M01AE01
+WHODrug,SITE-104-047,SITE-104,EOS,CM,3,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-105-048,SITE-105,BASE,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+WHODrug,SITE-105-048,SITE-105,WK4,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-105-048,SITE-105,WK12,CM,1,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-105-049,SITE-105,WK4,AE,1,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+WHODrug,SITE-105-049,SITE-105,WK4,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-105-049,SITE-105,WK4,CM,2,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-105-049,SITE-105,WK4,CM,3,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-104-051,SITE-104,WK4,AE,1,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+MedDRA,SITE-104-051,SITE-104,WK12,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-104-051,SITE-104,EOS,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-104-051,SITE-104,EOS,AE,2,not himself,uncoded,,
+MedDRA,SITE-101-053,SITE-101,BASE,AE,1,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+MedDRA,SITE-101-053,SITE-101,WK4,AE,1,Fatigue,auto,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-101-053,SITE-101,WK4,AE,2,Vomiting,auto,Vomiting,Gastrointestinal disorders
+WHODrug,SITE-101-053,SITE-101,WK4,CM,1,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-101-053,SITE-101,WK12,AE,1,Rash,auto,Rash,Skin and subcutaneous tissue disorders
+WHODrug,SITE-101-053,SITE-101,WK12,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-101-053,SITE-101,WK12,CM,2,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-102-055,SITE-102,WK4,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-102-055,SITE-102,WK12,AE,1,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+WHODrug,SITE-102-055,SITE-102,WK12,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-102-055,SITE-102,EOS,AE,1,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+MedDRA,SITE-104-056,SITE-104,WK4,AE,1,Headache,auto,Headache,Nervous system disorders
+WHODrug,SITE-104-056,SITE-104,WK4,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-101-057,SITE-101,BASE,AE,1,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-101-057,SITE-101,BASE,AE,2,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+MedDRA,SITE-101-057,SITE-101,WK12,AE,1,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-101-057,SITE-101,WK12,AE,2,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-101-057,SITE-101,EOS,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-101-058,SITE-101,WK4,AE,1,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+WHODrug,SITE-101-058,SITE-101,WK4,CM,1,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-101-058,SITE-101,WK12,AE,1,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+MedDRA,SITE-101-058,SITE-101,WK12,AE,2,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-101-058,SITE-101,WK12,AE,3,not himself,uncoded,,
+WHODrug,SITE-101-058,SITE-101,WK12,CM,1,Metformin,auto,Metformin,A10BA02
+WHODrug,SITE-101-058,SITE-101,WK12,CM,2,advil,synonym,Ibuprofen,M01AE01
+WHODrug,SITE-101-058,SITE-101,EOS,CM,1,Metformin,auto,Metformin,A10BA02
+WHODrug,SITE-101-058,SITE-101,EOS,CM,2,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-105-059,SITE-105,BASE,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-105-059,SITE-105,WK4,AE,1,BP high,ambiguous,Hypertension | Blood pressure increased,
+MedDRA,SITE-105-059,SITE-105,WK4,AE,2,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+WHODrug,SITE-105-059,SITE-105,WK4,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-105-059,SITE-105,WK12,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+MedDRA,SITE-104-060,SITE-104,WK4,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+WHODrug,SITE-104-060,SITE-104,WK4,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-104-060,SITE-104,WK4,CM,2,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-104-060,SITE-104,WK12,AE,1,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+WHODrug,SITE-104-060,SITE-104,WK12,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-102-061,SITE-102,BASE,AE,1,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-102-061,SITE-102,BASE,AE,2,BP high,ambiguous,Hypertension | Blood pressure increased,
+MedDRA,SITE-102-061,SITE-102,WK4,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+MedDRA,SITE-102-061,SITE-102,WK4,AE,2,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+WHODrug,SITE-102-061,SITE-102,WK4,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-102-061,SITE-102,WK12,AE,1,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+MedDRA,SITE-105-062,SITE-105,WK4,AE,1,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+MedDRA,SITE-105-062,SITE-105,WK4,AE,2,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-105-062,SITE-105,WK4,AE,3,Vomiting,auto,Vomiting,Gastrointestinal disorders
+WHODrug,SITE-105-062,SITE-105,WK4,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-105-062,SITE-105,EOS,AE,1,felt off,uncoded,,
+MedDRA,SITE-101-063,SITE-101,BASE,AE,1,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+MedDRA,SITE-101-063,SITE-101,WK4,AE,1,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-101-063,SITE-101,WK12,AE,1,BP high,ambiguous,Hypertension | Blood pressure increased,
+MedDRA,SITE-101-063,SITE-101,EOS,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-101-063,SITE-101,EOS,AE,2,Vomiting,auto,Vomiting,Gastrointestinal disorders
+WHODrug,SITE-101-063,SITE-101,EOS,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-101-063,SITE-101,EOS,CM,2,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-102-064,SITE-102,WK4,AE,1,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+MedDRA,SITE-102-064,SITE-102,WK4,AE,2,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+WHODrug,SITE-102-065,SITE-102,EOS,CM,1,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-104-066,SITE-104,BASE,AE,1,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-103-067,SITE-103,BASE,AE,1,Insomnia,auto,Insomnia,Psychiatric disorders
+MedDRA,SITE-103-067,SITE-103,BASE,AE,2,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-103-067,SITE-103,WK4,AE,1,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+MedDRA,SITE-103-067,SITE-103,WK4,AE,2,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-103-067,SITE-103,WK4,AE,3,felt off,uncoded,,
+WHODrug,SITE-103-067,SITE-103,WK4,CM,1,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-103-067,SITE-103,WK4,CM,2,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-103-067,SITE-103,WK12,AE,1,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+WHODrug,SITE-103-067,SITE-103,WK12,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-103-067,SITE-103,EOS,AE,1,Nausea,auto,Nausea,Gastrointestinal disorders
+WHODrug,SITE-103-067,SITE-103,EOS,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-104-068,SITE-104,BASE,AE,1,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-104-068,SITE-104,BASE,AE,2,Insomnia,auto,Insomnia,Psychiatric disorders
+MedDRA,SITE-104-068,SITE-104,BASE,AE,3,Insomnia,auto,Insomnia,Psychiatric disorders
+MedDRA,SITE-104-068,SITE-104,WK12,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+WHODrug,SITE-104-068,SITE-104,WK12,CM,1,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-104-068,SITE-104,EOS,AE,1,head ache,synonym,Headache,Nervous system disorders
+WHODrug,SITE-104-068,SITE-104,EOS,CM,1,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-104-068,SITE-104,EOS,CM,2,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-105-069,SITE-105,BASE,AE,1,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-105-069,SITE-105,BASE,AE,2,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-105-069,SITE-105,BASE,AE,3,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+MedDRA,SITE-105-069,SITE-105,WK4,AE,1,Headache,auto,Headache,Nervous system disorders
+WHODrug,SITE-105-069,SITE-105,WK4,CM,1,advil,synonym,Ibuprofen,M01AE01
+WHODrug,SITE-105-069,SITE-105,WK4,CM,2,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-105-069,SITE-105,WK12,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-105-069,SITE-105,WK12,CM,2,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-102-070,SITE-102,BASE,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-102-070,SITE-102,BASE,AE,2,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-102-070,SITE-102,BASE,AE,3,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+MedDRA,SITE-102-070,SITE-102,WK4,AE,1,felt off,uncoded,,
+MedDRA,SITE-102-070,SITE-102,WK12,AE,1,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-102-070,SITE-102,EOS,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+MedDRA,SITE-102-070,SITE-102,EOS,AE,2,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-102-070,SITE-102,EOS,AE,3,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+WHODrug,SITE-102-070,SITE-102,EOS,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-102-070,SITE-102,EOS,CM,2,Metformin,auto,Metformin,A10BA02
+WHODrug,SITE-105-071,SITE-105,WK4,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-105-071,SITE-105,WK12,AE,1,felt off,uncoded,,
+WHODrug,SITE-105-071,SITE-105,WK12,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-105-071,SITE-105,EOS,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-105-072,SITE-105,BASE,AE,1,Insomnia,auto,Insomnia,Psychiatric disorders
+WHODrug,SITE-105-072,SITE-105,WK4,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-105-072,SITE-105,WK4,CM,2,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-105-072,SITE-105,WK4,CM,3,Omeprazole,auto,Omeprazole,A02BC01
+MedDRA,SITE-105-072,SITE-105,WK12,AE,1,Headache,auto,Headache,Nervous system disorders
+MedDRA,SITE-105-072,SITE-105,WK12,AE,2,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-105-072,SITE-105,WK12,AE,3,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+WHODrug,SITE-105-072,SITE-105,WK12,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-105-072,SITE-105,EOS,AE,1,not himself,uncoded,,
+WHODrug,SITE-105-072,SITE-105,EOS,CM,1,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-104-073,SITE-104,WK4,AE,1,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+MedDRA,SITE-104-073,SITE-104,WK4,AE,2,Fatigue,auto,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-104-073,SITE-104,WK4,AE,3,Nausea,auto,Nausea,Gastrointestinal disorders
+WHODrug,SITE-104-073,SITE-104,WK4,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-104-073,SITE-104,WK12,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-104-073,SITE-104,WK12,AE,2,Insomnia,auto,Insomnia,Psychiatric disorders
+WHODrug,SITE-104-073,SITE-104,WK12,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-104-073,SITE-104,WK12,CM,2,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-104-073,SITE-104,WK12,CM,3,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-104-074,SITE-104,WK4,AE,1,Fatigue,auto,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-104-074,SITE-104,WK4,AE,2,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+WHODrug,SITE-104-074,SITE-104,WK4,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-104-074,SITE-104,WK12,AE,1,BP high,ambiguous,Hypertension | Blood pressure increased,
+MedDRA,SITE-104-074,SITE-104,EOS,AE,1,Nausea,auto,Nausea,Gastrointestinal disorders
+WHODrug,SITE-101-075,SITE-101,WK4,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-104-076,SITE-104,BASE,AE,1,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+WHODrug,SITE-105-077,SITE-105,WK4,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-105-077,SITE-105,WK4,CM,2,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-105-077,SITE-105,WK12,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-105-077,SITE-105,EOS,CM,1,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-101-078,SITE-101,BASE,AE,1,head ache,synonym,Headache,Nervous system disorders
+WHODrug,SITE-101-078,SITE-101,WK4,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-101-078,SITE-101,EOS,AE,1,Insomnia,auto,Insomnia,Psychiatric disorders
+MedDRA,SITE-104-079,SITE-104,WK4,AE,1,Rash,auto,Rash,Skin and subcutaneous tissue disorders
+MedDRA,SITE-104-079,SITE-104,WK4,AE,2,Fatigue,auto,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-104-079,SITE-104,WK4,AE,3,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+WHODrug,SITE-104-079,SITE-104,WK4,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-104-079,SITE-104,WK4,CM,2,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-104-079,SITE-104,WK12,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-104-079,SITE-104,WK12,CM,2,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-104-079,SITE-104,EOS,AE,1,BP high,ambiguous,Hypertension | Blood pressure increased,
+MedDRA,SITE-104-079,SITE-104,EOS,AE,2,Fatigue,auto,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-104-079,SITE-104,EOS,AE,3,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-105-080,SITE-105,WK12,AE,1,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-105-080,SITE-105,WK12,AE,2,Insomnia,auto,Insomnia,Psychiatric disorders
+WHODrug,SITE-105-080,SITE-105,WK12,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-105-080,SITE-105,EOS,AE,1,Rash,auto,Rash,Skin and subcutaneous tissue disorders
+WHODrug,SITE-105-080,SITE-105,EOS,CM,1,advil,synonym,Ibuprofen,M01AE01
+WHODrug,SITE-105-080,SITE-105,EOS,CM,2,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-105-080,SITE-105,EOS,CM,3,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-105-081,SITE-105,BASE,AE,1,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-105-081,SITE-105,WK4,AE,1,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+WHODrug,SITE-105-081,SITE-105,WK4,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-105-081,SITE-105,WK12,CM,1,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-105-081,SITE-105,EOS,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-101-082,SITE-101,WK4,AE,1,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-101-082,SITE-101,EOS,AE,1,head ache,synonym,Headache,Nervous system disorders
+WHODrug,SITE-101-082,SITE-101,EOS,CM,1,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-101-083,SITE-101,WK4,AE,1,not himself,uncoded,,
+MedDRA,SITE-101-083,SITE-101,WK4,AE,2,Headache,auto,Headache,Nervous system disorders
+MedDRA,SITE-101-083,SITE-101,EOS,AE,1,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-101-083,SITE-101,EOS,AE,2,Dizziness,auto,Dizziness,Nervous system disorders
+WHODrug,SITE-101-083,SITE-101,EOS,CM,1,advil,synonym,Ibuprofen,M01AE01
+WHODrug,SITE-101-083,SITE-101,EOS,CM,2,Omeprazole,auto,Omeprazole,A02BC01
+MedDRA,SITE-103-084,SITE-103,BASE,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-103-085,SITE-103,WK4,AE,1,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-103-085,SITE-103,WK4,AE,2,Dizziness,auto,Dizziness,Nervous system disorders
+WHODrug,SITE-103-085,SITE-103,WK4,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-103-085,SITE-103,WK4,CM,2,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-103-085,SITE-103,WK12,AE,1,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+MedDRA,SITE-103-085,SITE-103,WK12,AE,2,Vomiting,auto,Vomiting,Gastrointestinal disorders
+WHODrug,SITE-103-085,SITE-103,WK12,CM,1,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-103-085,SITE-103,WK12,CM,2,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-103-085,SITE-103,EOS,CM,1,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-101-086,SITE-101,BASE,AE,1,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+MedDRA,SITE-101-086,SITE-101,WK4,AE,1,felt off,uncoded,,
+MedDRA,SITE-101-086,SITE-101,WK4,AE,2,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+MedDRA,SITE-101-086,SITE-101,WK4,AE,3,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-101-086,SITE-101,WK12,AE,1,felt off,uncoded,,
+WHODrug,SITE-101-086,SITE-101,EOS,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-101-087,SITE-101,BASE,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+MedDRA,SITE-101-087,SITE-101,BASE,AE,2,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-101-087,SITE-101,WK4,AE,1,felt off,uncoded,,
+WHODrug,SITE-101-087,SITE-101,WK4,CM,1,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-101-087,SITE-101,WK4,CM,2,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-101-087,SITE-101,WK4,CM,3,Omeprazole,auto,Omeprazole,A02BC01
+MedDRA,SITE-101-087,SITE-101,WK12,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-101-087,SITE-101,WK12,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-101-087,SITE-101,WK12,CM,2,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-101-087,SITE-101,EOS,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+WHODrug,SITE-101-087,SITE-101,EOS,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-101-087,SITE-101,EOS,CM,2,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-101-087,SITE-101,EOS,CM,3,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-102-088,SITE-102,BASE,AE,1,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-102-088,SITE-102,WK4,AE,1,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-102-088,SITE-102,WK12,AE,1,BP high,ambiguous,Hypertension | Blood pressure increased,
+MedDRA,SITE-102-088,SITE-102,WK12,AE,2,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-102-088,SITE-102,EOS,AE,1,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+WHODrug,SITE-102-088,SITE-102,EOS,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-105-089,SITE-105,BASE,AE,1,Insomnia,auto,Insomnia,Psychiatric disorders
+WHODrug,SITE-105-089,SITE-105,WK4,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+WHODrug,SITE-105-089,SITE-105,WK4,CM,2,advil,synonym,Ibuprofen,M01AE01
+MedDRA,SITE-105-089,SITE-105,WK12,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-105-089,SITE-105,WK12,AE,2,feeling sick to stomach,synonym,Nausea,Gastrointestinal disorders
+MedDRA,SITE-104-090,SITE-104,WK4,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-104-090,SITE-104,WK4,AE,2,not himself,uncoded,,
+MedDRA,SITE-104-090,SITE-104,WK4,AE,3,not himself,uncoded,,
+WHODrug,SITE-104-090,SITE-104,WK4,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-104-090,SITE-104,WK4,CM,2,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-104-090,SITE-104,WK12,CM,1,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-104-091,SITE-104,BASE,AE,1,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+MedDRA,SITE-104-091,SITE-104,BASE,AE,2,not himself,uncoded,,
+MedDRA,SITE-104-091,SITE-104,BASE,AE,3,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-104-091,SITE-104,WK4,AE,1,not himself,uncoded,,
+WHODrug,SITE-104-091,SITE-104,WK4,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-104-091,SITE-104,WK12,CM,1,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-104-091,SITE-104,EOS,AE,1,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-104-091,SITE-104,EOS,AE,2,not himself,uncoded,,
+WHODrug,SITE-104-091,SITE-104,EOS,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-104-091,SITE-104,EOS,CM,2,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-104-091,SITE-104,EOS,CM,3,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-104-092,SITE-104,WK4,CM,1,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-104-092,SITE-104,WK12,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-104-092,SITE-104,WK12,AE,2,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-104-092,SITE-104,WK12,CM,1,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-104-092,SITE-104,WK12,CM,2,Omeprazole,auto,Omeprazole,A02BC01
+MedDRA,SITE-104-092,SITE-104,EOS,AE,1,Rash,auto,Rash,Skin and subcutaneous tissue disorders
+WHODrug,SITE-104-092,SITE-104,EOS,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-104-092,SITE-104,EOS,CM,2,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-103-093,SITE-103,BASE,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-103-093,SITE-103,BASE,AE,2,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+WHODrug,SITE-103-093,SITE-103,WK4,CM,1,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-103-093,SITE-103,WK12,AE,1,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+WHODrug,SITE-103-093,SITE-103,WK12,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-103-093,SITE-103,EOS,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-105-094,SITE-105,EOS,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-101-095,SITE-101,BASE,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-101-095,SITE-101,WK4,AE,1,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-101-095,SITE-101,WK4,AE,2,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+WHODrug,SITE-101-095,SITE-101,WK4,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-101-095,SITE-101,WK4,CM,2,Paracetamol,auto,Paracetamol,N02BE01
+WHODrug,SITE-101-095,SITE-101,EOS,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-102-096,SITE-102,BASE,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-102-096,SITE-102,WK4,AE,1,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+MedDRA,SITE-102-096,SITE-102,WK4,AE,2,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+WHODrug,SITE-102-096,SITE-102,WK4,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-102-096,SITE-102,WK12,AE,1,Insomnia,auto,Insomnia,Psychiatric disorders
+MedDRA,SITE-102-096,SITE-102,EOS,AE,1,Headache,auto,Headache,Nervous system disorders
+MedDRA,SITE-102-097,SITE-102,BASE,AE,1,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+MedDRA,SITE-102-097,SITE-102,BASE,AE,2,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-102-097,SITE-102,WK4,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-102-097,SITE-102,WK4,CM,2,Atorvastatin,auto,Atorvastatin,C10AA05
+WHODrug,SITE-102-097,SITE-102,WK12,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-102-097,SITE-102,WK12,CM,2,Metformin,auto,Metformin,A10BA02
+WHODrug,SITE-102-097,SITE-102,EOS,CM,1,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-105-098,SITE-105,BASE,AE,1,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-105-098,SITE-105,BASE,AE,2,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-105-098,SITE-105,WK4,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-105-098,SITE-105,WK12,AE,1,head ache,synonym,Headache,Nervous system disorders
+WHODrug,SITE-105-098,SITE-105,EOS,CM,1,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-103-099,SITE-103,BASE,AE,1,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+MedDRA,SITE-103-099,SITE-103,BASE,AE,2,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-103-099,SITE-103,BASE,AE,3,not himself,uncoded,,
+WHODrug,SITE-103-099,SITE-103,WK12,CM,1,advil,synonym,Ibuprofen,M01AE01
+WHODrug,SITE-103-099,SITE-103,WK12,CM,2,Atorvastatin,auto,Atorvastatin,C10AA05
+MedDRA,SITE-103-099,SITE-103,EOS,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-103-100,SITE-103,WK4,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-103-100,SITE-103,WK4,CM,2,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-103-100,SITE-103,WK4,CM,3,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-103-100,SITE-103,EOS,AE,1,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-104-101,SITE-104,WK4,AE,1,Fatigue,auto,Fatigue,General disorders and administration site conditions
+WHODrug,SITE-104-101,SITE-104,WK4,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+WHODrug,SITE-103-102,SITE-103,WK12,CM,1,tylenol,synonym,Paracetamol,N02BE01
+WHODrug,SITE-102-103,SITE-102,WK12,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+WHODrug,SITE-102-103,SITE-102,WK12,CM,2,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-102-103,SITE-102,EOS,AE,1,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+WHODrug,SITE-102-103,SITE-102,EOS,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+WHODrug,SITE-102-104,SITE-102,WK4,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+WHODrug,SITE-102-104,SITE-102,EOS,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-102-105,SITE-102,WK4,AE,1,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-102-105,SITE-102,WK4,AE,2,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-102-105,SITE-102,WK4,AE,3,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+WHODrug,SITE-102-105,SITE-102,EOS,CM,1,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-102-106,SITE-102,WK4,AE,1,BP high,ambiguous,Hypertension | Blood pressure increased,
+WHODrug,SITE-102-106,SITE-102,WK4,CM,1,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-101-107,SITE-101,WK4,AE,1,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+MedDRA,SITE-102-108,SITE-102,BASE,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-102-108,SITE-102,BASE,AE,2,Headache,auto,Headache,Nervous system disorders
+WHODrug,SITE-102-108,SITE-102,WK4,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-102-108,SITE-102,WK4,CM,2,Ibuprofen,auto,Ibuprofen,M01AE01
+WHODrug,SITE-102-108,SITE-102,WK4,CM,3,Ibuprofen,auto,Ibuprofen,M01AE01
+MedDRA,SITE-105-109,SITE-105,BASE,AE,1,Headache,auto,Headache,Nervous system disorders
+MedDRA,SITE-105-109,SITE-105,BASE,AE,2,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-105-109,SITE-105,BASE,AE,3,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-105-109,SITE-105,WK4,AE,1,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-105-109,SITE-105,WK4,CM,1,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-105-109,SITE-105,WK12,AE,1,Fatigue,auto,Fatigue,General disorders and administration site conditions
+WHODrug,SITE-105-109,SITE-105,WK12,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-104-110,SITE-104,BASE,AE,1,Abdominal pain,auto,Abdominal pain,Gastrointestinal disorders
+MedDRA,SITE-104-110,SITE-104,BASE,AE,2,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-104-110,SITE-104,WK12,AE,1,Pyrexia,auto,Pyrexia,General disorders and administration site conditions
+MedDRA,SITE-104-110,SITE-104,WK12,AE,2,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-104-110,SITE-104,WK12,AE,3,Vomiting,auto,Vomiting,Gastrointestinal disorders
+WHODrug,SITE-104-110,SITE-104,WK12,CM,1,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-105-111,SITE-105,WK12,AE,1,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-105-111,SITE-105,WK12,AE,2,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+WHODrug,SITE-105-111,SITE-105,EOS,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-104-112,SITE-104,BASE,AE,1,Nausea,auto,Nausea,Gastrointestinal disorders
+WHODrug,SITE-104-112,SITE-104,WK4,CM,1,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-104-112,SITE-104,WK12,AE,1,Vomiting,auto,Vomiting,Gastrointestinal disorders
+MedDRA,SITE-104-112,SITE-104,WK12,AE,2,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+MedDRA,SITE-104-112,SITE-104,WK12,AE,3,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-104-112,SITE-104,WK12,CM,1,advil,synonym,Ibuprofen,M01AE01
+WHODrug,SITE-104-112,SITE-104,WK12,CM,2,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-104-112,SITE-104,EOS,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-104-112,SITE-104,EOS,AE,2,Insomnia,auto,Insomnia,Psychiatric disorders
+MedDRA,SITE-104-112,SITE-104,EOS,AE,3,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-102-113,SITE-102,WK12,AE,1,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+MedDRA,SITE-102-113,SITE-102,WK12,AE,2,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-102-113,SITE-102,WK12,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-102-113,SITE-102,EOS,AE,1,Fatigue,auto,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-102-113,SITE-102,EOS,AE,2,felt off,uncoded,,
+WHODrug,SITE-102-113,SITE-102,EOS,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+WHODrug,SITE-102-113,SITE-102,EOS,CM,2,Metformin,auto,Metformin,A10BA02
+MedDRA,SITE-102-114,SITE-102,BASE,AE,1,Dizziness,auto,Dizziness,Nervous system disorders
+MedDRA,SITE-102-114,SITE-102,WK4,AE,1,Headache,auto,Headache,Nervous system disorders
+MedDRA,SITE-102-114,SITE-102,WK4,AE,2,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-102-114,SITE-102,WK4,AE,3,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-102-114,SITE-102,WK12,AE,1,Upper respiratory tract infection,auto,Upper respiratory tract infection,Infections and infestations
+WHODrug,SITE-102-114,SITE-102,WK12,CM,1,Salbutamol,auto,Salbutamol,R03AC02
+MedDRA,SITE-102-114,SITE-102,EOS,AE,1,Insomnia,auto,Insomnia,Psychiatric disorders
+WHODrug,SITE-105-115,SITE-105,WK4,CM,1,advil,synonym,Ibuprofen,M01AE01
+WHODrug,SITE-102-116,SITE-102,WK4,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+WHODrug,SITE-102-116,SITE-102,EOS,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-104-117,SITE-104,BASE,AE,1,Back pain,auto,Back pain,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-104-117,SITE-104,WK4,CM,1,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-104-117,SITE-104,WK12,AE,1,tired all the time,synonym,Fatigue,General disorders and administration site conditions
+MedDRA,SITE-104-117,SITE-104,EOS,AE,1,Rash,auto,Rash,Skin and subcutaneous tissue disorders
+MedDRA,SITE-104-117,SITE-104,EOS,AE,2,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+MedDRA,SITE-104-117,SITE-104,EOS,AE,3,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+WHODrug,SITE-104-117,SITE-104,EOS,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-104-118,SITE-104,BASE,AE,1,head ache,synonym,Headache,Nervous system disorders
+MedDRA,SITE-104-118,SITE-104,BASE,AE,2,Insomnia,auto,Insomnia,Psychiatric disorders
+MedDRA,SITE-104-118,SITE-104,WK4,AE,1,Diarrhoea,auto,Diarrhoea,Gastrointestinal disorders
+MedDRA,SITE-102-119,SITE-102,BASE,AE,1,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+MedDRA,SITE-102-119,SITE-102,BASE,AE,2,sore throat and runny nose,synonym,Nasopharyngitis,Infections and infestations
+MedDRA,SITE-102-119,SITE-102,WK4,AE,1,Rash,auto,Rash,Skin and subcutaneous tissue disorders
+MedDRA,SITE-102-119,SITE-102,WK12,AE,1,not himself,uncoded,,
+WHODrug,SITE-102-119,SITE-102,EOS,CM,1,Amoxicillin,auto,Amoxicillin,J01CA04
+MedDRA,SITE-103-120,SITE-103,BASE,AE,1,Insomnia,auto,Insomnia,Psychiatric disorders
+MedDRA,SITE-103-120,SITE-103,WK4,AE,1,Nausea,auto,Nausea,Gastrointestinal disorders
+MedDRA,SITE-103-120,SITE-103,WK4,AE,2,Cough,auto,Cough,"Respiratory, thoracic and mediastinal disorders"
+WHODrug,SITE-103-120,SITE-103,WK4,CM,1,Paracetamol,auto,Paracetamol,N02BE01
+MedDRA,SITE-103-120,SITE-103,WK12,AE,1,Pruritus,auto,Pruritus,Skin and subcutaneous tissue disorders
+MedDRA,SITE-103-120,SITE-103,WK12,AE,2,Arthralgia,auto,Arthralgia,Musculoskeletal and connective tissue disorders
+WHODrug,SITE-103-120,SITE-103,WK12,CM,1,Omeprazole,auto,Omeprazole,A02BC01
+WHODrug,SITE-103-120,SITE-103,WK12,CM,2,Salbutamol,auto,Salbutamol,R03AC02
+WHODrug,SITE-103-120,SITE-103,WK12,CM,3,tylenol,synonym,Paracetamol,N02BE01
+MedDRA,SITE-103-120,SITE-103,EOS,AE,1,Insomnia,auto,Insomnia,Psychiatric disorders

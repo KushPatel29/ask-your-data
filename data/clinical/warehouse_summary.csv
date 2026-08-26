@@ -1,0 +1,35 @@
+metric,label,value
+kpi,resources ingested,1665082
+kpi,quarantined,5
+kpi,fact rows,2070028
+kpi,patients with history,1429
+norm,Patient,10000
+dw,Patient,11430
+norm,Encounter,169906
+dw,Encounter,169906
+norm,Condition,139752
+dw,Condition,139752
+norm,Observation,925278
+dw,Observation,1343927
+norm,Procedure,310358
+dw,Procedure,310358
+norm,Medication,106085
+dw,Medication,106085
+timing,schema,4.67
+timing,ingest (bulk),608.27
+timing,shred raw -> norm,1638.3
+timing,load norm -> dw,9658.41
+timing,change feed,1.26
+timing,ingest (change feed),1.65
+timing,re-shred and re-load (SCD2),2565.89
+timing,measure,5.15
+setting,Ambulatory,158060
+setting,Emergency,6588
+setting,Inpatient,3876
+setting,Home,929
+setting,Virtual,453
+feasibility,Active patient panel,8432
+feasibility,Aged 18-64,5433
+feasibility,With a qualifying diagnosis,4543
+feasibility,With at least one numeric lab result,9542
+feasibility,Meeting all criteria,2736

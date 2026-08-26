@@ -1,0 +1,127 @@
+month,month_label,fiscal_year,fiscal_period,campaign_id,campaign_name,channel_key,channel,spend,leads,qualified_leads,new_customers,selling_spend_month,acquisition_selling_spend_month,revenue_month
+2024-10-01,Oct 2024,2025,1,CMP-202410-EMAIL,Email & CRM nurture - Oct 2024,email,Email & CRM nurture,4340.78,17,4,1,308204.37,55476.79,4977161.27
+2024-10-01,Oct 2024,2025,1,CMP-202410-FIELD,Field sales prospecting - Oct 2024,field,Field sales prospecting,10911.88,12,6,2,308204.37,55476.79,4977161.27
+2024-10-01,Oct 2024,2025,1,CMP-202410-REFERRAL,Referral & partner program - Oct 2024,referral,Referral & partner program,5773.07,10,6,2,308204.37,55476.79,4977161.27
+2024-10-01,Oct 2024,2025,1,CMP-202410-SEARCH,Search & trade directories - Oct 2024,search,Search & trade directories,2784.26,8,2,0,308204.37,55476.79,4977161.27
+2024-10-01,Oct 2024,2025,1,CMP-202410-TRADE_PRESS,Trade press & print - Oct 2024,trade_press,Trade press & print,4031.94,3,1,0,308204.37,55476.79,4977161.27
+2024-10-01,Oct 2024,2025,1,CMP-202410-TRADESHOW,Trade shows & industry events - Oct 2024,tradeshow,Trade shows & industry events,8689.59,6,2,1,308204.37,55476.79,4977161.27
+2024-11-01,Nov 2024,2025,2,CMP-202411-EMAIL,Email & CRM nurture - Nov 2024,email,Email & CRM nurture,5352.39,22,6,2,309095.62,55637.21,5196460.15
+2024-11-01,Nov 2024,2025,2,CMP-202411-FIELD,Field sales prospecting - Nov 2024,field,Field sales prospecting,10312.82,11,6,1,309095.62,55637.21,5196460.15
+2024-11-01,Nov 2024,2025,2,CMP-202411-REFERRAL,Referral & partner program - Nov 2024,referral,Referral & partner program,5045.63,8,5,1,309095.62,55637.21,5196460.15
+2024-11-01,Nov 2024,2025,2,CMP-202411-SEARCH,Search & trade directories - Nov 2024,search,Search & trade directories,3343.54,9,2,1,309095.62,55637.21,5196460.15
+2024-11-01,Nov 2024,2025,2,CMP-202411-TRADE_PRESS,Trade press & print - Nov 2024,trade_press,Trade press & print,3687.46,3,1,1,309095.62,55637.21,5196460.15
+2024-11-01,Nov 2024,2025,2,CMP-202411-TRADESHOW,Trade shows & industry events - Nov 2024,tradeshow,Trade shows & industry events,9201.23,6,3,0,309095.62,55637.21,5196460.15
+2024-12-01,Dec 2024,2025,3,CMP-202412-EMAIL,Email & CRM nurture - Dec 2024,email,Email & CRM nurture,4520.54,20,5,1,334865.91,60275.86,5508752.62
+2024-12-01,Dec 2024,2025,3,CMP-202412-FIELD,Field sales prospecting - Dec 2024,field,Field sales prospecting,11406.27,13,6,2,334865.91,60275.86,5508752.62
+2024-12-01,Dec 2024,2025,3,CMP-202412-REFERRAL,Referral & partner program - Dec 2024,referral,Referral & partner program,4518.33,8,4,1,334865.91,60275.86,5508752.62
+2024-12-01,Dec 2024,2025,3,CMP-202412-SEARCH,Search & trade directories - Dec 2024,search,Search & trade directories,3023.08,8,2,1,334865.91,60275.86,5508752.62
+2024-12-01,Dec 2024,2025,3,CMP-202412-TRADE_PRESS,Trade press & print - Dec 2024,trade_press,Trade press & print,4270.41,4,1,0,334865.91,60275.86,5508752.62
+2024-12-01,Dec 2024,2025,3,CMP-202412-TRADESHOW,Trade shows & industry events - Dec 2024,tradeshow,Trade shows & industry events,7388.53,4,2,1,334865.91,60275.86,5508752.62
+2025-01-01,Jan 2025,2025,4,CMP-202501-EMAIL,Email & CRM nurture - Jan 2025,email,Email & CRM nurture,4528.58,20,6,2,287708.51,51787.53,4688331.31
+2025-01-01,Jan 2025,2025,4,CMP-202501-FIELD,Field sales prospecting - Jan 2025,field,Field sales prospecting,10986.11,12,7,2,287708.51,51787.53,4688331.31
+2025-01-01,Jan 2025,2025,4,CMP-202501-REFERRAL,Referral & partner program - Jan 2025,referral,Referral & partner program,4562.73,8,5,1,287708.51,51787.53,4688331.31
+2025-01-01,Jan 2025,2025,4,CMP-202501-SEARCH,Search & trade directories - Jan 2025,search,Search & trade directories,2905.44,9,2,0,287708.51,51787.53,4688331.31
+2025-01-01,Jan 2025,2025,4,CMP-202501-TRADE_PRESS,Trade press & print - Jan 2025,trade_press,Trade press & print,4006.13,4,1,0,287708.51,51787.53,4688331.31
+2025-01-01,Jan 2025,2025,4,CMP-202501-TRADESHOW,Trade shows & industry events - Jan 2025,tradeshow,Trade shows & industry events,7369.21,5,2,0,287708.51,51787.53,4688331.31
+2025-02-01,Feb 2025,2025,5,CMP-202502-EMAIL,Email & CRM nurture - Feb 2025,email,Email & CRM nurture,4412.06,19,5,1,290150.91,52227.16,4572340.4
+2025-02-01,Feb 2025,2025,5,CMP-202502-FIELD,Field sales prospecting - Feb 2025,field,Field sales prospecting,12414.37,14,7,2,290150.91,52227.16,4572340.4
+2025-02-01,Feb 2025,2025,5,CMP-202502-REFERRAL,Referral & partner program - Feb 2025,referral,Referral & partner program,4981.63,9,6,2,290150.91,52227.16,4572340.4
+2025-02-01,Feb 2025,2025,5,CMP-202502-SEARCH,Search & trade directories - Feb 2025,search,Search & trade directories,2830.87,7,2,1,290150.91,52227.16,4572340.4
+2025-02-01,Feb 2025,2025,5,CMP-202502-TRADE_PRESS,Trade press & print - Feb 2025,trade_press,Trade press & print,3821.87,4,1,1,290150.91,52227.16,4572340.4
+2025-02-01,Feb 2025,2025,5,CMP-202502-TRADESHOW,Trade shows & industry events - Feb 2025,tradeshow,Trade shows & industry events,7596.38,5,2,1,290150.91,52227.16,4572340.4
+2025-03-01,Mar 2025,2025,6,CMP-202503-EMAIL,Email & CRM nurture - Mar 2025,email,Email & CRM nurture,3824.31,15,5,1,307517.9,55353.22,4838304.75
+2025-03-01,Mar 2025,2025,6,CMP-202503-FIELD,Field sales prospecting - Mar 2025,field,Field sales prospecting,11276.7,13,6,1,307517.9,55353.22,4838304.75
+2025-03-01,Mar 2025,2025,6,CMP-202503-REFERRAL,Referral & partner program - Mar 2025,referral,Referral & partner program,6007.51,11,7,1,307517.9,55353.22,4838304.75
+2025-03-01,Mar 2025,2025,6,CMP-202503-SEARCH,Search & trade directories - Mar 2025,search,Search & trade directories,3435.3,9,2,0,307517.9,55353.22,4838304.75
+2025-03-01,Mar 2025,2025,6,CMP-202503-TRADE_PRESS,Trade press & print - Mar 2025,trade_press,Trade press & print,3716.63,3,1,0,307517.9,55353.22,4838304.75
+2025-03-01,Mar 2025,2025,6,CMP-202503-TRADESHOW,Trade shows & industry events - Mar 2025,tradeshow,Trade shows & industry events,8531.48,7,3,1,307517.9,55353.22,4838304.75
+2025-04-01,Apr 2025,2025,7,CMP-202504-EMAIL,Email & CRM nurture - Apr 2025,email,Email & CRM nurture,4917.12,19,5,0,330225.04,59440.51,5223114.52
+2025-04-01,Apr 2025,2025,7,CMP-202504-FIELD,Field sales prospecting - Apr 2025,field,Field sales prospecting,12880.28,16,9,1,330225.04,59440.51,5223114.52
+2025-04-01,Apr 2025,2025,7,CMP-202504-REFERRAL,Referral & partner program - Apr 2025,referral,Referral & partner program,5757.39,10,5,1,330225.04,59440.51,5223114.52
+2025-04-01,Apr 2025,2025,7,CMP-202504-SEARCH,Search & trade directories - Apr 2025,search,Search & trade directories,3073.31,8,2,0,330225.04,59440.51,5223114.52
+2025-04-01,Apr 2025,2025,7,CMP-202504-TRADE_PRESS,Trade press & print - Apr 2025,trade_press,Trade press & print,4614.04,4,1,0,330225.04,59440.51,5223114.52
+2025-04-01,Apr 2025,2025,7,CMP-202504-TRADESHOW,Trade shows & industry events - Apr 2025,tradeshow,Trade shows & industry events,10203.22,7,3,0,330225.04,59440.51,5223114.52
+2025-05-01,May 2025,2025,8,CMP-202505-EMAIL,Email & CRM nurture - May 2025,email,Email & CRM nurture,4063.12,18,4,1,323963.49,58313.43,5150878.43
+2025-05-01,May 2025,2025,8,CMP-202505-FIELD,Field sales prospecting - May 2025,field,Field sales prospecting,9924.56,11,6,1,323963.49,58313.43,5150878.43
+2025-05-01,May 2025,2025,8,CMP-202505-REFERRAL,Referral & partner program - May 2025,referral,Referral & partner program,4296.59,10,7,2,323963.49,58313.43,5150878.43
+2025-05-01,May 2025,2025,8,CMP-202505-SEARCH,Search & trade directories - May 2025,search,Search & trade directories,2204.02,5,1,1,323963.49,58313.43,5150878.43
+2025-05-01,May 2025,2025,8,CMP-202505-TRADE_PRESS,Trade press & print - May 2025,trade_press,Trade press & print,3043.21,3,1,0,323963.49,58313.43,5150878.43
+2025-05-01,May 2025,2025,8,CMP-202505-TRADESHOW,Trade shows & industry events - May 2025,tradeshow,Trade shows & industry events,7686.68,5,2,0,323963.49,58313.43,5150878.43
+2025-06-01,Jun 2025,2025,9,CMP-202506-EMAIL,Email & CRM nurture - Jun 2025,email,Email & CRM nurture,3150.78,12,3,2,354659.8,63838.76,5217247.29
+2025-06-01,Jun 2025,2025,9,CMP-202506-FIELD,Field sales prospecting - Jun 2025,field,Field sales prospecting,9694.06,10,6,3,354659.8,63838.76,5217247.29
+2025-06-01,Jun 2025,2025,9,CMP-202506-REFERRAL,Referral & partner program - Jun 2025,referral,Referral & partner program,4113.46,7,5,2,354659.8,63838.76,5217247.29
+2025-06-01,Jun 2025,2025,9,CMP-202506-SEARCH,Search & trade directories - Jun 2025,search,Search & trade directories,2655.98,7,2,1,354659.8,63838.76,5217247.29
+2025-06-01,Jun 2025,2025,9,CMP-202506-TRADE_PRESS,Trade press & print - Jun 2025,trade_press,Trade press & print,3546.89,3,1,1,354659.8,63838.76,5217247.29
+2025-06-01,Jun 2025,2025,9,CMP-202506-TRADESHOW,Trade shows & industry events - Jun 2025,tradeshow,Trade shows & industry events,7197.96,5,2,1,354659.8,63838.76,5217247.29
+2025-07-01,Jul 2025,2025,10,CMP-202507-EMAIL,Email & CRM nurture - Jul 2025,email,Email & CRM nurture,4673.27,21,7,1,304587.31,54825.72,5283433.1
+2025-07-01,Jul 2025,2025,10,CMP-202507-FIELD,Field sales prospecting - Jul 2025,field,Field sales prospecting,13793.45,15,8,1,304587.31,54825.72,5283433.1
+2025-07-01,Jul 2025,2025,10,CMP-202507-REFERRAL,Referral & partner program - Jul 2025,referral,Referral & partner program,5886.29,10,6,1,304587.31,54825.72,5283433.1
+2025-07-01,Jul 2025,2025,10,CMP-202507-SEARCH,Search & trade directories - Jul 2025,search,Search & trade directories,3101.7,8,2,0,304587.31,54825.72,5283433.1
+2025-07-01,Jul 2025,2025,10,CMP-202507-TRADE_PRESS,Trade press & print - Jul 2025,trade_press,Trade press & print,4897.32,4,1,0,304587.31,54825.72,5283433.1
+2025-07-01,Jul 2025,2025,10,CMP-202507-TRADESHOW,Trade shows & industry events - Jul 2025,tradeshow,Trade shows & industry events,8864.39,6,3,1,304587.31,54825.72,5283433.1
+2025-08-01,Aug 2025,2025,11,CMP-202508-EMAIL,Email & CRM nurture - Aug 2025,email,Email & CRM nurture,5073.75,21,7,1,314587.77,56625.8,5082632.58
+2025-08-01,Aug 2025,2025,11,CMP-202508-FIELD,Field sales prospecting - Aug 2025,field,Field sales prospecting,12849.24,15,9,2,314587.77,56625.8,5082632.58
+2025-08-01,Aug 2025,2025,11,CMP-202508-REFERRAL,Referral & partner program - Aug 2025,referral,Referral & partner program,5270.51,9,6,1,314587.77,56625.8,5082632.58
+2025-08-01,Aug 2025,2025,11,CMP-202508-SEARCH,Search & trade directories - Aug 2025,search,Search & trade directories,4154.85,11,3,0,314587.77,56625.8,5082632.58
+2025-08-01,Aug 2025,2025,11,CMP-202508-TRADE_PRESS,Trade press & print - Aug 2025,trade_press,Trade press & print,4504.35,5,1,0,314587.77,56625.8,5082632.58
+2025-08-01,Aug 2025,2025,11,CMP-202508-TRADESHOW,Trade shows & industry events - Aug 2025,tradeshow,Trade shows & industry events,8752.87,7,3,0,314587.77,56625.8,5082632.58
+2025-09-01,Sep 2025,2025,12,CMP-202509-EMAIL,Email & CRM nurture - Sep 2025,email,Email & CRM nurture,4889.12,19,5,1,368293.49,66292.83,5436727.17
+2025-09-01,Sep 2025,2025,12,CMP-202509-FIELD,Field sales prospecting - Sep 2025,field,Field sales prospecting,12641.23,12,6,1,368293.49,66292.83,5436727.17
+2025-09-01,Sep 2025,2025,12,CMP-202509-REFERRAL,Referral & partner program - Sep 2025,referral,Referral & partner program,5576.27,11,7,1,368293.49,66292.83,5436727.17
+2025-09-01,Sep 2025,2025,12,CMP-202509-SEARCH,Search & trade directories - Sep 2025,search,Search & trade directories,3324.05,9,2,0,368293.49,66292.83,5436727.17
+2025-09-01,Sep 2025,2025,12,CMP-202509-TRADE_PRESS,Trade press & print - Sep 2025,trade_press,Trade press & print,3957.15,4,1,0,368293.49,66292.83,5436727.17
+2025-09-01,Sep 2025,2025,12,CMP-202509-TRADESHOW,Trade shows & industry events - Sep 2025,tradeshow,Trade shows & industry events,8771.62,6,3,1,368293.49,66292.83,5436727.17
+2025-10-01,Oct 2025,2026,1,CMP-202510-EMAIL,Email & CRM nurture - Oct 2025,email,Email & CRM nurture,4572.7,16,4,0,311651.7,56097.31,5272916.7
+2025-10-01,Oct 2025,2026,1,CMP-202510-FIELD,Field sales prospecting - Oct 2025,field,Field sales prospecting,12892.33,13,7,0,311651.7,56097.31,5272916.7
+2025-10-01,Oct 2025,2026,1,CMP-202510-REFERRAL,Referral & partner program - Oct 2025,referral,Referral & partner program,4929.37,9,5,1,311651.7,56097.31,5272916.7
+2025-10-01,Oct 2025,2026,1,CMP-202510-SEARCH,Search & trade directories - Oct 2025,search,Search & trade directories,3616.25,9,2,1,311651.7,56097.31,5272916.7
+2025-10-01,Oct 2025,2026,1,CMP-202510-TRADE_PRESS,Trade press & print - Oct 2025,trade_press,Trade press & print,4805.82,4,1,0,311651.7,56097.31,5272916.7
+2025-10-01,Oct 2025,2026,1,CMP-202510-TRADESHOW,Trade shows & industry events - Oct 2025,tradeshow,Trade shows & industry events,9161.37,6,3,0,311651.7,56097.31,5272916.7
+2025-11-01,Nov 2025,2026,2,CMP-202511-EMAIL,Email & CRM nurture - Nov 2025,email,Email & CRM nurture,4081.12,17,5,1,378365.81,68105.85,6038840.74
+2025-11-01,Nov 2025,2026,2,CMP-202511-FIELD,Field sales prospecting - Nov 2025,field,Field sales prospecting,10997.61,13,6,2,378365.81,68105.85,6038840.74
+2025-11-01,Nov 2025,2026,2,CMP-202511-REFERRAL,Referral & partner program - Nov 2025,referral,Referral & partner program,3991.34,7,4,1,378365.81,68105.85,6038840.74
+2025-11-01,Nov 2025,2026,2,CMP-202511-SEARCH,Search & trade directories - Nov 2025,search,Search & trade directories,3133.83,9,2,0,378365.81,68105.85,6038840.74
+2025-11-01,Nov 2025,2026,2,CMP-202511-TRADE_PRESS,Trade press & print - Nov 2025,trade_press,Trade press & print,3649.19,3,1,0,378365.81,68105.85,6038840.74
+2025-11-01,Nov 2025,2026,2,CMP-202511-TRADESHOW,Trade shows & industry events - Nov 2025,tradeshow,Trade shows & industry events,9077.03,8,3,1,378365.81,68105.85,6038840.74
+2025-12-01,Dec 2025,2026,3,CMP-202512-EMAIL,Email & CRM nurture - Dec 2025,email,Email & CRM nurture,5777.63,27,8,2,394896.04,71081.29,6724978.11
+2025-12-01,Dec 2025,2026,3,CMP-202512-FIELD,Field sales prospecting - Dec 2025,field,Field sales prospecting,14425.05,15,8,2,394896.04,71081.29,6724978.11
+2025-12-01,Dec 2025,2026,3,CMP-202512-REFERRAL,Referral & partner program - Dec 2025,referral,Referral & partner program,6201.69,12,8,2,394896.04,71081.29,6724978.11
+2025-12-01,Dec 2025,2026,3,CMP-202512-SEARCH,Search & trade directories - Dec 2025,search,Search & trade directories,3167.71,8,2,1,394896.04,71081.29,6724978.11
+2025-12-01,Dec 2025,2026,3,CMP-202512-TRADE_PRESS,Trade press & print - Dec 2025,trade_press,Trade press & print,5645.49,5,1,0,394896.04,71081.29,6724978.11
+2025-12-01,Dec 2025,2026,3,CMP-202512-TRADESHOW,Trade shows & industry events - Dec 2025,tradeshow,Trade shows & industry events,11978.09,8,4,1,394896.04,71081.29,6724978.11
+2026-01-01,Jan 2026,2026,4,CMP-202601-EMAIL,Email & CRM nurture - Jan 2026,email,Email & CRM nurture,2881.41,14,3,2,348410.97,62713.97,5075551.64
+2026-01-01,Jan 2026,2026,4,CMP-202601-FIELD,Field sales prospecting - Jan 2026,field,Field sales prospecting,7738.55,8,4,2,348410.97,62713.97,5075551.64
+2026-01-01,Jan 2026,2026,4,CMP-202601-REFERRAL,Referral & partner program - Jan 2026,referral,Referral & partner program,4004.29,8,5,2,348410.97,62713.97,5075551.64
+2026-01-01,Jan 2026,2026,4,CMP-202601-SEARCH,Search & trade directories - Jan 2026,search,Search & trade directories,2034.1,5,1,0,348410.97,62713.97,5075551.64
+2026-01-01,Jan 2026,2026,4,CMP-202601-TRADE_PRESS,Trade press & print - Jan 2026,trade_press,Trade press & print,3590.12,3,1,1,348410.97,62713.97,5075551.64
+2026-01-01,Jan 2026,2026,4,CMP-202601-TRADESHOW,Trade shows & industry events - Jan 2026,tradeshow,Trade shows & industry events,6914.57,5,2,0,348410.97,62713.97,5075551.64
+2026-02-01,Feb 2026,2026,5,CMP-202602-EMAIL,Email & CRM nurture - Feb 2026,email,Email & CRM nurture,3548.89,15,4,0,316080.6,56894.51,4963433.87
+2026-02-01,Feb 2026,2026,5,CMP-202602-FIELD,Field sales prospecting - Feb 2026,field,Field sales prospecting,10232.83,12,7,1,316080.6,56894.51,4963433.87
+2026-02-01,Feb 2026,2026,5,CMP-202602-REFERRAL,Referral & partner program - Feb 2026,referral,Referral & partner program,4963.33,10,5,0,316080.6,56894.51,4963433.87
+2026-02-01,Feb 2026,2026,5,CMP-202602-SEARCH,Search & trade directories - Feb 2026,search,Search & trade directories,2835.71,8,2,1,316080.6,56894.51,4963433.87
+2026-02-01,Feb 2026,2026,5,CMP-202602-TRADE_PRESS,Trade press & print - Feb 2026,trade_press,Trade press & print,3881.64,4,1,0,316080.6,56894.51,4963433.87
+2026-02-01,Feb 2026,2026,5,CMP-202602-TRADESHOW,Trade shows & industry events - Feb 2026,tradeshow,Trade shows & industry events,8225.07,6,3,1,316080.6,56894.51,4963433.87
+2026-03-01,Mar 2026,2026,6,CMP-202603-EMAIL,Email & CRM nurture - Mar 2026,email,Email & CRM nurture,4156.35,18,5,1,330723.42,59530.22,5319489.68
+2026-03-01,Mar 2026,2026,6,CMP-202603-FIELD,Field sales prospecting - Mar 2026,field,Field sales prospecting,11686.13,14,7,1,330723.42,59530.22,5319489.68
+2026-03-01,Mar 2026,2026,6,CMP-202603-REFERRAL,Referral & partner program - Mar 2026,referral,Referral & partner program,5308.53,9,5,2,330723.42,59530.22,5319489.68
+2026-03-01,Mar 2026,2026,6,CMP-202603-SEARCH,Search & trade directories - Mar 2026,search,Search & trade directories,2902.25,8,2,0,330723.42,59530.22,5319489.68
+2026-03-01,Mar 2026,2026,6,CMP-202603-TRADE_PRESS,Trade press & print - Mar 2026,trade_press,Trade press & print,4373.49,4,1,0,330723.42,59530.22,5319489.68
+2026-03-01,Mar 2026,2026,6,CMP-202603-TRADESHOW,Trade shows & industry events - Mar 2026,tradeshow,Trade shows & industry events,8363.15,6,2,1,330723.42,59530.22,5319489.68
+2026-04-01,Apr 2026,2026,7,CMP-202604-EMAIL,Email & CRM nurture - Apr 2026,email,Email & CRM nurture,6179.78,26,6,2,360665.75,64919.83,5697006.53
+2026-04-01,Apr 2026,2026,7,CMP-202604-FIELD,Field sales prospecting - Apr 2026,field,Field sales prospecting,14152.88,17,9,2,360665.75,64919.83,5697006.53
+2026-04-01,Apr 2026,2026,7,CMP-202604-REFERRAL,Referral & partner program - Apr 2026,referral,Referral & partner program,6454.64,12,6,1,360665.75,64919.83,5697006.53
+2026-04-01,Apr 2026,2026,7,CMP-202604-SEARCH,Search & trade directories - Apr 2026,search,Search & trade directories,4202.47,13,3,1,360665.75,64919.83,5697006.53
+2026-04-01,Apr 2026,2026,7,CMP-202604-TRADE_PRESS,Trade press & print - Apr 2026,trade_press,Trade press & print,5990.18,6,1,0,360665.75,64919.83,5697006.53
+2026-04-01,Apr 2026,2026,7,CMP-202604-TRADESHOW,Trade shows & industry events - Apr 2026,tradeshow,Trade shows & industry events,9764.96,7,3,0,360665.75,64919.83,5697006.53
+2026-05-01,May 2026,2026,8,CMP-202605-EMAIL,Email & CRM nurture - May 2026,email,Email & CRM nurture,4612.21,18,5,2,333910.35,60103.86,5438605.67
+2026-05-01,May 2026,2026,8,CMP-202605-FIELD,Field sales prospecting - May 2026,field,Field sales prospecting,13199.03,14,7,3,333910.35,60103.86,5438605.67
+2026-05-01,May 2026,2026,8,CMP-202605-REFERRAL,Referral & partner program - May 2026,referral,Referral & partner program,5740.58,11,7,2,333910.35,60103.86,5438605.67
+2026-05-01,May 2026,2026,8,CMP-202605-SEARCH,Search & trade directories - May 2026,search,Search & trade directories,2894.3,8,2,0,333910.35,60103.86,5438605.67
+2026-05-01,May 2026,2026,8,CMP-202605-TRADE_PRESS,Trade press & print - May 2026,trade_press,Trade press & print,4283.7,4,1,1,333910.35,60103.86,5438605.67
+2026-05-01,May 2026,2026,8,CMP-202605-TRADESHOW,Trade shows & industry events - May 2026,tradeshow,Trade shows & industry events,8833.66,7,3,1,333910.35,60103.86,5438605.67
+2026-06-01,Jun 2026,2026,9,CMP-202606-EMAIL,Email & CRM nurture - Jun 2026,email,Email & CRM nurture,5679.0,23,7,0,377472.84,67945.11,6050894.26
+2026-06-01,Jun 2026,2026,9,CMP-202606-FIELD,Field sales prospecting - Jun 2026,field,Field sales prospecting,12657.05,13,8,0,377472.84,67945.11,6050894.26
+2026-06-01,Jun 2026,2026,9,CMP-202606-REFERRAL,Referral & partner program - Jun 2026,referral,Referral & partner program,6958.67,14,8,0,377472.84,67945.11,6050894.26
+2026-06-01,Jun 2026,2026,9,CMP-202606-SEARCH,Search & trade directories - Jun 2026,search,Search & trade directories,3806.56,10,2,0,377472.84,67945.11,6050894.26
+2026-06-01,Jun 2026,2026,9,CMP-202606-TRADE_PRESS,Trade press & print - Jun 2026,trade_press,Trade press & print,5380.65,5,1,0,377472.84,67945.11,6050894.26
+2026-06-01,Jun 2026,2026,9,CMP-202606-TRADESHOW,Trade shows & industry events - Jun 2026,tradeshow,Trade shows & industry events,10423.15,7,3,0,377472.84,67945.11,6050894.26

@@ -1,0 +1,33 @@
+model_name,resource_type,layer,materialization,incremental_strategy,description,file_path,parent_count,child_count,test_count,column_count,row_count,build_status,execution_seconds,dbt_version,built_on
+customer_revenue_pareto,analysis,analysis,view,,,analyses/customer_revenue_pareto.sql,2,0,0,,,,,dbt 1.11.12,2026-08-01
+expiry_risk_exposure,analysis,analysis,view,,,analyses/expiry_risk_exposure.sql,2,0,0,,,,,dbt 1.11.12,2026-08-01
+supply_chain_control_tower_report,exposure,exposure,dashboard,,"Power BI report (TMDL/PBIR, code-defined) consuming the marts in this project. Lives in the supply-chain-control-tower repo.",models/marts/marts.yml,3,0,0,,,,,dbt 1.11.12,2026-08-01
+dim_customer,model,marts,table,,,models/marts/dim_customer.sql,1,2,1,4,40,success,0.1622,dbt 1.11.12,2026-08-01
+dim_lot,model,marts,table,,,models/marts/dim_lot.sql,2,1,1,7,3000,success,0.1125,dbt 1.11.12,2026-08-01
+dim_product,model,marts,table,,,models/marts/dim_product.sql,1,1,1,9,60,success,0.1624,dbt 1.11.12,2026-08-01
+dim_warehouse,model,marts,table,,,models/marts/dim_warehouse.sql,1,2,1,4,8,success,0.1123,dbt 1.11.12,2026-08-01
+fct_inventory,model,marts,table,,,models/marts/fct_inventory.sql,3,4,2,8,7012,success,0.1374,dbt 1.11.12,2026-08-01
+fct_orders,model,marts,incremental,delete+insert,Order-line fact with revenue/margin and the OTIF flag (shipped on time AND fill rate >= 95%).,models/marts/fct_orders.sql,1,19,15,17,20000,success,0.1586,dbt 1.11.12,2026-08-01
+kpi_daily,model,marts,table,,,models/marts/kpi_daily.sql,1,4,3,6,181,success,0.0335,dbt 1.11.12,2026-08-01
+raw_dim_customer,seed,seed,seed,,,seeds/raw_dim_customer.csv,0,1,0,4,40,success,0.2496,dbt 1.11.12,2026-08-01
+raw_dim_lot,seed,seed,seed,,,seeds/raw_dim_lot.csv,0,1,0,7,3000,success,0.2496,dbt 1.11.12,2026-08-01
+raw_dim_product,seed,seed,seed,,,seeds/raw_dim_product.csv,0,1,0,9,60,success,0.2454,dbt 1.11.12,2026-08-01
+raw_dim_supplier,seed,seed,seed,,,seeds/raw_dim_supplier.csv,0,1,0,3,15,success,0.2,dbt 1.11.12,2026-08-01
+raw_dim_warehouse,seed,seed,seed,,,seeds/raw_dim_warehouse.csv,0,1,0,4,8,success,0.1958,dbt 1.11.12,2026-08-01
+raw_fact_inventory_snapshot,seed,seed,seed,,,seeds/raw_fact_inventory_snapshot.csv,0,1,0,5,7012,success,0.2166,dbt 1.11.12,2026-08-01
+raw_fact_orders,seed,seed,seed,,,seeds/raw_fact_orders.csv,0,1,0,12,20000,success,1.2123,dbt 1.11.12,2026-08-01
+metricflow_time_spine,model,semantic,table,,Daily time spine required by the MetricFlow semantic layer.,models/semantic/metricflow_time_spine.sql,0,0,0,1,730,success,0.454,dbt 1.11.12,2026-08-01
+order_count_total,metric,semantic,simple,,,models/semantic/semantic_models.yml,1,1,0,,,,,dbt 1.11.12,2026-08-01
+orders,semantic_model,semantic,,,Order-line grain for the MetricFlow semantic layer.,models/semantic/semantic_models.yml,1,4,0,,,,,dbt 1.11.12,2026-08-01
+otif_orders_count,metric,semantic,simple,,,models/semantic/semantic_models.yml,1,1,0,,,,,dbt 1.11.12,2026-08-01
+otif_rate,metric,semantic,ratio,,"Orders shipped on time and >= 95% filled, as a share of all orders.",models/semantic/semantic_models.yml,2,0,0,,,,,dbt 1.11.12,2026-08-01
+total_gross_margin,metric,semantic,simple,,,models/semantic/semantic_models.yml,1,0,0,,,,,dbt 1.11.12,2026-08-01
+total_revenue,metric,semantic,simple,,Sum of shipped-line revenue.,models/semantic/semantic_models.yml,1,0,0,,,,,dbt 1.11.12,2026-08-01
+product_price_snapshot,snapshot,snapshot,snapshot,,,snapshots/product_price_snapshot.sql,1,0,0,9,60,success,0.2749,dbt 1.11.12,2026-08-01
+stg_customers,model,staging,view,,,models/staging/stg_customers.sql,1,3,2,4,40,success,1.1345,dbt 1.11.12,2026-08-01
+stg_inventory,model,staging,view,,,models/staging/stg_inventory.sql,1,1,0,5,7012,success,0.0918,dbt 1.11.12,2026-08-01
+stg_lots,model,staging,view,,,models/staging/stg_lots.sql,1,4,2,7,3000,success,0.6622,dbt 1.11.12,2026-08-01
+stg_orders,model,staging,view,,One row per order line from the ERP extract.,models/staging/stg_orders.sql,1,4,3,12,20000,success,0.0877,dbt 1.11.12,2026-08-01
+stg_products,model,staging,view,,,models/staging/stg_products.sql,1,5,2,9,60,success,1.1373,dbt 1.11.12,2026-08-01
+stg_suppliers,model,staging,view,,,models/staging/stg_suppliers.sql,1,3,2,3,15,success,0.0887,dbt 1.11.12,2026-08-01
+stg_warehouses,model,staging,view,,,models/staging/stg_warehouses.sql,1,3,2,4,8,success,0.0741,dbt 1.11.12,2026-08-01

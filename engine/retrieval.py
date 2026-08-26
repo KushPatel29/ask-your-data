@@ -55,12 +55,25 @@ if str(ROOT) not in sys.path:
 from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
 
 # Read off the recall curve in scripts/run_retrieval_eval.py, not chosen by taste.
-# k=9 is the smallest k at which every golden question's reference tables are all
-# retrieved (100% recall) - k=8 leaves one question short. It costs ~857 tokens
-# against the full catalogue's ~2,738, so perfect recall for a third of the
-# context. The corrected keyword baseline tops out at 75% table recall through
-# k=10, which is the finding that justifies an embedding index being here.
-DEFAULT_K = 9
+# Re-measured after the warehouse grew from 36 tables to 71, which moved the
+# answer: at 36 tables k=9 was enough for 100% recall, and at 71 it is not.
+#
+#   strategy   k    questions covered   tables recalled   ~tokens/turn
+#   full       -           100.0%            100.0%            12,741
+#   keyword    14           89.7%             86.7%             1,945
+#   vector     14           94.9%             95.6%             3,334
+#   hybrid     14           97.4%             97.8%             3,241
+#
+# Hybrid at k=14 reaches what vector needs k=18 (4,137 tokens) to reach, so it
+# is both the most accurate and the cheaper of the two at equal recall.
+#
+# It is NOT 100%, and raising k does not fix it: vector plateaus at 94.9% from
+# k=9 through k=16, because the misses are ranking failures rather than budget
+# failures. One question still fails at every k - top_category_revenue does not
+# retrieve supplychain_fact_orders under any strategy. That is a corpus problem
+# (the table's description does not say what the question asks) and the fix is
+# to write a better description, not to buy more context.
+DEFAULT_K = 14
 
 _COLLECTION = "schema_objects"
 _client = None
@@ -277,6 +290,60 @@ def retrieve_keyword(question: str, *, k: int = DEFAULT_K, con=None) -> list[Ret
 
 
 # --------------------------------------------------------------------------
+# Hybrid: what neither method gets on its own.
+# --------------------------------------------------------------------------
+
+RRF_K = 60  # the constant from Cormack et al.'s original reciprocal-rank fusion
+
+
+def retrieve_hybrid(question: str, *, k: int = DEFAULT_K, con=None) -> list[RetrievedTable]:
+    """Fuse the vector and keyword rankings by reciprocal rank.
+
+    Measured on the 71-table warehouse, each method fails where the other
+    succeeds, and it is not a close call:
+
+        "top wholesale customer by revenue"  -> retail_customer_analytics
+             vector rank 17, keyword rank 3
+        "query rate per subject by site"     -> clinical_query_log
+             vector rank >25, keyword rank 5
+
+    Both failures are the same shape. Embeddings answer "what is this sentence
+    about", so "wholesale" drags the query into the wholesale_* domain when the
+    answer lives in retail_*, and "query rate" lands on
+    clinical_query_site_performance because that name is semantically nearer
+    than the log table the question actually needs. Exact tokens do not care
+    about aboutness, which is precisely why they catch these.
+
+    So neither is a baseline for the other; they are complementary, and fusing
+    them is the honest design. RRF is used rather than a weighted score blend
+    because the two scores are not comparable - cosine similarity and integer
+    token overlap have no common scale, and normalising them would invent one.
+    RRF only reads the RANKS, which both methods genuinely produce.
+    """
+    pool = max(k * 2, 12)
+    vector_hits = retrieve(question, k=pool, con=con)
+    keyword_hits = retrieve_keyword(question, k=pool, con=con)
+
+    fused: dict[str, float] = {}
+    meta: dict[str, RetrievedTable] = {}
+    for ranking in (vector_hits, keyword_hits):
+        for rank, hit in enumerate(ranking, start=1):
+            fused[hit.table] = fused.get(hit.table, 0.0) + 1.0 / (RRF_K + rank)
+            meta.setdefault(hit.table, hit)
+
+    ordered = sorted(fused.items(), key=lambda kv: -kv[1])[:k]
+    return [
+        RetrievedTable(
+            table=table,
+            domain=meta[table].domain,
+            description=meta[table].description,
+            score=round(score, 5),
+        )
+        for table, score in ordered
+    ]
+
+
+# --------------------------------------------------------------------------
 # The prompt block.
 # --------------------------------------------------------------------------
 
@@ -296,7 +363,8 @@ def schema_catalog_for(
     """
     from engine.warehouse import table_columns
 
-    picker = retrieve_keyword if strategy == "keyword" else retrieve
+    picker = {"keyword": retrieve_keyword, "vector": retrieve,
+              "hybrid": retrieve_hybrid}.get(strategy, retrieve_hybrid)
     hits = picker(question, k=k, con=con)
 
     # A follow-up such as "and by region?" has almost no standalone retrieval

@@ -1,0 +1,621 @@
+store_id,store_name,store_format,is_physical_store,city,region,sales_rep_id,sales_rep_name,first_order_date,last_order_date,orders,order_lines,revenue,cogs,gross_margin,discount_amount,cases_ordered,cases_shipped,on_time_line_pct,fill_rate_pct
+C20139,Vista Park Center 139,Online Fulfillment Center,false,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2023-10-02,2026-06-30,352,2847,1415761.06,1112406.61,303354.45,68171.34,14258.0,14018.0,91.57,98.32
+C20276,Riverbend Gateway,Online Fulfillment Center,false,San Antonio,Texas & Gulf,R01,Dana Whitfield,2023-10-20,2026-07-02,327,2660,1308031.47,1036343.73,271687.73,60914.8,13125.0,12876.0,91.43,98.1
+C20273,Maple Grove Pointe 273,Online Fulfillment Center,false,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2023-10-07,2026-07-01,317,2517,1298405.48,1024944.82,273460.66,59595.62,12686.0,12418.0,91.78,97.89
+C20455,Bayside Depot,Online Fulfillment Center,false,Charlotte,Southeast,R01,Dana Whitfield,2023-10-06,2026-06-30,313,2531,1287346.48,1026754.45,260592.03,59696.56,12546.0,12273.0,92.34,97.82
+C20208,Riverbend Galleria,Online Fulfillment Center,false,Hartford,Northeast,R03,Priya Raghunathan,2023-10-04,2026-06-30,354,2816,1230244.29,964830.56,265413.73,59735.69,13566.0,13256.0,92.26,97.71
+C20214,Meadowbrook Plaza,Online Fulfillment Center,false,Richmond,Mid-Atlantic,R06,Sam Okonkwo,2023-10-07,2026-07-03,300,2416,1192537.7,951031.99,241505.72,54287.69,11559.0,11293.0,92.34,97.7
+C20251,Maple Grove Pointe,Online Fulfillment Center,false,Atlanta,Southeast,R05,Renee Chartrand,2023-10-09,2026-06-27,329,2618,1165689.73,913578.17,252111.56,55838.54,12344.0,12056.0,91.86,97.67
+C20605,Brookfield Station 605,Online Fulfillment Center,false,Charlotte,Southeast,R05,Renee Chartrand,2023-10-05,2026-07-02,277,2265,1143623.22,906810.55,236812.68,53981.08,10729.0,10479.0,91.35,97.67
+C20138,Kingsport Gateway,Online Fulfillment Center,false,Hartford,Northeast,R03,Priya Raghunathan,2023-10-11,2026-06-28,310,2420,1139990.37,890566.24,249424.13,53640.38,11425.0,11168.0,93.18,97.75
+C20406,Brookfield Commons,Online Fulfillment Center,false,Atlanta,Southeast,R01,Dana Whitfield,2023-10-07,2026-07-02,307,2493,1091798.8,859119.76,232679.04,51097.67,11818.0,11584.0,91.66,98.02
+C20124,Copper Ridge Marketplace 124,Online Fulfillment Center,false,Dallas,Texas & Gulf,R02,Marcus Oyelaran,2023-10-05,2026-07-02,301,2356,1083579.03,857173.33,226405.7,51675.52,11200.0,10994.0,91.98,98.16
+C20386,Redbud Junction,Online Fulfillment Center,false,Nashville,Southeast,R01,Dana Whitfield,2023-10-05,2026-06-28,290,2401,1058741.4,834223.81,224517.58,49362.75,10934.0,10746.0,92.04,98.28
+C20132,Sunfield Marketplace,Online Fulfillment Center,false,Indianapolis,Midwest,R06,Sam Okonkwo,2023-10-09,2026-06-30,279,2220,1047061.77,832147.24,214914.52,52455.91,10163.0,9965.0,92.84,98.05
+C20099,Union Square Gateway,Online Fulfillment Center,false,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-13,2026-07-03,281,2228,1037728.9,823203.84,214525.05,48556.29,10306.0,10057.0,92.82,97.58
+C20560,Copper Ridge Galleria 560,Online Fulfillment Center,false,Austin,Texas & Gulf,R02,Marcus Oyelaran,2023-10-05,2026-07-02,287,2260,933945.02,724298.69,209646.33,44359.01,10601.0,10374.0,93.19,97.86
+C20610,Union Square Town Center 610,Online Fulfillment Center,false,Des Moines,Midwest,R06,Sam Okonkwo,2023-10-07,2026-06-25,268,2148,919658.05,722621.86,197036.19,43244.32,9841.0,9595.0,91.99,97.5
+C20499,Redbud Town Center 499,Online Fulfillment Center,false,Atlanta,Southeast,R05,Renee Chartrand,2023-10-04,2026-07-01,274,2277,917495.34,705230.12,212265.21,44972.18,10585.0,10355.0,92.01,97.83
+C20240,Kingsport Marketplace,Online Fulfillment Center,false,San Antonio,Texas & Gulf,R01,Dana Whitfield,2023-10-04,2026-06-28,261,2103,915426.12,724474.22,190951.89,43864.34,9273.0,9076.0,92.87,97.88
+C20615,Lakeview Center 615,Online Fulfillment Center,false,Sacramento,Pacific,R07,Hana Sasaki,2023-10-04,2026-07-03,239,1903,904425.19,713528.91,190896.28,42932.92,8641.0,8455.0,92.12,97.85
+C20146,Fox Run Center,Online Fulfillment Center,false,Spokane,Pacific,R08,Elliot Vance,2023-10-02,2026-07-01,270,2160,903767.17,698373.69,205393.48,44519.47,9523.0,9318.0,92.82,97.85
+C20410,Oakmont Pointe 410,Online Fulfillment Center,false,Baton Rouge,Texas & Gulf,R02,Marcus Oyelaran,2023-10-07,2026-06-29,215,1723,894850.93,708902.54,185948.39,43448.18,8185.0,8018.0,92.98,97.96
+C20598,Copper Ridge Galleria 598,Online Fulfillment Center,false,Kansas City,Midwest,R06,Sam Okonkwo,2023-10-06,2026-07-01,237,1927,872127.77,697606.69,174521.08,40453.9,8499.0,8358.0,92.63,98.34
+C20395,Copper Ridge Commons,Online Fulfillment Center,false,Omaha,Midwest,R06,Sam Okonkwo,2023-10-04,2026-06-27,251,2015,860353.4,680466.08,179887.33,41561.28,8984.0,8812.0,92.26,98.09
+C20211,Redbud Galleria,Online Fulfillment Center,false,Kansas City,Midwest,R06,Sam Okonkwo,2023-10-09,2026-07-03,254,2021,849203.18,662243.05,186960.13,40446.0,9035.0,8853.0,90.8,97.99
+C20514,Lakeview Gateway,Online Fulfillment Center,false,Fresno,Pacific,R07,Hana Sasaki,2023-10-04,2026-05-14,223,1812,846918.89,672206.37,174712.53,38441.18,8014.0,7780.0,92.22,97.08
+C20010,Silver Lake Crossing,Online Fulfillment Center,false,Nashville,Southeast,R01,Dana Whitfield,2023-10-08,2026-06-30,241,1918,831388.43,653178.58,178209.85,39483.17,8540.0,8352.0,91.97,97.8
+C20534,Westfield Crossing 534,Online Fulfillment Center,false,Pittsburgh,Mid-Atlantic,R05,Renee Chartrand,2023-10-02,2026-06-22,254,2093,817569.02,633889.63,183679.39,38091.55,9362.0,9131.0,93.22,97.53
+C20545,Redbud Galleria 545,Club Warehouse,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-06,2026-07-02,136,1147,759496.96,624508.46,134988.5,37406.37,8590.0,8463.0,92.33,98.52
+C20213,Brookfield Station 213,Online Fulfillment Center,false,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-03,2026-06-29,238,1885,755996.61,591806.53,164190.08,36015.87,8200.0,8020.0,92.31,97.8
+C20482,Kingsport Supercenter 482,Club Warehouse,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-03,2026-06-16,134,1107,748561.54,626789.85,121771.69,36480.0,8358.0,8186.0,92.77,97.94
+C20032,Kingsport Market,Club Warehouse,true,Hartford,Northeast,R03,Priya Raghunathan,2023-10-11,2026-06-29,136,1128,739478.37,616542.59,122935.78,35203.75,8451.0,8311.0,91.05,98.34
+C20014,Northgate Square,Club Warehouse,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-14,2026-06-24,132,1096,736617.43,616356.86,120260.57,35742.66,8279.0,8142.0,90.51,98.35
+C20238,Summit Exchange,Online Fulfillment Center,false,Omaha,Midwest,R03,Priya Raghunathan,2023-10-17,2026-06-14,216,1749,725645.76,567952.03,157693.73,35356.77,7402.0,7234.0,92.11,97.73
+C20070,Northgate Depot,Club Warehouse,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-07,2026-06-23,113,931,699358.9,596559.72,102799.18,35221.67,6738.0,6591.0,92.59,97.82
+C20379,Union Square Station 379,Club Warehouse,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-17,2026-06-20,122,975,694399.88,584556.2,109843.69,32886.73,7291.0,7128.0,91.28,97.76
+C20245,Fox Run Marketplace 245,Supercenter,true,Richmond,Mid-Atlantic,R05,Renee Chartrand,2023-10-13,2026-06-24,212,1500,684902.93,519349.53,165553.4,31721.79,5751.0,5629.0,92.07,97.88
+C20101,Clearwater Center,Club Warehouse,true,Dallas,Texas & Gulf,R02,Marcus Oyelaran,2023-10-13,2026-06-17,117,966,672109.07,563785.54,108323.53,32091.06,7915.0,7764.0,91.2,98.09
+C20024,Riverbend Exchange,Supercenter,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2023-10-15,2026-06-30,223,1544,666126.29,490425.07,175701.22,31167.97,6283.0,6156.0,91.9,97.98
+C20492,Highland Station 492,Supercenter,true,San Antonio,Texas & Gulf,R01,Dana Whitfield,2023-10-05,2026-06-21,227,1594,657210.42,486035.53,171174.89,31072.23,6182.0,6023.0,92.47,97.43
+C20317,Lakeview Station 317,Online Fulfillment Center,false,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2023-10-07,2025-10-17,203,1570,643113.57,503851.13,139262.44,30608.38,7016.0,6866.0,92.48,97.86
+C20475,Redbud Junction 475,Supercenter,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-11,2026-06-23,205,1481,637746.12,474364.78,163381.34,31642.74,5997.0,5860.0,92.51,97.72
+C20453,Bayside Landing,Club Warehouse,true,Spokane,Pacific,R07,Hana Sasaki,2023-10-11,2026-06-23,113,961,637432.12,532499.54,104932.58,29304.43,7485.0,7325.0,91.57,97.86
+C20389,Sunfield Exchange 389,Club Warehouse,true,Denver,Mountain West,R07,Hana Sasaki,2023-10-07,2026-06-28,108,867,627064.07,535857.12,91206.95,29547.2,5961.0,5835.0,90.66,97.89
+C20209,Copper Ridge Market 209,Club Warehouse,true,Austin,Texas & Gulf,R02,Marcus Oyelaran,2023-10-05,2026-06-28,122,972,625310.64,522343.1,102967.54,29902.75,7297.0,7142.0,90.43,97.88
+C20079,Silver Lake Market,Club Warehouse,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-08,2026-07-03,130,1007,620743.62,506262.8,114480.82,30570.39,7174.0,7042.0,93.15,98.16
+C20123,Union Square Supercenter,Supercenter,true,Sacramento,Pacific,R07,Hana Sasaki,2023-10-07,2026-07-04,199,1418,605571.08,445363.44,160207.64,28719.6,5694.0,5574.0,91.96,97.89
+C20600,Summit Pointe 600,Club Warehouse,true,Nashville,Southeast,R05,Renee Chartrand,2023-10-03,2026-06-09,116,902,604100.73,489084.42,115016.31,28562.13,7181.0,7061.0,91.57,98.33
+C20092,Redbud Town Center,Club Warehouse,true,Indianapolis,Midwest,R03,Priya Raghunathan,2023-10-05,2026-06-27,106,899,601189.95,506509.13,94680.82,28693.45,6019.0,5921.0,90.55,98.37
+C20030,Meadowbrook Crossing,Supercenter,true,Birmingham,Southeast,R05,Renee Chartrand,2023-10-11,2026-06-27,194,1399,599726.86,440213.84,159513.02,28227.76,5532.0,5401.0,92.78,97.63
+C20462,Kingsport Town Center 462,Club Warehouse,true,Houston,Texas & Gulf,R02,Marcus Oyelaran,2023-10-03,2026-06-11,113,877,599478.77,501657.52,97821.24,28385.44,6656.0,6529.0,92.25,98.09
+C20495,Kingsport Marketplace 495,Supercenter,true,Pittsburgh,Mid-Atlantic,R06,Sam Okonkwo,2023-10-03,2026-07-02,221,1517,593518.29,436743.7,156774.6,27461.99,5917.0,5773.0,92.42,97.57
+C20173,Maple Grove Commons,Supercenter,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-05,2026-06-28,204,1462,592522.04,434875.36,157646.68,27751.6,5542.0,5390.0,91.24,97.26
+C20158,Cedar Park Galleria 158,Supercenter,true,San Antonio,Texas & Gulf,R01,Dana Whitfield,2023-10-02,2026-06-29,207,1486,582695.0,429720.54,152974.46,28541.1,5564.0,5399.0,93.07,97.03
+C20412,Brookfield Plaza 412,Club Warehouse,true,Indianapolis,Midwest,R03,Priya Raghunathan,2023-10-05,2026-06-20,107,866,580660.8,493344.88,87315.92,28097.76,6174.0,6042.0,91.57,97.86
+C20152,Meadowbrook Commons,Online Fulfillment Center,false,Omaha,Midwest,R06,Sam Okonkwo,2023-10-10,2025-06-24,164,1287,573479.27,452764.68,120714.59,27554.65,5560.0,5445.0,92.7,97.93
+C20296,Kingsport Marketplace 296,Supercenter,true,Austin,Texas & Gulf,R02,Marcus Oyelaran,2023-10-06,2026-06-20,220,1567,572460.93,417462.57,154998.36,28610.33,5768.0,5650.0,91.9,97.95
+C20450,Lakeview Pointe 450,Online Fulfillment Center,false,Indianapolis,Midwest,R03,Priya Raghunathan,2023-10-12,2025-06-23,163,1282,562544.2,440325.66,122218.54,25451.53,5774.0,5665.0,92.67,98.11
+C20571,Cedar Park Exchange 571,Supercenter,true,Albuquerque,Mountain West,R04,Tomasz Bielski,2023-10-08,2026-07-01,184,1263,561924.35,427251.23,134673.12,27723.08,4868.0,4760.0,90.97,97.78
+C20171,Sunfield Town Center,Supercenter,true,Austin,Texas & Gulf,R02,Marcus Oyelaran,2023-10-10,2026-06-22,183,1291,559302.54,405683.1,153619.44,26573.94,4999.0,4894.0,93.34,97.9
+C20160,Clearwater Landing,Supercenter,true,Sacramento,Pacific,R07,Hana Sasaki,2023-10-09,2026-06-26,204,1394,557478.12,411764.55,145713.57,25763.54,5462.0,5341.0,90.32,97.78
+C20481,Ironwood Square 481,Supercenter,true,Spokane,Pacific,R08,Elliot Vance,2023-10-07,2026-07-02,198,1419,554278.77,412076.55,142202.22,26899.25,5307.0,5180.0,92.39,97.61
+C20125,Willow Creek Galleria,Supercenter,true,Sacramento,Pacific,R08,Elliot Vance,2023-10-11,2026-06-29,203,1420,552272.78,405556.41,146716.38,26603.63,5348.0,5250.0,90.99,98.17
+C20161,Willow Creek Junction,Supercenter,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-05,2026-07-02,218,1481,551560.28,405014.86,146545.42,26337.78,5680.0,5529.0,91.49,97.34
+C20415,Maple Grove Galleria,Supercenter,true,Denver,Mountain West,R04,Tomasz Bielski,2023-10-04,2026-07-03,193,1363,551527.17,413009.08,138518.09,26336.79,5078.0,4964.0,91.49,97.76
+C20570,Prairie View Galleria,Supercenter,true,Houston,Texas & Gulf,R02,Marcus Oyelaran,2023-10-05,2026-07-02,198,1420,546735.34,403918.71,142816.63,26248.96,5307.0,5188.0,92.75,97.76
+C20376,Cedar Park Galleria 376,Supercenter,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-04,2026-07-04,205,1402,546540.3,403812.81,142727.5,25389.55,5418.0,5288.0,93.51,97.6
+C20378,Silver Lake Crossing 378,Supercenter,true,Richmond,Mid-Atlantic,R06,Sam Okonkwo,2023-10-04,2026-06-19,189,1307,545641.21,404998.66,140642.55,26553.86,5050.0,4952.0,93.04,98.06
+C20439,Lakeview Marketplace,Supercenter,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-09,2026-06-27,167,1233,545251.58,414177.89,131073.69,25346.34,4376.0,4278.0,91.89,97.76
+C20174,Redbud Station 174,Club Warehouse,true,Pittsburgh,Mid-Atlantic,R06,Sam Okonkwo,2023-10-30,2026-06-29,109,827,543461.85,470578.85,72883.0,25572.33,5935.0,5829.0,92.74,98.21
+C20346,Clearwater Supercenter,Supercenter,true,Spokane,Pacific,R07,Hana Sasaki,2023-10-06,2026-02-08,205,1372,543311.1,400368.47,142942.63,24819.69,5326.0,5217.0,92.35,97.95
+C20172,Union Square Town Center 172,Supercenter,true,Sacramento,Pacific,R07,Hana Sasaki,2023-10-10,2026-07-02,194,1419,543185.73,401590.21,141595.52,25087.24,5373.0,5253.0,90.98,97.77
+C20557,Fairview Gateway 557,Supercenter,true,Spokane,Pacific,R07,Hana Sasaki,2023-10-06,2026-06-30,183,1340,539934.37,400663.41,139270.96,25921.99,5280.0,5175.0,91.94,98.01
+C20483,Ridgeway Pointe 483,Supercenter,true,Austin,Texas & Gulf,R02,Marcus Oyelaran,2023-10-12,2026-07-01,191,1355,538893.87,403811.09,135082.78,26133.07,4933.0,4830.0,92.77,97.91
+C20530,Stonegate Square 530,Supercenter,true,Hartford,Northeast,R03,Priya Raghunathan,2023-10-02,2026-06-24,178,1282,538146.96,404588.45,133558.52,25834.87,4849.0,4738.0,91.58,97.71
+C20561,Sunfield Town Center 561,Supercenter,true,Portland,Pacific,R08,Elliot Vance,2023-10-06,2026-06-25,206,1388,537568.63,389532.31,148036.32,25181.64,5499.0,5382.0,91.93,97.87
+C20327,Sunfield Exchange 327,Supercenter,true,Portland,Pacific,R08,Elliot Vance,2023-10-11,2026-07-03,197,1376,536854.48,394193.91,142660.58,25038.79,5137.0,5019.0,93.39,97.7
+C20484,Fox Run Landing,Supercenter,true,Charlotte,Southeast,R05,Renee Chartrand,2023-10-06,2026-06-18,186,1287,536684.44,402125.4,134559.04,26059.65,4486.0,4378.0,90.99,97.59
+C20255,Highland Station,Supercenter,true,San Antonio,Texas & Gulf,R02,Marcus Oyelaran,2023-10-09,2026-06-28,179,1360,535887.83,393378.46,142509.37,26148.44,5144.0,5036.0,91.69,97.9
+C20446,Brookfield Market 446,Club Warehouse,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-03,2026-07-01,97,765,534867.12,459021.76,75845.36,24285.81,5239.0,5113.0,93.59,97.59
+C20381,Granite Falls Square,Online Fulfillment Center,false,Orlando,Southeast,R05,Renee Chartrand,2024-12-30,2026-07-01,150,1191,532826.53,416914.12,115912.41,26338.61,5489.0,5381.0,92.36,98.03
+C20163,Silver Lake Market 163,Supercenter,true,Sacramento,Pacific,R07,Hana Sasaki,2023-10-06,2026-06-29,199,1366,531239.25,390682.17,140557.08,25125.16,5455.0,5313.0,91.36,97.4
+C20144,Northgate Square 144,Supercenter,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-14,2026-06-26,188,1324,529687.81,398665.54,131022.28,25088.53,5076.0,4969.0,92.07,97.89
+C20611,Maple Grove Supercenter,Club Warehouse,true,Columbus,Midwest,R03,Priya Raghunathan,2023-10-05,2026-06-24,110,889,529284.0,441981.76,87302.24,25398.7,5928.0,5832.0,92.46,98.38
+C20441,Willow Creek Village 441,Club Warehouse,true,Worcester,Northeast,R03,Priya Raghunathan,2023-10-19,2026-06-26,102,877,526812.07,437242.33,89569.75,25419.54,5811.0,5649.0,92.59,97.21
+C20168,Ironwood Marketplace 168,Supercenter,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-12,2026-07-03,205,1407,524837.16,382750.02,142087.14,25485.05,5255.0,5134.0,92.61,97.7
+C20037,Union Square Market,Club Warehouse,true,Salt Lake City,Mountain West,R07,Hana Sasaki,2023-10-03,2026-07-01,106,857,524048.8,435784.43,88264.37,25708.19,5799.0,5700.0,92.42,98.29
+C20134,Prairie View Town Center 134,Supercenter,true,Dallas,Texas & Gulf,R02,Marcus Oyelaran,2023-10-08,2026-06-25,189,1340,523952.03,388530.87,135421.16,24899.77,5099.0,4979.0,92.46,97.65
+C20569,Brookfield Station 569,Club Warehouse,true,Albuquerque,Mountain West,R04,Tomasz Bielski,2023-10-04,2026-06-24,100,791,520781.7,432751.2,88030.5,24591.51,5948.0,5863.0,92.41,98.57
+C20197,Silver Lake Village 197,Supercenter,true,Worcester,Northeast,R03,Priya Raghunathan,2023-10-04,2026-07-01,191,1323,519421.04,384740.88,134680.16,25004.22,4765.0,4682.0,92.37,98.26
+C20617,Brookfield Junction 617,Supercenter,true,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2023-10-11,2026-06-27,189,1339,516175.72,382861.01,133314.72,24616.72,5003.0,4895.0,90.74,97.84
+C20543,Riverbend Center 543,Supercenter,true,Nashville,Southeast,R05,Renee Chartrand,2023-10-03,2026-07-02,210,1388,516040.64,380107.12,135933.53,24647.02,5121.0,4968.0,92.15,97.01
+C20463,Oakmont Town Center 463,Club Warehouse,true,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2023-10-06,2026-06-30,108,844,515222.48,428418.37,86804.11,26102.75,6080.0,5940.0,91.94,97.7
+C20302,Summit Supercenter,Supercenter,true,Charlotte,Southeast,R05,Renee Chartrand,2023-10-07,2026-06-29,189,1336,511834.78,381937.04,129897.74,23728.79,5089.0,4952.0,90.87,97.31
+C20005,Prairie View Commons,Supercenter,true,Charlotte,Southeast,R05,Renee Chartrand,2023-10-17,2026-07-02,173,1294,508895.99,372426.45,136469.54,23851.9,4697.0,4574.0,92.19,97.38
+C20181,Kingsport Supercenter 181,Supercenter,true,Baton Rouge,Texas & Gulf,R02,Marcus Oyelaran,2023-10-04,2026-06-16,170,1226,507868.54,382367.35,125501.19,23624.98,4747.0,4647.0,93.07,97.89
+C20519,Ironwood Landing 519,Supercenter,true,Pittsburgh,Mid-Atlantic,R06,Sam Okonkwo,2023-10-03,2026-06-27,185,1321,507446.46,373173.89,134272.57,24112.6,5048.0,4927.0,91.45,97.6
+C20521,Meadowbrook Galleria,Club Warehouse,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-31,2026-06-29,85,709,504891.96,440864.85,64027.11,24606.3,4824.0,4729.0,89.7,98.03
+C20049,Silver Lake Station,Supercenter,true,Buffalo,Northeast,R03,Priya Raghunathan,2023-10-02,2026-06-25,182,1256,503222.92,367066.52,136156.39,23804.15,4748.0,4633.0,91.88,97.58
+C20053,Sunfield Landing,Supercenter,true,Hartford,Northeast,R03,Priya Raghunathan,2023-10-09,2026-06-30,176,1207,502717.82,368680.47,134037.35,24294.26,4598.0,4468.0,92.54,97.17
+C20454,Trailside Square 454,Supercenter,true,Charlotte,Southeast,R01,Dana Whitfield,2023-10-14,2026-06-27,182,1274,497154.36,364555.21,132599.15,23001.04,4854.0,4738.0,91.13,97.61
+C20420,Ridgeway Depot,Supercenter,true,Portland,Pacific,R07,Hana Sasaki,2023-10-05,2026-06-24,197,1326,496031.44,362087.69,133943.75,23301.67,4896.0,4772.0,90.5,97.47
+C20054,Stonegate Center,Supercenter,true,Nashville,Southeast,R05,Renee Chartrand,2023-10-05,2026-06-24,172,1203,495866.26,365602.65,130263.6,23199.23,4640.0,4511.0,93.02,97.22
+C20469,Fairview Exchange,Supercenter,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2023-10-06,2026-06-16,165,1179,495256.14,368125.15,127130.99,23781.56,4231.0,4129.0,92.62,97.59
+C20091,Prairie View Town Center 91,Supercenter,true,Fresno,Pacific,R08,Elliot Vance,2023-10-10,2026-06-30,173,1227,494495.89,369930.11,124565.77,23468.65,4678.0,4563.0,93.48,97.54
+C20458,Highland Supercenter 458,Supercenter,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-04,2026-07-03,178,1247,494483.06,358934.96,135548.1,24032.06,4465.0,4385.0,92.3,98.21
+C20135,Ironwood Village,Supercenter,true,Manchester,Northeast,R03,Priya Raghunathan,2023-10-04,2026-06-22,197,1406,491414.53,357639.43,133775.1,23819.72,5206.0,5073.0,93.31,97.45
+C20042,Prairie View Square,Online Fulfillment Center,false,Denver,Mountain West,R04,Tomasz Bielski,2023-10-12,2026-07-02,147,1141,491098.8,392212.52,98886.28,23586.86,5075.0,4952.0,90.97,97.58
+C20533,Trailside Plaza 533,Club Warehouse,true,Indianapolis,Midwest,R03,Priya Raghunathan,2023-11-05,2026-06-15,97,784,490753.54,420115.89,70637.65,23114.73,5133.0,5031.0,91.2,98.01
+C20162,Stonegate Galleria,Club Warehouse,true,Columbus,Midwest,R03,Priya Raghunathan,2023-10-04,2026-05-23,92,780,489076.49,422961.62,66114.87,24639.21,5121.0,5048.0,92.82,98.57
+C20349,Trailside Center,Supercenter,true,Hartford,Northeast,R03,Priya Raghunathan,2023-10-04,2026-05-19,158,1128,480515.33,361617.31,118898.02,22501.12,3940.0,3844.0,91.22,97.56
+C20212,Cedar Park Exchange 212,Supercenter,true,Nashville,Southeast,R05,Renee Chartrand,2023-10-06,2026-06-29,205,1407,480506.06,354171.89,126334.17,23188.8,5222.0,5093.0,93.46,97.53
+C20318,Granite Falls Pointe,Supercenter,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2023-10-02,2026-07-01,200,1325,479925.88,361282.82,118643.07,23311.92,4956.0,4866.0,92.23,98.18
+C20575,Union Square Town Center 575,Supercenter,true,San Antonio,Texas & Gulf,R01,Dana Whitfield,2023-10-13,2026-02-28,167,1223,478529.06,347303.24,131225.81,22811.27,4716.0,4608.0,93.62,97.71
+C20614,Kingsport Galleria 614,Club Warehouse,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-08,2026-06-26,80,636,474860.58,408180.07,66680.51,20024.78,4373.0,4302.0,90.41,98.38
+C20372,Ironwood Landing,Club Warehouse,true,Birmingham,Southeast,R01,Dana Whitfield,2023-11-05,2026-06-19,90,722,474153.09,405098.38,69054.71,22351.61,5014.0,4860.0,91.55,96.93
+C20095,Fox Run Pointe 95,Supercenter,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-08,2026-07-02,162,1162,472527.75,352157.05,120370.71,22852.92,4190.0,4068.0,93.46,97.09
+C20128,Stonegate Center 128,Supercenter,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-03,2026-06-23,178,1197,471639.45,348472.18,123167.27,22076.4,4489.0,4400.0,93.4,98.02
+C20076,Oakmont Pointe,Online Fulfillment Center,false,Albuquerque,Mountain West,R04,Tomasz Bielski,2023-10-03,2025-02-21,135,1041,470786.79,378028.75,92758.05,20992.97,4641.0,4559.0,91.74,98.23
+C20342,Fox Run Crossing,Supercenter,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-06,2026-07-01,196,1291,469433.24,348381.07,121052.17,22716.8,4650.0,4547.0,92.02,97.78
+C20119,Silver Lake Junction,Supercenter,true,Spokane,Pacific,R07,Hana Sasaki,2023-10-28,2026-06-19,173,1192,468859.69,345993.89,122865.81,20634.23,4379.0,4297.0,91.44,98.13
+C20287,Lakeview Town Center,Club Warehouse,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-18,2026-06-19,99,766,468789.93,394448.22,74341.72,21398.32,5227.0,5131.0,93.47,98.16
+C20064,Riverbend Square,Supercenter,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-07,2026-07-02,154,1069,468700.09,354201.05,114499.04,21727.69,3834.0,3744.0,92.33,97.65
+C20332,Clearwater Market 332,Supercenter,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-07,2026-06-22,170,1241,468284.0,345494.61,122789.39,23213.21,4472.0,4365.0,92.43,97.61
+C20052,Harvest Point Station,Supercenter,true,Austin,Texas & Gulf,R02,Marcus Oyelaran,2023-10-04,2026-06-30,169,1238,467840.09,346339.19,121500.9,21718.04,4307.0,4204.0,93.13,97.61
+C20110,Vista Park Town Center 110,Supercenter,true,Portland,Pacific,R07,Hana Sasaki,2023-10-14,2026-07-02,178,1225,467757.61,354095.34,113662.27,23569.74,4568.0,4472.0,92.41,97.9
+C20065,Maple Grove Depot,Club Warehouse,true,Spokane,Pacific,R07,Hana Sasaki,2023-10-05,2026-05-31,91,755,467364.77,397231.52,70133.25,21228.72,5173.0,5060.0,91.79,97.82
+C20609,Trailside Gateway 609,Supercenter,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-18,2026-07-02,179,1214,465434.4,341692.73,123741.67,22689.9,4471.0,4340.0,92.42,97.07
+C20491,Lakeview Village 491,Supercenter,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-14,2026-07-04,166,1175,462374.36,341252.17,121122.19,20163.16,4229.0,4142.0,92.43,97.94
+C20562,Trailside Pointe,Supercenter,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-25,2026-06-25,178,1250,459822.66,338137.99,121684.67,22193.98,4510.0,4393.0,91.52,97.41
+C20285,Meadowbrook Center 285,Club Warehouse,true,Columbus,Midwest,R06,Sam Okonkwo,2023-10-12,2026-06-11,81,681,458149.5,389513.81,68635.69,19494.18,4614.0,4542.0,90.46,98.44
+C20486,Clearwater Market 486,Supercenter,true,Baltimore,Mid-Atlantic,R05,Renee Chartrand,2023-10-09,2026-07-04,160,1088,458117.64,346470.26,111647.38,21487.31,3902.0,3786.0,91.73,97.03
+C20591,Clearwater Square 591,Supercenter,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-06,2026-06-20,199,1329,457327.5,338385.2,118942.3,21420.5,4796.0,4687.0,92.93,97.73
+C20433,Vista Park Landing 433,Supercenter,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-16,2026-06-30,178,1260,456635.01,334436.19,122198.82,21705.2,4728.0,4588.0,91.43,97.04
+C20105,Bayside Supercenter,Supercenter,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2023-10-04,2026-06-30,167,1138,451292.22,344425.83,106866.39,21480.3,3943.0,3812.0,92.0,96.68
+C20156,Prairie View Crossing,Club Warehouse,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-14,2026-06-05,80,661,449782.87,381209.28,68573.59,20465.03,4932.0,4847.0,91.68,98.28
+C20029,Trailside Depot 29,Club Warehouse,true,Buffalo,Northeast,R03,Priya Raghunathan,2023-10-09,2026-06-29,81,647,449366.44,383007.89,66358.55,21012.74,4567.0,4461.0,91.5,97.68
+C20618,Clearwater Galleria,Supercenter,true,Philadelphia,Mid-Atlantic,R05,Renee Chartrand,2023-10-04,2026-06-26,184,1252,448450.67,326907.46,121543.21,20244.78,4409.0,4312.0,92.09,97.8
+C20281,Union Square Market 281,Supercenter,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-03,2026-06-28,175,1240,447786.56,332345.6,115440.96,21141.52,4428.0,4322.0,91.77,97.61
+C20050,Lakeview Supercenter,Supercenter,true,Salt Lake City,Mountain West,R07,Hana Sasaki,2023-10-12,2026-06-30,183,1218,447603.9,336444.94,111158.96,20266.67,4480.0,4370.0,92.2,97.54
+C20445,Bayside Plaza,Supercenter,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-12,2026-07-02,180,1220,446693.75,326693.92,119999.83,20906.48,4561.0,4442.0,92.46,97.39
+C20291,Kingsport Marketplace 291,Supercenter,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-15,2025-12-27,145,1033,446453.52,341664.53,104788.99,20904.37,3768.0,3686.0,91.97,97.82
+C20338,Harvest Point Junction,Club Warehouse,true,Richmond,Mid-Atlantic,R06,Sam Okonkwo,2023-10-14,2025-12-09,93,766,446299.88,372654.68,73645.2,20517.41,5388.0,5221.0,90.21,96.9
+C20517,Riverbend Depot,Supercenter,true,Sacramento,Pacific,R08,Elliot Vance,2023-10-06,2026-06-30,161,1128,445631.77,329395.41,116236.36,21180.76,4112.0,3995.0,91.05,97.15
+C20279,Westfield Center,Supercenter,true,Philadelphia,Mid-Atlantic,R05,Renee Chartrand,2023-10-03,2026-06-28,176,1262,436894.51,326429.36,110465.15,21168.93,4462.0,4344.0,91.76,97.36
+C20182,Trailside Gateway,Supercenter,true,Philadelphia,Mid-Atlantic,R05,Renee Chartrand,2023-10-15,2026-06-29,169,1186,435432.76,320116.43,115316.33,21266.57,3985.0,3891.0,91.65,97.64
+C20503,Riverbend Center,Supercenter,true,Salt Lake City,Mountain West,R04,Tomasz Bielski,2023-10-06,2026-06-09,181,1294,434383.76,320570.41,113813.34,20813.4,4828.0,4709.0,89.8,97.54
+C20559,Summit Center,Supercenter,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-05,2026-07-04,177,1181,432404.21,317220.05,115184.16,20429.21,4319.0,4179.0,91.62,96.76
+C20100,Ridgeway Landing,Online Fulfillment Center,false,Nashville,Southeast,R05,Renee Chartrand,2023-10-06,2024-09-27,112,901,431660.05,350030.16,81629.89,20665.95,4208.0,4111.0,91.56,97.69
+C20083,Cedar Park Crossing 83,Supercenter,true,Richmond,Mid-Atlantic,R05,Renee Chartrand,2023-10-06,2026-06-28,162,1181,431562.86,313793.52,117769.34,21011.42,4096.0,4010.0,91.53,97.9
+C20289,Westfield Station,Supercenter,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-18,2026-06-26,169,1218,429068.66,313512.92,115555.74,19595.92,4714.0,4598.0,92.36,97.54
+C20529,Granite Falls Center,Club Warehouse,true,Hartford,Northeast,R03,Priya Raghunathan,2023-10-17,2026-07-01,78,626,427672.26,363650.59,64021.67,21737.99,4704.0,4604.0,91.69,97.87
+C20133,Silver Lake Station 133,Supercenter,true,Omaha,Midwest,R06,Sam Okonkwo,2023-10-23,2026-07-01,166,1211,423115.93,317202.02,105913.91,19609.33,3998.0,3916.0,91.82,97.95
+C20097,Summit Crossing,Supercenter,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-11,2026-06-25,171,1187,422865.13,314552.53,108312.6,20703.16,4076.0,3990.0,91.58,97.89
+C20583,Lakeview Square,Club Warehouse,true,Indianapolis,Midwest,R06,Sam Okonkwo,2023-10-06,2026-06-16,91,736,422091.15,341216.82,80874.32,20568.2,5039.0,4975.0,92.93,98.73
+C20239,Lakeview Center,Supercenter,true,Albuquerque,Mountain West,R07,Hana Sasaki,2023-10-06,2026-06-26,161,1137,421675.81,313825.65,107850.16,19183.32,4182.0,4084.0,92.26,97.66
+C20020,Trailside Depot,Supercenter,true,Kansas City,Midwest,R03,Priya Raghunathan,2023-10-21,2026-06-30,167,1166,420310.17,309667.86,110642.31,20730.11,4008.0,3922.0,93.22,97.85
+C20487,Summit Market,Supercenter,true,Pittsburgh,Mid-Atlantic,R06,Sam Okonkwo,2023-10-17,2026-06-27,159,1153,417699.0,311919.8,105779.2,20731.78,3969.0,3870.0,92.63,97.51
+C20288,Meadowbrook Gateway,Supercenter,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-12,2026-06-23,165,1147,417565.21,305189.84,112375.37,20127.25,4234.0,4140.0,93.81,97.78
+C20525,Lakeview Station 525,Supercenter,true,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-08,2026-07-01,136,968,416528.45,307847.18,108681.26,20414.56,3434.0,3370.0,91.53,98.14
+C20023,Cedar Park Landing,Supercenter,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-03,2026-06-30,157,1102,413517.04,305935.82,107581.22,20003.21,3983.0,3872.0,93.28,97.21
+C20361,Willow Creek Town Center 361,Supercenter,true,Birmingham,Southeast,R05,Renee Chartrand,2023-10-14,2026-06-25,130,938,412637.78,308911.97,103725.82,19374.36,3495.0,3404.0,93.18,97.4
+C20231,Westfield Commons,Supercenter,true,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-11,2026-06-15,153,1126,412017.48,305699.91,106317.57,19262.07,3809.0,3738.0,93.07,98.14
+C20000,Trailside Square,Supercenter,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-17,2026-07-04,161,1128,410628.14,303122.05,107506.09,19128.35,3955.0,3866.0,91.22,97.75
+C20535,Sunfield Galleria,Supercenter,true,Des Moines,Midwest,R06,Sam Okonkwo,2023-10-04,2026-06-30,154,1099,410284.87,306518.96,103765.92,19802.33,3778.0,3696.0,92.99,97.83
+C20137,Sunfield Landing 137,Club Warehouse,true,Omaha,Midwest,R06,Sam Okonkwo,2023-11-05,2026-06-02,81,630,409508.27,359187.26,50321.0,19157.39,4110.0,4037.0,92.7,98.22
+C20374,Kingsport Market 374,Supercenter,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2023-10-03,2026-07-04,157,1102,408029.12,302457.15,105571.97,19428.74,3909.0,3792.0,91.74,97.01
+C20443,Highland Pointe,Supercenter,true,Denver,Mountain West,R07,Hana Sasaki,2023-10-10,2026-06-21,179,1258,407694.4,299349.9,108344.5,19522.81,4389.0,4296.0,91.18,97.88
+C20508,Vista Park Depot 508,Online Fulfillment Center,false,Hartford,Northeast,R03,Priya Raghunathan,2023-10-02,2026-06-22,121,1035,407647.1,326559.27,81087.83,19058.68,4181.0,4074.0,91.5,97.44
+C20540,Sunfield Village,Supercenter,true,Columbus,Midwest,R06,Sam Okonkwo,2023-10-06,2026-06-24,152,1078,404779.52,294627.25,110152.27,18098.86,3772.0,3688.0,91.84,97.77
+C20436,Ironwood Station,Supercenter,true,Portland,Pacific,R08,Elliot Vance,2023-10-13,2026-07-01,152,1104,402937.82,298689.35,104248.47,18978.69,3708.0,3635.0,91.39,98.03
+C20470,Meadowbrook Station 470,Supercenter,true,Baton Rouge,Texas & Gulf,R02,Marcus Oyelaran,2023-10-05,2026-07-03,168,1221,402633.63,294931.79,107701.84,18247.26,4245.0,4154.0,90.83,97.86
+C20093,Summit Town Center,Supercenter,true,Baltimore,Mid-Atlantic,R05,Renee Chartrand,2023-10-17,2026-06-19,156,1061,399982.44,293394.12,106588.32,18438.84,3741.0,3669.0,91.89,98.08
+C20393,Lakeview Galleria 393,Club Warehouse,true,Kansas City,Midwest,R06,Sam Okonkwo,2023-11-17,2026-06-23,78,654,397047.58,340553.8,56493.77,18646.52,4253.0,4180.0,92.05,98.28
+C20352,Summit Pointe 352,Supercenter,true,Orlando,Southeast,R05,Renee Chartrand,2023-10-05,2026-06-29,156,1035,396444.98,291773.25,104671.73,18716.0,3669.0,3589.0,91.59,97.82
+C20264,Lakeview Junction,Club Warehouse,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-14,2026-06-16,77,660,396098.03,330627.0,65471.02,18984.47,4436.0,4345.0,92.73,97.95
+C20336,Copper Ridge Plaza 336,Supercenter,true,Buffalo,Northeast,R03,Priya Raghunathan,2023-10-18,2026-06-29,148,1011,394777.87,291924.53,102853.34,18091.19,3834.0,3744.0,92.98,97.65
+C20155,Redbud Square,Supercenter,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-04,2025-11-04,146,1035,391434.55,285112.04,106322.5,18823.82,3897.0,3797.0,92.56,97.43
+C20366,Meadowbrook Station,Supercenter,true,Philadelphia,Mid-Atlantic,R06,Sam Okonkwo,2023-10-07,2026-06-28,155,1080,390190.54,290986.79,99203.75,18504.65,3779.0,3690.0,91.57,97.64
+C20036,Willow Creek Town Center,Supercenter,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2023-10-04,2026-06-30,157,1142,390083.83,287078.93,103004.9,19549.55,3953.0,3845.0,92.64,97.27
+C20551,Sunfield Gateway,Supercenter,true,Indianapolis,Midwest,R03,Priya Raghunathan,2023-10-16,2026-07-01,137,995,389843.23,292158.77,97684.46,18527.0,3410.0,3307.0,93.37,96.98
+C20215,Ridgeway Commons,Supercenter,true,Fresno,Pacific,R07,Hana Sasaki,2023-10-09,2026-06-24,145,1064,385627.67,292459.97,93167.7,18487.62,3739.0,3654.0,91.64,97.73
+C20277,Granite Falls Galleria 277,Supercenter,true,Indianapolis,Midwest,R03,Priya Raghunathan,2023-10-07,2026-07-04,160,1098,384673.08,275330.11,109342.97,17751.65,3950.0,3882.0,93.9,98.28
+C20477,Trailside Village,Supercenter,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2023-10-13,2026-06-29,160,1087,383170.04,278659.16,104510.88,18114.1,3804.0,3725.0,92.64,97.92
+C20496,Riverbend Station 496,Supercenter,true,San Antonio,Texas & Gulf,R02,Marcus Oyelaran,2023-10-03,2026-06-23,133,910,382166.54,282612.61,99553.93,17915.38,3345.0,3261.0,92.86,97.49
+C20260,Union Square Station,Supercenter,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-16,2026-06-30,149,1069,381587.53,286060.32,95527.21,18168.76,3685.0,3586.0,91.96,97.31
+C20074,Union Square Crossing,Supercenter,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-05,2026-06-12,136,962,381573.5,286907.18,94666.32,18717.1,3514.0,3432.0,91.16,97.67
+C20532,Riverbend Town Center 532,Supercenter,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-10,2026-06-26,144,965,378998.46,285409.8,93588.67,17162.54,3274.0,3198.0,92.75,97.68
+C20217,Redbud Galleria 217,Supercenter,true,Hartford,Northeast,R03,Priya Raghunathan,2023-10-14,2026-06-23,141,934,378397.29,285688.77,92708.52,19030.63,3328.0,3227.0,91.65,96.97
+C20002,Ironwood Marketplace,Supercenter,true,Indianapolis,Midwest,R03,Priya Raghunathan,2023-10-05,2026-07-02,160,1120,373815.03,274895.22,98919.81,17479.51,3733.0,3610.0,92.05,96.71
+C20315,Summit Landing,Supercenter,true,Spokane,Pacific,R07,Hana Sasaki,2023-10-10,2026-07-03,154,1106,372987.72,279048.52,93939.21,17357.26,3763.0,3673.0,92.41,97.61
+C20191,Oakmont Pointe 191,Supercenter,true,Columbus,Midwest,R06,Sam Okonkwo,2023-10-12,2026-07-03,152,1038,370516.41,271145.21,99371.2,17731.19,3658.0,3563.0,93.83,97.4
+C20478,Maple Grove Town Center,Supercenter,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-03,2026-07-01,150,1029,370177.54,270423.46,99754.07,17760.23,3643.0,3543.0,92.61,97.26
+C20299,Copper Ridge Plaza,Supercenter,true,Philadelphia,Mid-Atlantic,R06,Sam Okonkwo,2023-10-24,2026-06-24,156,1078,368446.43,274358.2,94088.23,18631.89,3908.0,3810.0,92.86,97.49
+C20268,Bayside Square,Supercenter,true,Columbus,Midwest,R03,Priya Raghunathan,2023-10-04,2026-06-23,164,1117,367861.95,264271.79,103590.16,17208.42,3758.0,3653.0,93.11,97.21
+C20145,Kingsport Town Center,Supercenter,true,Charlotte,Southeast,R01,Dana Whitfield,2023-10-15,2026-06-29,137,964,367786.72,273280.61,94506.11,16756.6,3555.0,3489.0,91.49,98.14
+C20167,Northgate Junction 167,Supercenter,true,Baton Rouge,Texas & Gulf,R02,Marcus Oyelaran,2023-10-04,2026-06-29,156,1058,365508.43,267008.8,98499.64,17268.02,3797.0,3691.0,92.53,97.21
+C20292,Highland Landing 292,Supercenter,true,Austin,Texas & Gulf,R02,Marcus Oyelaran,2023-10-05,2026-06-23,148,1052,363823.85,268268.31,95555.54,18015.43,3726.0,3630.0,90.3,97.42
+C20428,Ridgeway Town Center 428,Supercenter,true,Kansas City,Midwest,R03,Priya Raghunathan,2023-10-14,2026-06-30,138,970,363209.46,271816.8,91392.66,18307.47,3332.0,3279.0,91.24,98.41
+C20319,Sunfield Town Center 319,Supercenter,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-03,2026-06-29,156,1071,363090.32,262222.63,100867.69,17608.81,3868.0,3793.0,91.69,98.06
+C20516,Highland Junction 516,Supercenter,true,Albuquerque,Mountain West,R07,Hana Sasaki,2023-10-04,2026-07-03,156,1053,361409.8,260487.25,100922.54,16676.2,3709.0,3632.0,92.59,97.92
+C20222,Clearwater Exchange,Club Warehouse,true,Kansas City,Midwest,R03,Priya Raghunathan,2023-10-03,2026-05-17,67,584,360177.35,301657.24,58520.11,16818.03,3778.0,3708.0,91.95,98.15
+C20254,Willow Creek Galleria 254,Supercenter,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-04,2026-06-25,146,1008,356577.93,262145.52,94432.41,16720.16,3540.0,3466.0,93.15,97.91
+C20400,Union Square Center,Supercenter,true,Des Moines,Midwest,R06,Sam Okonkwo,2023-10-11,2026-06-26,144,977,356455.17,264266.52,92188.64,16313.63,3416.0,3342.0,91.81,97.83
+C20237,Trailside Station,Supercenter,true,Columbus,Midwest,R03,Priya Raghunathan,2023-10-19,2026-06-16,147,1077,355059.09,257821.11,97237.98,17341.76,3656.0,3579.0,91.64,97.89
+C20513,Union Square Center 513,Supercenter,true,Fresno,Pacific,R08,Elliot Vance,2023-10-08,2026-07-02,136,968,354748.14,264099.06,90649.08,18151.96,3665.0,3570.0,92.15,97.41
+C20008,Ridgeway Square,Supercenter,true,Columbus,Midwest,R03,Priya Raghunathan,2023-10-07,2026-06-19,140,988,353557.69,260666.13,92891.56,16576.64,3454.0,3373.0,90.79,97.65
+C20520,Brookfield Junction 520,Supercenter,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-12,2026-06-30,140,917,349485.13,258085.68,91399.45,16305.11,3210.0,3142.0,90.19,97.88
+C20106,Oakmont Square,Supercenter,true,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-05,2026-06-25,139,948,348201.55,257055.68,91145.88,16287.97,2962.0,2882.0,91.56,97.3
+C20241,Clearwater Depot,Supercenter,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-02,2026-06-14,146,1007,347987.17,256196.24,91790.93,16498.22,3442.0,3361.0,92.06,97.65
+C20282,Union Square Crossing 282,Supercenter,true,Indianapolis,Midwest,R06,Sam Okonkwo,2023-10-12,2025-12-01,132,950,347015.44,254658.26,92357.19,16981.86,3287.0,3198.0,92.21,97.29
+C20027,Cedar Park Crossing,Supercenter,true,Fresno,Pacific,R07,Hana Sasaki,2023-10-07,2026-06-19,157,1064,345445.44,255190.44,90255.0,16448.68,3523.0,3416.0,91.64,96.96
+C20192,Kingsport Gateway 192,Club Warehouse,true,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-05,2026-07-03,72,583,343337.27,293861.73,49475.54,16252.64,3606.0,3546.0,92.62,98.34
+C20114,Brookfield Station,Supercenter,true,Worcester,Northeast,R03,Priya Raghunathan,2023-10-04,2026-06-30,136,969,342779.07,249050.04,93729.03,15374.83,3370.0,3294.0,91.43,97.74
+C20548,Fairview Station 548,Supercenter,true,Orlando,Southeast,R05,Renee Chartrand,2023-10-07,2026-06-28,141,1005,339368.04,249665.77,89702.27,16385.79,3282.0,3187.0,92.44,97.11
+C20185,Meadowbrook Marketplace,Supercenter,true,Philadelphia,Mid-Atlantic,R05,Renee Chartrand,2023-10-18,2026-06-22,136,979,338246.38,248099.71,90146.67,15993.65,3466.0,3372.0,92.24,97.29
+C20159,Lakeview Station,Supercenter,true,Indianapolis,Midwest,R06,Sam Okonkwo,2023-10-02,2026-06-26,145,984,333804.85,249204.6,84600.25,16121.98,3438.0,3358.0,90.75,97.67
+C20127,Harvest Point Market,Club Warehouse,true,Nashville,Southeast,R05,Renee Chartrand,2025-03-12,2026-07-01,62,506,332562.37,275079.61,57482.77,15541.96,3801.0,3724.0,91.7,97.97
+C20283,Fairview Pointe,Club Warehouse,true,Columbus,Midwest,R06,Sam Okonkwo,2023-10-03,2026-06-26,87,652,328209.03,275892.42,52316.62,16385.8,4116.0,4044.0,90.34,98.25
+C20325,Silver Lake Center,Supercenter,true,Dallas,Texas & Gulf,R02,Marcus Oyelaran,2023-10-09,2026-06-30,138,944,326258.21,239715.58,86542.63,14858.71,3229.0,3167.0,93.96,98.08
+C20153,Fox Run Supercenter 153,Supercenter,true,Salt Lake City,Mountain West,R07,Hana Sasaki,2023-10-21,2026-07-04,118,869,325640.12,244248.6,81391.51,16341.89,2875.0,2794.0,91.83,97.18
+C20526,Redbud Village 526,Supercenter,true,Charlotte,Southeast,R01,Dana Whitfield,2023-10-11,2026-07-02,119,814,325561.15,245380.45,80180.7,15622.89,2904.0,2836.0,93.12,97.66
+C20308,Northgate Exchange,Supercenter,true,Buffalo,Northeast,R03,Priya Raghunathan,2023-10-03,2026-06-28,137,987,324800.83,238895.37,85905.46,15249.86,3225.0,3155.0,92.6,97.83
+C20220,Riverbend Pointe,Supercenter,true,Omaha,Midwest,R06,Sam Okonkwo,2023-10-11,2026-04-10,128,899,323202.28,245014.05,78188.23,15130.13,3041.0,2993.0,92.77,98.42
+C20542,Ridgeway Square 542,Supercenter,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-22,2026-07-01,120,913,319914.9,238987.25,80927.65,15358.92,3142.0,3071.0,91.68,97.74
+C20224,Kingsport Junction,Supercenter,true,Buffalo,Northeast,R03,Priya Raghunathan,2023-10-08,2026-06-26,137,980,313530.24,234052.27,79477.98,15005.44,3216.0,3134.0,91.53,97.45
+C20602,Cedar Park Pointe,Supercenter,true,Albuquerque,Mountain West,R04,Tomasz Bielski,2024-10-21,2026-06-29,118,806,313315.39,234139.14,79176.26,14208.19,3003.0,2940.0,91.69,97.9
+C20201,Brookfield Station 201,Supercenter,true,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-07,2026-05-16,133,912,311359.94,233602.56,77757.38,14387.07,2891.0,2818.0,92.43,97.47
+C20039,Westfield Supercenter,Supercenter,true,Birmingham,Southeast,R05,Renee Chartrand,2023-11-09,2026-07-01,116,817,311175.05,225475.08,85699.97,15536.47,3093.0,3021.0,93.15,97.67
+C20510,Fox Run Supercenter 510,Supercenter,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-06,2026-06-08,118,838,309284.76,233544.61,75740.15,14791.94,2711.0,2645.0,92.36,97.57
+C20579,Northgate Square 579,Supercenter,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-25,2025-11-27,132,877,309240.83,227476.84,81763.99,15595.84,3069.0,2989.0,91.33,97.39
+C20086,Fox Run Gateway,Supercenter,true,Des Moines,Midwest,R06,Sam Okonkwo,2023-10-10,2026-06-16,124,868,307300.72,228442.89,78857.82,14953.7,2772.0,2713.0,93.32,97.87
+C20471,Willow Creek Center,Supercenter,true,San Antonio,Texas & Gulf,R01,Dana Whitfield,2024-12-31,2026-06-25,114,807,307117.33,219941.3,87176.03,14357.09,3139.0,3073.0,91.2,97.9
+C20572,Granite Falls Exchange 572,Supercenter,true,Worcester,Northeast,R03,Priya Raghunathan,2023-10-10,2026-05-30,124,872,306892.15,232083.87,74808.29,14375.67,3110.0,3035.0,93.58,97.59
+C20362,Redbud Supercenter,Supercenter,true,Charlotte,Southeast,R05,Renee Chartrand,2025-02-09,2026-07-03,100,688,306781.46,228424.83,78356.63,14943.05,2832.0,2769.0,91.86,97.78
+C20401,Vista Park Landing 401,Supercenter,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-12,2026-06-27,118,829,305432.28,223795.56,81636.72,13657.22,2983.0,2893.0,92.76,96.98
+C20345,Bayside Town Center 345,Supercenter,true,Columbus,Midwest,R03,Priya Raghunathan,2023-10-05,2026-06-30,120,861,304513.19,228669.99,75843.19,14274.67,2936.0,2865.0,91.87,97.58
+C20131,Northgate Galleria,Supercenter,true,Fresno,Pacific,R08,Elliot Vance,2023-10-06,2026-06-23,137,937,304505.07,228600.03,75905.04,14610.39,3161.0,3055.0,92.32,96.65
+C20004,Brookfield Plaza,Supercenter,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2023-10-18,2025-08-26,129,831,303647.41,226965.95,76681.46,14437.99,2957.0,2887.0,91.46,97.63
+C20170,Silver Lake Gateway,Club Warehouse,true,Atlanta,Southeast,R01,Dana Whitfield,2024-11-24,2026-06-26,51,389,300637.0,248121.6,52515.4,14329.32,2810.0,2776.0,90.49,98.79
+C20175,Copper Ridge Marketplace 175,Supercenter,true,Philadelphia,Mid-Atlantic,R06,Sam Okonkwo,2023-10-08,2025-06-29,111,747,297658.69,217597.81,80060.88,14166.9,2833.0,2775.0,93.04,97.95
+C20019,Ironwood Galleria,Supercenter,true,Baltimore,Mid-Atlantic,R05,Renee Chartrand,2023-10-22,2026-07-03,127,857,297620.89,218072.79,79548.1,13854.3,2913.0,2847.0,91.37,97.73
+C20588,Cedar Park Crossing 588,Discount Store,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-20,2026-07-03,191,1231,297575.2,226956.66,70618.55,14357.94,2634.0,2556.0,91.96,97.04
+C20183,Ironwood Crossing,Supercenter,true,Atlanta,Southeast,R05,Renee Chartrand,2023-10-25,2026-07-01,125,854,293259.59,222428.1,70831.48,14117.44,2723.0,2653.0,91.1,97.43
+C20553,Cedar Park Town Center,Supercenter,true,Omaha,Midwest,R06,Sam Okonkwo,2023-10-11,2026-07-04,140,955,293188.54,213876.88,79311.66,13583.65,3155.0,3041.0,92.77,96.39
+C20184,Silver Lake Square,Supercenter,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-07,2026-06-02,124,884,285421.45,209763.95,75657.5,13705.72,2904.0,2840.0,92.42,97.8
+C20069,Prairie View Commons 69,Club Warehouse,true,Philadelphia,Mid-Atlantic,R06,Sam Okonkwo,2024-11-04,2026-06-17,62,520,280818.56,223073.08,57745.48,13672.09,3287.0,3226.0,92.12,98.14
+C20313,Vista Park Gateway,Supercenter,true,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-11,2026-06-27,128,872,278064.42,207545.54,70518.88,13832.83,2765.0,2682.0,90.83,97.0
+C20565,Oakmont Junction,Neighborhood Market,true,Denver,Mountain West,R04,Tomasz Bielski,2023-10-05,2026-07-01,253,1447,277432.75,205238.44,72194.32,12742.32,2471.0,2397.0,92.26,97.01
+C20096,Maple Grove Village,Supercenter,true,Hartford,Northeast,R03,Priya Raghunathan,2023-10-06,2026-06-26,119,795,274954.99,208529.46,66425.53,11935.16,2657.0,2576.0,90.82,96.95
+C20059,Union Square Junction,Supercenter,true,San Antonio,Texas & Gulf,R02,Marcus Oyelaran,2025-02-02,2026-06-28,98,741,274185.14,197853.76,76331.38,12511.18,2893.0,2831.0,93.25,97.86
+C20498,Clearwater Landing 498,Discount Store,true,Charlotte,Southeast,R01,Dana Whitfield,2023-10-12,2026-06-28,159,1043,271121.2,205403.97,65717.23,12354.72,2393.0,2332.0,91.28,97.45
+C20136,Meadowbrook Crossing 136,Discount Store,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-07,2026-07-04,175,1146,268504.23,197789.06,70715.17,12592.93,2514.0,2437.0,91.45,96.94
+C20266,Granite Falls Galleria,Neighborhood Market,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-03,2026-06-20,247,1349,267340.19,199463.45,67876.75,11854.28,2307.0,2236.0,92.07,96.92
+C20593,Kingsport Crossing,Supercenter,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-23,2026-06-05,123,816,264005.24,199446.7,64558.55,12420.29,2670.0,2621.0,93.26,98.16
+C20151,Kingsport Plaza,Supercenter,true,Columbus,Midwest,R03,Priya Raghunathan,2023-10-08,2026-06-17,111,778,263158.33,189560.85,73597.47,12457.6,2527.0,2479.0,92.42,98.1
+C20028,Brookfield Pointe,Club Warehouse,true,Houston,Texas & Gulf,R01,Dana Whitfield,2024-10-27,2026-06-10,54,421,260813.66,218959.03,41854.63,12560.19,2896.0,2823.0,92.4,97.48
+C20121,Granite Falls Depot,Club Warehouse,true,Kansas City,Midwest,R03,Priya Raghunathan,2023-10-27,2026-06-28,56,455,258984.29,220085.9,38898.39,12061.97,2791.0,2723.0,92.75,97.56
+C20467,Cedar Park Center,Club Warehouse,true,Fresno,Pacific,R07,Hana Sasaki,2025-03-26,2026-06-30,50,385,258942.05,218924.43,40017.62,12453.42,2983.0,2926.0,91.95,98.09
+C20616,Redbud Town Center 616,Club Warehouse,true,Salt Lake City,Mountain West,R07,Hana Sasaki,2025-06-03,2026-06-28,46,348,258270.54,221398.42,36872.12,12650.97,2760.0,2711.0,91.67,98.22
+C20210,Vista Park Station,Supercenter,true,Columbus,Midwest,R03,Priya Raghunathan,2023-10-04,2026-06-02,108,745,258147.88,194461.25,63686.63,12376.9,2424.0,2380.0,91.01,98.18
+C20205,Clearwater Market,Supercenter,true,Indianapolis,Midwest,R03,Priya Raghunathan,2023-10-03,2026-06-24,129,898,254846.99,183217.46,71629.53,11843.55,2879.0,2795.0,92.54,97.08
+C20394,Harvest Point Exchange,Supercenter,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-14,2026-06-24,113,746,254688.32,185493.22,69195.1,11802.58,2688.0,2623.0,91.82,97.58
+C20236,Fox Run Depot,Neighborhood Market,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-08,2026-06-30,258,1438,253901.07,189141.54,64759.52,11721.07,2476.0,2412.0,92.28,97.42
+C20297,Kingsport Marketplace 297,Discount Store,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-22,2026-07-01,152,1004,252642.8,188260.38,64382.42,12144.47,2227.0,2157.0,92.13,96.86
+C20075,Redbud Crossing,Supercenter,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-04,2026-07-02,124,885,251369.1,184118.76,67250.34,12213.85,2807.0,2747.0,92.2,97.86
+C20437,Silver Lake Supercenter,Discount Store,true,Charlotte,Southeast,R01,Dana Whitfield,2023-10-11,2026-06-26,175,1104,251142.42,189685.4,61457.02,11822.92,2450.0,2385.0,93.12,97.35
+C20344,Highland Center,Supercenter,true,Omaha,Midwest,R06,Sam Okonkwo,2023-10-05,2026-06-27,116,824,250175.39,185381.42,64793.96,12601.0,2685.0,2612.0,92.11,97.28
+C20258,Willow Creek Galleria 258,Discount Store,true,Sacramento,Pacific,R08,Elliot Vance,2023-10-04,2026-07-01,172,1151,244112.58,185404.75,58707.83,11565.18,2543.0,2465.0,92.96,96.93
+C20430,Willow Creek Pointe 430,Club Warehouse,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-12,2024-10-23,45,374,243850.51,211487.58,32362.93,13174.66,2775.0,2716.0,91.44,97.87
+C20193,Redbud Marketplace,Discount Store,true,Richmond,Mid-Atlantic,R06,Sam Okonkwo,2023-10-04,2026-06-30,161,1089,241824.13,181341.01,60483.12,11268.95,2429.0,2360.0,92.01,97.16
+C20252,Ridgeway Marketplace,Supercenter,true,Houston,Texas & Gulf,R01,Dana Whitfield,2025-04-03,2026-07-02,92,667,240821.26,175639.49,65181.77,10712.41,2608.0,2565.0,91.6,98.35
+C20120,Oakmont Station,Supercenter,true,Richmond,Mid-Atlantic,R06,Sam Okonkwo,2024-12-03,2026-06-27,90,628,239901.1,182882.71,57018.39,10945.01,2102.0,2051.0,90.61,97.57
+C20206,Willow Creek Pointe,Discount Store,true,Baltimore,Mid-Atlantic,R05,Renee Chartrand,2023-10-24,2026-06-25,157,1017,235846.11,175723.95,60122.16,11307.49,2366.0,2291.0,93.02,96.83
+C20115,Ridgeway Town Center,Discount Store,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-08,2026-07-04,148,978,234824.59,177086.71,57737.88,10649.41,2134.0,2065.0,92.94,96.77
+C20348,Bayside Village,Supercenter,true,Albuquerque,Mountain West,R04,Tomasz Bielski,2023-10-11,2024-11-14,69,478,234099.11,180939.97,53159.14,10419.55,1812.0,1765.0,91.63,97.41
+C20150,Vista Park Village,Discount Store,true,Buffalo,Northeast,R03,Priya Raghunathan,2023-10-06,2026-07-03,154,998,233943.94,175588.95,58354.99,11107.47,2200.0,2125.0,91.78,96.59
+C20261,Willow Creek Landing 261,Club Warehouse,true,Denver,Mountain West,R04,Tomasz Bielski,2025-01-10,2026-06-11,45,366,232593.77,196502.66,36091.11,11094.19,2588.0,2532.0,92.62,97.84
+C20405,Copper Ridge Junction,Supercenter,true,Austin,Texas & Gulf,R02,Marcus Oyelaran,2023-10-08,2025-04-17,93,661,231782.48,171632.16,60150.32,10334.71,2322.0,2265.0,93.8,97.55
+C20298,Riverbend Plaza,Supercenter,true,Orlando,Southeast,R01,Dana Whitfield,2025-06-04,2026-07-02,81,580,231216.03,170585.64,60630.39,11388.95,2267.0,2216.0,91.38,97.75
+C20104,Copper Ridge Market,Supercenter,true,Nashville,Southeast,R05,Renee Chartrand,2024-10-09,2026-07-02,90,648,230334.74,170057.17,60277.57,10917.16,2229.0,2186.0,91.67,98.07
+C20500,Brookfield Galleria,Supercenter,true,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-05,2026-06-20,107,747,229728.36,168340.72,61387.64,10961.01,2386.0,2307.0,90.5,96.69
+C20321,Harvest Point Crossing,Supercenter,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-21,2026-06-30,106,710,227620.86,167882.45,59738.41,10877.78,2315.0,2266.0,90.56,97.88
+C20066,Willow Creek Supercenter,Neighborhood Market,true,Charlotte,Southeast,R05,Renee Chartrand,2023-10-04,2026-06-29,238,1354,225057.07,163096.02,61961.05,10899.82,2202.0,2128.0,93.06,96.64
+C20578,Westfield Galleria,Discount Store,true,Buffalo,Northeast,R03,Priya Raghunathan,2023-10-10,2026-06-20,158,1063,224889.53,167586.1,57303.43,10581.41,2203.0,2126.0,92.85,96.5
+C20141,Riverbend Supercenter,Discount Store,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-02,2026-06-28,148,1001,224066.21,164262.26,59803.95,10611.26,2159.0,2100.0,91.91,97.27
+C20447,Fairview Station,Neighborhood Market,true,Pittsburgh,Mid-Atlantic,R06,Sam Okonkwo,2023-10-10,2026-07-04,221,1150,219930.48,159741.58,60188.9,10541.93,1919.0,1852.0,92.17,96.51
+C20537,Clearwater Center 537,Discount Store,true,Denver,Mountain West,R04,Tomasz Bielski,2023-10-03,2026-06-05,147,955,219851.29,164119.06,55732.23,9854.79,2025.0,1983.0,92.46,97.93
+C20377,Sunfield Landing 377,Discount Store,true,Charlotte,Southeast,R01,Dana Whitfield,2023-10-07,2026-06-28,157,1041,219068.12,160734.23,58333.89,10462.3,2314.0,2234.0,91.83,96.54
+C20539,Granite Falls Galleria 539,Neighborhood Market,true,San Antonio,Texas & Gulf,R01,Dana Whitfield,2023-10-06,2026-07-03,220,1221,217383.63,158830.02,58553.61,10539.53,1946.0,1876.0,93.69,96.4
+C20025,Fox Run Pointe,Discount Store,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-04,2026-07-01,152,970,215577.52,162722.93,52854.6,10108.67,2045.0,1992.0,92.37,97.41
+C20018,Westfield Village,Neighborhood Market,true,Salt Lake City,Mountain West,R04,Tomasz Bielski,2023-10-08,2026-06-27,233,1320,215455.93,156060.99,59394.94,9884.07,2128.0,2054.0,91.14,96.52
+C20397,Highland Junction 397,Neighborhood Market,true,Baltimore,Mid-Atlantic,R05,Renee Chartrand,2023-10-03,2026-06-27,233,1315,214561.79,157842.14,56719.65,10130.06,2107.0,2035.0,92.78,96.58
+C20419,Prairie View Commons 419,Neighborhood Market,true,Denver,Mountain West,R07,Hana Sasaki,2023-10-03,2026-07-02,234,1275,213965.67,157402.3,56563.37,9773.58,2082.0,2006.0,92.47,96.35
+C20322,Lakeview Galleria,Neighborhood Market,true,Albuquerque,Mountain West,R04,Tomasz Bielski,2023-10-18,2026-07-02,213,1227,213351.75,156911.33,56440.41,10282.84,2040.0,1950.0,92.5,95.59
+C20407,Meadowbrook Landing 407,Supercenter,true,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-05,2025-06-10,88,588,211782.36,156504.91,55277.45,10149.89,2033.0,1975.0,92.01,97.15
+C20564,Stonegate Junction,Club Warehouse,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-24,2024-10-15,39,284,210498.1,181842.76,28655.34,10227.87,2017.0,2005.0,94.37,99.41
+C20384,Prairie View Commons 384,Neighborhood Market,true,Manchester,Northeast,R03,Priya Raghunathan,2023-10-08,2026-06-16,207,1115,210437.74,156529.99,53907.75,10033.72,1861.0,1801.0,91.48,96.78
+C20263,Westfield Market 263,Neighborhood Market,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-04,2026-06-29,217,1183,209540.47,153382.83,56157.64,10281.5,2010.0,1936.0,91.46,96.32
+C20177,Bayside Marketplace 177,Pickup & Delivery Hub,false,Baton Rouge,Texas & Gulf,R02,Marcus Oyelaran,2023-10-06,2026-06-26,305,1413,208982.37,161594.82,47387.55,10436.01,1865.0,1793.0,91.79,96.14
+C20229,Cedar Park Crossing 229,Neighborhood Market,true,Worcester,Northeast,R03,Priya Raghunathan,2023-10-13,2026-06-30,220,1237,208863.53,152472.28,56391.25,10008.74,2067.0,2008.0,92.97,97.15
+C20249,Clearwater Pointe,Discount Store,true,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-23,2026-06-22,138,892,207663.13,158229.35,49433.79,10442.91,1840.0,1782.0,93.61,96.85
+C20082,Kingsport Market 82,Supercenter,true,Portland,Pacific,R08,Elliot Vance,2023-10-06,2025-02-25,85,589,206989.85,148460.65,58529.21,9801.68,2127.0,2095.0,93.38,98.5
+C20247,Ironwood Pointe,Supercenter,true,Boise,Mountain West,R04,Tomasz Bielski,2025-08-17,2026-07-03,61,426,206795.9,153540.58,53255.32,9773.56,1659.0,1625.0,92.25,97.95
+C20033,Cedar Park Commons,Discount Store,true,Richmond,Mid-Atlantic,R06,Sam Okonkwo,2023-10-06,2026-06-29,161,997,206043.04,152716.17,53326.87,9280.47,2057.0,1983.0,93.18,96.4
+C20432,Bayside Supercenter 432,Supercenter,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-09,2025-02-03,83,570,205525.81,148255.78,57270.02,9752.47,2151.0,2095.0,89.47,97.4
+C20085,Northgate Junction,Neighborhood Market,true,Spokane,Pacific,R07,Hana Sasaki,2023-10-10,2026-06-30,220,1200,205469.08,151931.73,53537.36,10216.12,1966.0,1895.0,91.42,96.39
+C20007,Copper Ridge Exchange,Discount Store,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-10,2026-06-27,149,969,204376.46,152987.29,51389.17,9077.47,2081.0,2015.0,91.54,96.83
+C20586,Copper Ridge Depot,Supercenter,true,Birmingham,Southeast,R05,Renee Chartrand,2025-03-29,2026-07-03,71,541,203756.93,151003.7,52753.22,9353.8,2130.0,2076.0,91.5,97.46
+C20274,Meadowbrook Market,Supercenter,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2025-02-05,2026-06-30,83,580,203421.83,148110.77,55311.06,10662.36,1944.0,1906.0,92.24,98.05
+C20505,Fairview Marketplace 505,Neighborhood Market,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-05,2026-06-20,222,1230,202126.86,147529.55,54597.32,9583.28,2031.0,1954.0,90.81,96.21
+C20552,Lakeview Junction 552,Discount Store,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-21,2026-07-04,138,927,201790.55,150848.64,50941.9,9777.94,1976.0,1914.0,90.83,96.86
+C20122,Cedar Park Galleria,Neighborhood Market,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-03,2026-06-27,209,1093,201303.76,147441.73,53862.03,9427.61,1849.0,1789.0,91.95,96.76
+C20149,Sunfield Commons,Supercenter,true,Fresno,Pacific,R07,Hana Sasaki,2023-10-05,2025-01-06,88,607,201081.92,150080.05,51001.86,10069.23,2110.0,2057.0,90.61,97.49
+C20494,Vista Park Plaza 494,Discount Store,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-21,2026-07-01,138,905,199710.83,150315.84,49394.99,9831.09,1914.0,1855.0,91.38,96.92
+C20286,Highland Village,Neighborhood Market,true,Birmingham,Southeast,R05,Renee Chartrand,2023-10-03,2026-06-30,232,1219,199610.01,144807.56,54802.44,9333.18,2042.0,1970.0,92.86,96.47
+C20140,Bayside Pointe,Discount Store,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-22,2026-06-24,128,856,197508.74,148037.5,49471.24,9391.69,1867.0,1818.0,91.12,97.38
+C20154,Stonegate Town Center,Neighborhood Market,true,Houston,Texas & Gulf,R02,Marcus Oyelaran,2023-10-03,2026-06-27,196,1102,197410.38,145872.21,51538.17,9474.5,1757.0,1694.0,92.11,96.41
+C20051,Prairie View Town Center 51,Neighborhood Market,true,San Antonio,Texas & Gulf,R02,Marcus Oyelaran,2023-10-06,2026-07-01,198,1076,195738.94,139198.05,56540.9,9207.5,1811.0,1736.0,90.24,95.86
+C20555,Brookfield Pointe 555,Neighborhood Market,true,Austin,Texas & Gulf,R02,Marcus Oyelaran,2023-10-06,2026-07-02,203,1119,195198.0,140108.22,55089.78,9302.37,1802.0,1732.0,91.06,96.12
+C20253,Sunfield Depot,Neighborhood Market,true,Portland,Pacific,R07,Hana Sasaki,2023-10-10,2026-07-03,218,1197,194804.45,139935.87,54868.57,9179.27,1967.0,1907.0,93.32,96.95
+C20060,Meadowbrook Exchange,Neighborhood Market,true,Pittsburgh,Mid-Atlantic,R05,Renee Chartrand,2023-10-14,2026-07-02,213,1135,193288.01,142375.72,50912.28,9452.1,1899.0,1819.0,92.07,95.79
+C20355,Oakmont Town Center 355,Supercenter,true,Denver,Mountain West,R04,Tomasz Bielski,2025-01-18,2026-06-26,70,498,192805.05,141990.13,50814.92,9695.6,1818.0,1785.0,91.77,98.18
+C20043,Westfield Market,Discount Store,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-03,2026-06-21,126,848,192749.08,146378.17,46370.91,8748.19,1742.0,1693.0,92.45,97.19
+C20087,Vista Park Center,Supercenter,true,Sacramento,Pacific,R08,Elliot Vance,2025-06-10,2026-06-26,69,449,191934.41,145707.97,46226.44,9035.21,1759.0,1729.0,90.65,98.29
+C20233,Prairie View Crossing 233,Neighborhood Market,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-06,2026-07-02,208,1108,191713.85,139110.29,52603.55,9416.62,1806.0,1732.0,90.97,95.9
+C20380,Redbud Village 380,Discount Store,true,Salt Lake City,Mountain West,R04,Tomasz Bielski,2023-10-04,2026-02-12,131,859,191686.66,145499.46,46187.21,8918.97,1883.0,1820.0,91.39,96.65
+C20166,Fairview Supercenter,Discount Store,true,Salt Lake City,Mountain West,R04,Tomasz Bielski,2023-10-31,2026-06-29,136,894,191301.13,142616.49,48684.64,8984.52,1908.0,1845.0,93.06,96.7
+C20456,Copper Ridge Square,Discount Store,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2023-10-08,2026-06-19,141,873,191250.97,141935.79,49315.18,9159.4,1787.0,1735.0,93.13,97.09
+C20311,Redbud Commons,Discount Store,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-08,2026-07-03,116,775,191189.47,145304.99,45884.48,8566.14,1727.0,1672.0,92.9,96.82
+C20130,Vista Park Marketplace,Neighborhood Market,true,San Antonio,Texas & Gulf,R01,Dana Whitfield,2023-10-12,2026-06-29,188,1054,190534.12,139450.54,51083.58,9000.08,1725.0,1663.0,90.51,96.41
+C20307,Prairie View Village,Discount Store,true,Charlotte,Southeast,R01,Dana Whitfield,2023-10-15,2026-06-22,142,876,190165.86,139113.0,51052.86,9158.05,1891.0,1843.0,91.89,97.46
+C20048,Union Square Village,Discount Store,true,Atlanta,Southeast,R05,Renee Chartrand,2023-10-07,2026-06-28,152,1007,190006.11,142896.77,47109.35,9264.48,1971.0,1923.0,91.16,97.56
+C20187,Prairie View Station,Discount Store,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2023-10-22,2026-07-02,136,924,188038.64,137570.38,50468.26,9271.21,1971.0,1933.0,93.29,98.07
+C20538,Kingsport Landing,Supercenter,true,Sacramento,Pacific,R07,Hana Sasaki,2025-06-12,2026-06-29,76,525,185193.78,133268.35,51925.44,9106.57,1868.0,1819.0,92.0,97.38
+C20196,Northgate Gateway,Neighborhood Market,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-13,2026-07-03,196,1088,184845.06,134408.94,50436.12,8620.51,1707.0,1642.0,91.54,96.19
+C20293,Highland Junction,Neighborhood Market,true,Albuquerque,Mountain West,R04,Tomasz Bielski,2023-10-22,2026-06-30,212,1161,184825.58,132454.52,52371.06,8735.87,1872.0,1814.0,91.9,96.9
+C20468,Harvest Point Plaza 468,Neighborhood Market,true,Fresno,Pacific,R07,Hana Sasaki,2023-10-05,2026-07-04,220,1169,184758.03,133331.98,51426.06,8818.19,1947.0,1884.0,91.19,96.76
+C20399,Ridgeway Marketplace 399,Discount Store,true,Fresno,Pacific,R08,Elliot Vance,2023-10-02,2026-06-02,130,831,184140.15,137291.78,46848.37,9436.06,1719.0,1676.0,92.18,97.5
+C20176,Granite Falls Exchange,Supercenter,true,Orlando,Southeast,R01,Dana Whitfield,2025-07-11,2026-06-27,69,494,183652.97,132712.1,50940.87,8906.16,1790.0,1755.0,90.89,98.04
+C20148,Maple Grove Landing,Neighborhood Market,true,Orlando,Southeast,R05,Renee Chartrand,2023-10-11,2026-04-28,185,1012,181411.0,133239.79,48171.21,8947.36,1673.0,1605.0,91.9,95.94
+C20563,Kingsport Town Center 563,Supercenter,true,Austin,Texas & Gulf,R02,Marcus Oyelaran,2023-10-21,2024-09-12,63,420,180961.41,139997.47,40963.94,8362.99,1611.0,1577.0,91.43,97.89
+C20390,Willow Creek Square,Supercenter,true,Spokane,Pacific,R07,Hana Sasaki,2023-10-08,2024-10-29,66,453,180661.03,139040.5,41620.53,9447.07,1570.0,1508.0,90.95,96.05
+C20301,Union Square Exchange,Discount Store,true,Philadelphia,Mid-Atlantic,R05,Renee Chartrand,2023-10-03,2026-07-03,140,915,180393.61,135789.65,44603.96,7759.0,1907.0,1849.0,91.15,96.96
+C20107,Stonegate Plaza,Neighborhood Market,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2023-10-13,2026-06-24,197,1115,180297.79,132918.26,47379.52,8182.76,1774.0,1724.0,92.56,97.18
+C20582,Fox Run Crossing 582,Discount Store,true,Pittsburgh,Mid-Atlantic,R05,Renee Chartrand,2023-10-11,2026-07-02,131,845,180152.12,135115.13,45036.98,8888.52,1768.0,1714.0,90.77,96.95
+C20108,Fox Run Supercenter,Neighborhood Market,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-06,2026-07-02,211,1108,180083.86,133253.81,46830.05,8661.82,1774.0,1713.0,91.97,96.56
+C20077,Sunfield Exchange,Discount Store,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-06,2026-06-23,140,866,179623.75,135014.83,44608.92,8327.66,1844.0,1784.0,92.61,96.75
+C20326,Cedar Park Village,Neighborhood Market,true,Omaha,Midwest,R06,Sam Okonkwo,2023-10-03,2026-07-02,209,1176,179144.76,130782.75,48362.01,8646.53,1833.0,1776.0,93.11,96.89
+C20369,Maple Grove Marketplace 369,Discount Store,true,Indianapolis,Midwest,R06,Sam Okonkwo,2023-10-12,2026-06-26,129,856,178362.8,132861.66,45501.14,8452.49,1715.0,1638.0,89.6,95.51
+C20351,Ridgeway Pointe,Discount Store,true,Omaha,Midwest,R06,Sam Okonkwo,2023-10-06,2026-07-04,126,826,177785.91,134715.09,43070.82,8414.62,1641.0,1581.0,93.34,96.34
+C20323,Ironwood Depot,Club Warehouse,true,Orlando,Southeast,R01,Dana Whitfield,2025-08-13,2026-06-29,34,297,177483.25,147393.15,30090.1,7948.21,1985.0,1922.0,86.2,96.83
+C20580,Prairie View Center,Supercenter,true,Houston,Texas & Gulf,R02,Marcus Oyelaran,2025-01-04,2026-06-30,68,449,177260.53,131421.42,45839.1,8959.09,1560.0,1529.0,94.65,98.01
+C20102,Redbud Crossing 102,Discount Store,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-25,2026-06-19,139,848,176025.15,130519.87,45505.28,8523.55,1801.0,1751.0,92.45,97.22
+C20431,Ironwood Commons,Neighborhood Market,true,Fresno,Pacific,R07,Hana Sasaki,2023-10-08,2026-06-28,172,924,175602.22,127670.19,47932.03,8852.52,1578.0,1509.0,92.42,95.63
+C20518,Lakeview Junction 518,Neighborhood Market,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-04,2026-05-10,179,992,174333.92,130392.67,43941.25,7645.01,1546.0,1480.0,92.34,95.73
+C20444,Copper Ridge Village,Neighborhood Market,true,Spokane,Pacific,R07,Hana Sasaki,2023-10-16,2026-06-22,205,1064,172620.82,125969.4,46651.42,7931.77,1704.0,1643.0,93.14,96.42
+C20248,Harvest Point Plaza 248,Club Warehouse,true,Denver,Mountain West,R04,Tomasz Bielski,2025-08-04,2026-06-29,34,249,172597.94,143246.39,29351.55,6670.23,1894.0,1865.0,91.57,98.47
+C20357,Bayside Square 357,Discount Store,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-08,2026-06-27,132,854,171116.26,129096.19,42020.07,8756.56,1674.0,1630.0,94.15,97.37
+C20353,Trailside Junction,Neighborhood Market,true,Dallas,Texas & Gulf,R02,Marcus Oyelaran,2023-10-08,2026-06-17,189,961,170785.23,124658.61,46126.62,8545.66,1560.0,1501.0,92.92,96.22
+C20334,Kingsport Galleria 334,Neighborhood Market,true,Spokane,Pacific,R08,Elliot Vance,2023-10-16,2026-06-18,176,1016,169793.18,122420.47,47372.72,7787.88,1654.0,1613.0,91.14,97.52
+C20541,Copper Ridge Square 541,Discount Store,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-11,2026-06-29,131,850,168861.99,127267.12,41594.87,7990.59,1668.0,1609.0,92.59,96.46
+C20354,Willow Creek Plaza 354,Neighborhood Market,true,Boise,Mountain West,R07,Hana Sasaki,2023-10-04,2026-07-01,183,1039,168360.3,122369.89,45990.4,7794.82,1580.0,1523.0,90.95,96.39
+C20026,Lakeview Pointe,Discount Store,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-11,2026-05-30,114,769,167942.74,121994.01,45948.74,7680.05,1576.0,1527.0,90.77,96.89
+C20448,Bayside Station,Neighborhood Market,true,Buffalo,Northeast,R03,Priya Raghunathan,2023-10-15,2026-07-03,182,987,167586.2,122838.94,44747.26,7952.7,1593.0,1535.0,91.49,96.36
+C20278,Vista Park Exchange,Discount Store,true,Baltimore,Mid-Atlantic,R05,Renee Chartrand,2023-10-13,2026-06-11,140,912,167181.39,122689.02,44492.37,8428.25,1892.0,1821.0,91.78,96.25
+C20607,Ironwood Commons 607,Discount Store,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-07,2026-06-28,122,803,166982.96,123636.83,43346.13,7764.41,1640.0,1585.0,92.9,96.65
+C20554,Ridgeway Plaza 554,Pickup & Delivery Hub,false,Atlanta,Southeast,R01,Dana Whitfield,2023-10-14,2026-07-02,277,1291,166428.03,126815.92,39612.11,8138.52,1669.0,1596.0,92.33,95.63
+C20479,Ironwood Depot 479,Neighborhood Market,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-03,2026-07-01,188,1009,166033.7,119571.1,46462.6,7590.15,1662.0,1599.0,93.36,96.21
+C20422,Westfield Village 422,Neighborhood Market,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-04,2026-07-01,181,967,165123.44,124152.64,40970.8,7772.08,1477.0,1427.0,92.24,96.61
+C20195,Kingsport Galleria,Discount Store,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-05,2026-06-15,129,881,164956.64,121574.1,43382.55,8175.84,1652.0,1600.0,93.08,96.85
+C20225,Cedar Park Marketplace,Neighborhood Market,true,Pittsburgh,Mid-Atlantic,R05,Renee Chartrand,2023-10-08,2026-06-23,190,1047,163641.71,119369.0,44272.71,8041.23,1625.0,1575.0,92.26,96.92
+C20243,Riverbend Town Center 243,Discount Store,true,Austin,Texas & Gulf,R01,Dana Whitfield,2024-12-28,2026-06-27,82,548,161463.48,123545.96,37917.52,7646.9,1311.0,1283.0,91.24,97.86
+C20464,Clearwater Depot 464,Neighborhood Market,true,Salt Lake City,Mountain West,R04,Tomasz Bielski,2023-10-13,2026-06-28,177,987,160499.76,117765.69,42734.07,7581.04,1575.0,1509.0,93.01,95.81
+C20556,Union Square Gateway 556,Discount Store,true,Boise,Mountain West,R07,Hana Sasaki,2023-10-02,2026-06-22,104,694,157886.22,120518.47,37367.75,7680.46,1322.0,1271.0,91.93,96.14
+C20485,Bayside Depot 485,Discount Store,true,Houston,Texas & Gulf,R02,Marcus Oyelaran,2023-10-12,2026-06-25,127,811,157861.13,115465.89,42395.24,7611.89,1663.0,1612.0,92.23,96.93
+C20473,Kingsport Exchange,Neighborhood Market,true,Nashville,Southeast,R05,Renee Chartrand,2023-10-04,2026-07-01,188,1013,157538.46,115119.26,42419.2,7590.21,1591.0,1530.0,91.12,96.17
+C20330,Fairview Plaza,Neighborhood Market,true,Richmond,Mid-Atlantic,R06,Sam Okonkwo,2023-10-05,2026-06-16,172,961,157501.88,114608.98,42892.9,7533.32,1535.0,1485.0,92.92,96.74
+C20373,Copper Ridge Station,Supercenter,true,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-06,2024-08-23,58,407,157497.13,116244.36,41252.76,7596.91,1520.0,1499.0,93.37,98.62
+C20202,Riverbend Town Center,Supercenter,true,Boise,Mountain West,R04,Tomasz Bielski,2025-04-14,2026-06-27,61,446,155869.49,108543.11,47326.38,7465.14,1664.0,1610.0,91.26,96.75
+C20204,Vista Park Market,Neighborhood Market,true,Worcester,Northeast,R03,Priya Raghunathan,2023-10-04,2026-07-02,165,970,155260.13,112490.4,42769.72,7486.69,1464.0,1410.0,92.47,96.31
+C20356,Fox Run Commons,Neighborhood Market,true,Boise,Mountain West,R07,Hana Sasaki,2023-10-18,2026-07-02,170,921,155154.0,113724.1,41429.89,7269.84,1550.0,1485.0,93.92,95.81
+C20316,Willow Creek Exchange,Supercenter,true,Boise,Mountain West,R07,Hana Sasaki,2024-12-26,2026-06-29,66,461,155144.34,114971.47,40172.87,7358.58,1514.0,1483.0,89.15,97.95
+C20300,Brookfield Market,Neighborhood Market,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-08,2026-06-29,158,886,153831.42,110544.97,43286.45,7445.11,1422.0,1358.0,92.1,95.5
+C20460,Sunfield Pointe,Discount Store,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-18,2026-06-22,116,765,152780.71,112870.06,39910.65,7438.75,1606.0,1567.0,92.03,97.57
+C20488,Lakeview Village 488,Neighborhood Market,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-18,2026-07-03,172,927,152404.75,109914.08,42490.67,7155.85,1445.0,1374.0,90.51,95.09
+C20230,Trailside Plaza,Neighborhood Market,true,Columbus,Midwest,R06,Sam Okonkwo,2023-10-06,2026-06-21,151,888,151409.4,110083.58,41325.82,7296.01,1379.0,1318.0,90.88,95.58
+C20112,Kingsport Commons,Discount Store,true,Salt Lake City,Mountain West,R07,Hana Sasaki,2023-10-16,2026-05-27,113,687,150955.18,109439.26,41515.93,7364.98,1466.0,1415.0,91.41,96.52
+C20272,Willow Creek Depot 272,Discount Store,true,Kansas City,Midwest,R06,Sam Okonkwo,2023-10-13,2026-07-01,111,717,150890.4,113607.69,37282.71,7043.46,1404.0,1364.0,92.61,97.15
+C20568,Summit Depot,Discount Store,true,Dallas,Texas & Gulf,R02,Marcus Oyelaran,2023-10-15,2026-06-13,116,739,150468.5,110850.12,39618.38,7315.34,1521.0,1477.0,92.56,97.11
+C20440,Silver Lake Square 440,Pickup & Delivery Hub,false,Orlando,Southeast,R01,Dana Whitfield,2023-10-09,2026-07-04,250,1219,149743.71,113496.77,36246.93,7218.75,1549.0,1478.0,92.29,95.42
+C20592,Trailside Village 592,Supercenter,true,Fresno,Pacific,R07,Hana Sasaki,2025-11-08,2026-06-26,44,332,148707.89,116157.19,32550.7,6830.83,1280.0,1258.0,93.67,98.28
+C20147,Cedar Park Gateway 147,Neighborhood Market,true,Salt Lake City,Mountain West,R07,Hana Sasaki,2023-10-06,2026-07-03,155,863,148528.15,112070.65,36457.5,7050.83,1351.0,1300.0,93.05,96.23
+C20398,Fox Run Marketplace 398,Pickup & Delivery Hub,false,Hartford,Northeast,R03,Priya Raghunathan,2023-10-03,2026-07-02,270,1216,147847.83,112600.48,35247.35,6852.8,1560.0,1490.0,91.12,95.51
+C20459,Copper Ridge Galleria,Neighborhood Market,true,Columbus,Midwest,R06,Sam Okonkwo,2023-10-05,2026-06-28,167,926,147542.57,107007.53,40535.04,7305.09,1406.0,1356.0,90.93,96.44
+C20103,Westfield Crossing,Neighborhood Market,true,Kansas City,Midwest,R06,Sam Okonkwo,2023-10-08,2026-06-28,171,955,147257.04,105276.59,41980.45,7259.22,1491.0,1440.0,92.25,96.58
+C20512,Riverbend Gateway 512,Neighborhood Market,true,Boise,Mountain West,R07,Hana Sasaki,2023-10-06,2026-06-28,180,987,146329.18,105767.17,40562.01,6875.91,1549.0,1501.0,93.72,96.9
+C20341,Copper Ridge Landing,Neighborhood Market,true,Denver,Mountain West,R04,Tomasz Bielski,2023-10-11,2026-06-30,176,945,145951.97,106854.06,39097.92,6903.41,1544.0,1491.0,90.58,96.57
+C20480,Copper Ridge Station 480,Discount Store,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-04,2026-06-09,118,708,145928.21,110611.6,35316.62,6845.29,1356.0,1315.0,92.37,96.98
+C20375,Cedar Park Exchange 375,Neighborhood Market,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-04,2026-07-03,164,866,145518.57,107484.21,38034.35,6705.14,1351.0,1303.0,90.99,96.45
+C20595,Oakmont Commons,Discount Store,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-07,2026-05-04,117,750,145348.05,107746.67,37601.38,6934.68,1472.0,1423.0,91.47,96.67
+C20038,Copper Ridge Marketplace 38,Neighborhood Market,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-20,2026-07-04,159,924,145311.37,104099.07,41212.29,6858.62,1498.0,1463.0,91.99,97.66
+C20057,Willow Creek Gateway,Neighborhood Market,true,Manchester,Northeast,R03,Priya Raghunathan,2023-10-10,2026-06-28,172,963,145056.2,106172.35,38883.85,6925.61,1529.0,1478.0,91.69,96.66
+C20244,Northgate Commons 244,Online Fulfillment Center,false,Buffalo,Northeast,R03,Priya Raghunathan,2025-08-18,2026-06-30,43,362,144742.66,116030.7,28711.96,7021.8,1371.0,1354.0,91.44,98.76
+C20442,Oakmont Crossing,Neighborhood Market,true,Des Moines,Midwest,R06,Sam Okonkwo,2023-10-13,2026-06-30,179,938,144348.06,107527.1,36820.96,6969.17,1462.0,1413.0,93.82,96.65
+C20573,Lakeview Crossing 573,Pickup & Delivery Hub,false,Indianapolis,Midwest,R06,Sam Okonkwo,2023-10-05,2026-06-23,253,1147,144274.79,108326.61,35948.18,6628.03,1413.0,1355.0,92.76,95.9
+C20001,Riverbend Station,Pickup & Delivery Hub,false,Austin,Texas & Gulf,R02,Marcus Oyelaran,2023-10-03,2026-07-02,269,1157,144006.55,108804.73,35201.82,6789.78,1469.0,1415.0,92.74,96.32
+C20021,Copper Ridge Supercenter,Discount Store,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-03,2026-07-02,118,764,143709.82,106823.06,36886.76,6949.14,1478.0,1430.0,91.75,96.75
+C20350,Stonegate Square,Discount Store,true,Houston,Texas & Gulf,R01,Dana Whitfield,2025-02-05,2026-07-02,92,574,143278.13,107857.31,35420.81,6723.89,1332.0,1291.0,91.99,96.92
+C20515,Harvest Point Station 515,Neighborhood Market,true,Omaha,Midwest,R03,Priya Raghunathan,2023-10-16,2026-06-29,171,950,143015.83,102295.27,40720.56,6916.4,1438.0,1377.0,91.37,95.76
+C20179,Meadowbrook Junction,Pickup & Delivery Hub,false,Nashville,Southeast,R01,Dana Whitfield,2023-10-04,2026-07-02,271,1198,143009.41,107105.33,35904.08,6587.1,1472.0,1409.0,91.07,95.72
+C20305,Ridgeway Gateway,Neighborhood Market,true,San Antonio,Texas & Gulf,R01,Dana Whitfield,2023-10-12,2026-07-04,142,826,142743.39,109766.19,32977.2,6690.51,1208.0,1160.0,92.01,96.03
+C20098,Silver Lake Station 98,Supercenter,true,Richmond,Mid-Atlantic,R06,Sam Okonkwo,2023-10-09,2024-07-28,55,365,142457.74,107381.35,35076.39,6395.01,1287.0,1253.0,92.33,97.36
+C20072,Vista Park Town Center,Neighborhood Market,true,Pittsburgh,Mid-Atlantic,R06,Sam Okonkwo,2023-10-04,2026-07-01,168,936,141703.4,103126.68,38576.73,6671.62,1446.0,1394.0,91.77,96.4
+C20387,Silver Lake Commons 387,Neighborhood Market,true,Pittsburgh,Mid-Atlantic,R05,Renee Chartrand,2023-10-10,2026-06-26,176,913,140833.92,101890.4,38943.52,6832.29,1424.0,1378.0,91.57,96.77
+C20523,Trailside Square 523,Supercenter,true,Nashville,Southeast,R01,Dana Whitfield,2025-06-27,2026-06-26,59,373,140801.0,99432.23,41368.78,6720.5,1554.0,1512.0,90.62,97.3
+C20416,Willow Creek Square 416,Neighborhood Market,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-08,2026-07-02,172,911,140666.49,102642.84,38023.65,6700.32,1418.0,1359.0,93.08,95.84
+C20490,Summit Supercenter 490,Discount Store,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-15,2026-07-04,115,758,140557.45,101298.03,39259.43,6638.15,1536.0,1487.0,91.29,96.81
+C20234,Northgate Gateway 234,Neighborhood Market,true,Orlando,Southeast,R05,Renee Chartrand,2023-10-05,2026-07-04,155,872,140242.58,102190.83,38051.76,6995.99,1371.0,1314.0,91.97,95.84
+C20310,Prairie View Market,Discount Store,true,Pittsburgh,Mid-Atlantic,R05,Renee Chartrand,2023-10-05,2026-03-22,110,704,140043.22,104980.01,35063.21,6468.93,1381.0,1336.0,91.34,96.74
+C20367,Union Square Station 367,Discount Store,true,Richmond,Mid-Atlantic,R05,Renee Chartrand,2023-10-15,2026-06-26,115,723,139822.51,105825.53,33996.98,6875.75,1469.0,1422.0,91.29,96.8
+C20371,Ironwood Plaza,Neighborhood Market,true,Portland,Pacific,R08,Elliot Vance,2023-10-03,2026-06-24,167,902,138683.04,100535.83,38147.21,6413.75,1411.0,1359.0,93.24,96.31
+C20597,Prairie View Galleria 597,Supercenter,true,Salt Lake City,Mountain West,R04,Tomasz Bielski,2024-12-17,2026-06-30,59,413,138452.64,102582.76,35869.88,6521.42,1249.0,1213.0,91.04,97.12
+C20129,Fairview Landing,Supercenter,true,Indianapolis,Midwest,R06,Sam Okonkwo,2023-10-04,2024-07-12,55,362,136998.08,103685.76,33312.33,6542.49,1284.0,1250.0,92.82,97.35
+C20599,Summit Plaza,Discount Store,true,Omaha,Midwest,R06,Sam Okonkwo,2023-10-02,2026-06-30,114,703,136939.42,102141.81,34797.61,6670.53,1329.0,1296.0,92.32,97.52
+C20365,Highland Supercenter 365,Discount Store,true,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-08,2026-06-28,100,641,134507.76,101014.43,33493.33,6356.99,1290.0,1253.0,91.58,97.13
+C20035,Fox Run Marketplace,Pickup & Delivery Hub,false,Spokane,Pacific,R07,Hana Sasaki,2023-10-06,2026-07-02,219,1012,134307.84,101561.56,32746.28,6208.28,1303.0,1249.0,92.79,95.86
+C20265,Cedar Park Market,Supercenter,true,Kansas City,Midwest,R03,Priya Raghunathan,2023-10-13,2024-07-02,52,358,134129.21,101396.87,32732.34,6489.93,1315.0,1290.0,92.46,98.1
+C20058,Cedar Park Gateway,Discount Store,true,Nashville,Southeast,R05,Renee Chartrand,2023-10-15,2025-11-09,102,591,133788.69,102811.23,30977.46,6491.15,1216.0,1170.0,90.86,96.22
+C20061,Kingsport Station,Neighborhood Market,true,Fresno,Pacific,R07,Hana Sasaki,2023-10-04,2026-06-23,163,850,133461.24,100479.64,32981.59,6242.12,1265.0,1210.0,91.41,95.65
+C20331,Ridgeway Plaza,Neighborhood Market,true,Denver,Mountain West,R04,Tomasz Bielski,2023-10-05,2026-06-29,142,771,133185.91,100605.5,32580.42,6734.71,1177.0,1129.0,93.39,95.92
+C20531,Ironwood Depot 531,Supercenter,true,Portland,Pacific,R08,Elliot Vance,2024-11-18,2026-06-18,62,411,132804.79,101713.0,31091.79,5958.57,1243.0,1223.0,91.0,98.39
+C20309,Highland Crossing,Neighborhood Market,true,Salt Lake City,Mountain West,R04,Tomasz Bielski,2023-10-22,2026-06-29,168,882,132062.03,96747.76,35314.27,6069.69,1338.0,1287.0,93.08,96.19
+C20223,Redbud Marketplace 223,Discount Store,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-22,2025-05-04,95,599,131456.69,95450.18,36006.51,6612.01,1341.0,1305.0,90.65,97.32
+C20368,Redbud Town Center 368,Pickup & Delivery Hub,false,Omaha,Midwest,R06,Sam Okonkwo,2023-10-05,2026-06-30,196,870,131412.85,103815.03,27597.82,6260.22,1050.0,1012.0,90.46,96.38
+C20546,Redbud Gateway,Club Warehouse,true,San Antonio,Texas & Gulf,R01,Dana Whitfield,2023-10-06,2024-09-24,30,244,131175.74,108919.6,22256.14,6834.33,1748.0,1723.0,93.44,98.57
+C20045,Ridgeway Village,Discount Store,true,Richmond,Mid-Atlantic,R05,Renee Chartrand,2023-10-10,2026-06-27,101,636,130984.28,98479.18,32505.1,6534.04,1299.0,1241.0,91.67,95.54
+C20493,Vista Park Plaza,Discount Store,true,Indianapolis,Midwest,R03,Priya Raghunathan,2023-10-05,2026-06-30,110,690,129111.15,94421.77,34689.38,6165.81,1369.0,1323.0,90.72,96.64
+C20414,Cedar Park Square 414,Neighborhood Market,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-10,2026-06-14,145,791,127423.65,93258.36,34165.29,5878.53,1199.0,1156.0,92.29,96.41
+C20063,Fox Run Plaza,Neighborhood Market,true,Columbus,Midwest,R03,Priya Raghunathan,2023-10-11,2026-07-04,142,808,126673.48,94828.53,31844.95,6276.68,1194.0,1143.0,91.46,95.73
+C20506,Oakmont Supercenter,Neighborhood Market,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-11,2026-07-01,145,777,123578.34,91188.8,32389.55,5633.71,1171.0,1123.0,91.38,95.9
+C20259,Vista Park Pointe,Discount Store,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-02,2026-06-13,109,675,123570.83,92587.91,30982.92,5875.41,1330.0,1277.0,91.41,96.02
+C20189,Harvest Point Village,Neighborhood Market,true,Indianapolis,Midwest,R06,Sam Okonkwo,2023-10-24,2026-07-01,137,774,123550.77,90547.23,33003.54,5768.09,1222.0,1181.0,92.38,96.64
+C20382,Northgate Square 382,Neighborhood Market,true,Kansas City,Midwest,R03,Priya Raghunathan,2023-10-10,2026-06-21,145,803,123105.55,90961.27,32144.28,5517.93,1202.0,1147.0,93.65,95.42
+C20142,Fox Run Gateway 142,Discount Store,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2024-09-15,2026-06-29,96,593,123022.81,89539.05,33483.76,5869.26,1302.0,1263.0,90.56,97.0
+C20385,Vista Park Exchange 385,Pickup & Delivery Hub,false,Indianapolis,Midwest,R06,Sam Okonkwo,2023-10-08,2026-07-02,235,1091,122629.14,92207.6,30421.54,5808.07,1325.0,1257.0,92.85,94.87
+C20589,Ironwood Galleria 589,Neighborhood Market,true,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2024-10-12,2026-06-28,143,786,122494.63,88627.14,33867.49,6241.13,1323.0,1277.0,93.0,96.52
+C20340,Lakeview Landing,Neighborhood Market,true,Indianapolis,Midwest,R03,Priya Raghunathan,2023-10-11,2026-06-13,134,719,122334.39,90221.61,32112.78,5965.31,1051.0,1030.0,92.77,98.0
+C20522,Clearwater Exchange 522,Discount Store,true,Portland,Pacific,R07,Hana Sasaki,2025-01-13,2026-07-01,77,546,122059.61,90793.21,31266.4,5552.62,1230.0,1204.0,93.59,97.89
+C20017,Willow Creek Depot,Supercenter,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-13,2024-07-23,38,278,121111.75,93275.9,27835.84,5490.3,991.0,967.0,92.45,97.58
+C20501,Ironwood Gateway,Supercenter,true,Albuquerque,Mountain West,R04,Tomasz Bielski,2023-10-10,2024-04-06,44,323,120889.48,89721.21,31168.27,6051.39,1176.0,1143.0,89.47,97.19
+C20392,Clearwater Square 392,Club Warehouse,true,Houston,Texas & Gulf,R02,Marcus Oyelaran,2025-12-23,2026-06-30,20,156,119045.01,103963.81,15081.21,5848.73,1294.0,1279.0,94.87,98.84
+C20221,Maple Grove Junction 221,Discount Store,true,Sacramento,Pacific,R08,Elliot Vance,2023-10-04,2025-06-17,99,606,118617.0,88747.59,29869.42,5881.35,1272.0,1231.0,93.89,96.78
+C20232,Redbud Village,Discount Store,true,Omaha,Midwest,R06,Sam Okonkwo,2023-10-24,2026-05-29,98,608,117963.7,86024.98,31938.72,5946.41,1156.0,1119.0,93.09,96.8
+C20207,Bayside Town Center,Neighborhood Market,true,Salt Lake City,Mountain West,R04,Tomasz Bielski,2024-11-08,2026-07-01,121,646,117428.67,87475.74,29952.92,5463.71,1087.0,1034.0,90.87,95.12
+C20235,Silver Lake Exchange,Neighborhood Market,true,Kansas City,Midwest,R03,Priya Raghunathan,2023-10-07,2026-06-27,130,708,117334.13,86389.75,30944.37,5507.95,1023.0,996.0,93.64,97.36
+C20117,Bayside Gateway,Neighborhood Market,true,Richmond,Mid-Atlantic,R06,Sam Okonkwo,2023-10-08,2026-05-19,138,764,116528.93,83953.79,32575.13,5581.57,1183.0,1148.0,90.45,97.04
+C20009,Redbud Plaza,Discount Store,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-05,2026-06-12,97,612,115721.28,86070.74,29650.54,5800.92,1185.0,1163.0,91.99,98.14
+C20226,Oakmont Market,Supercenter,true,Fresno,Pacific,R08,Elliot Vance,2023-10-09,2024-08-09,51,335,114986.84,89549.79,25437.04,5812.42,1150.0,1106.0,91.34,96.17
+C20426,Fairview Junction,Neighborhood Market,true,Des Moines,Midwest,R06,Sam Okonkwo,2023-10-08,2026-06-28,132,675,114730.23,84186.12,30544.11,5187.07,1034.0,1000.0,92.3,96.71
+C20203,Prairie View Gateway 203,Neighborhood Market,true,Dallas,Texas & Gulf,R02,Marcus Oyelaran,2023-10-03,2025-11-13,136,735,114698.07,83383.0,31315.06,5511.46,1169.0,1135.0,90.88,97.09
+C20411,Summit Landing 411,Discount Store,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-06,2026-06-19,98,632,114456.87,86102.57,28354.3,5402.36,1174.0,1139.0,93.83,97.02
+C20113,Prairie View Supercenter,Pickup & Delivery Hub,false,Kansas City,Midwest,R03,Priya Raghunathan,2023-10-06,2026-06-25,190,877,114340.87,88225.88,26114.99,5490.74,1036.0,977.0,92.93,94.31
+C20067,Prairie View Gateway 67,Pickup & Delivery Hub,false,Hartford,Northeast,R03,Priya Raghunathan,2023-10-04,2026-07-02,211,980,113328.64,84522.83,28805.81,5277.76,1202.0,1158.0,92.14,96.34
+C20507,Maple Grove Junction 507,Supercenter,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-08,2024-07-25,46,314,113180.87,82619.08,30561.79,5440.45,1061.0,1034.0,93.31,97.46
+C20425,Oakmont Pointe 425,Discount Store,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-02,2025-07-11,94,605,112519.18,82392.88,30126.3,5176.15,1218.0,1187.0,94.21,97.45
+C20504,Fairview Town Center,Neighborhood Market,true,Denver,Mountain West,R04,Tomasz Bielski,2023-10-04,2026-06-25,128,708,111580.29,83782.69,27797.6,5541.4,1090.0,1058.0,91.1,97.06
+C20558,Kingsport Station 558,Discount Store,true,Indianapolis,Midwest,R03,Priya Raghunathan,2023-10-14,2026-06-25,106,687,110369.81,77947.2,32422.62,5074.17,1296.0,1253.0,92.29,96.68
+C20359,Union Square Pointe,Discount Store,true,Sacramento,Pacific,R07,Hana Sasaki,2023-10-12,2026-07-01,84,569,109778.12,79831.81,29946.31,5330.99,1122.0,1088.0,91.74,96.97
+C20275,Fox Run Town Center,Online Fulfillment Center,false,Houston,Texas & Gulf,R02,Marcus Oyelaran,2026-04-01,2026-06-28,29,227,109756.44,88652.97,21103.47,4805.96,1272.0,1234.0,89.43,97.01
+C20403,Silver Lake Village 403,Neighborhood Market,true,Columbus,Midwest,R03,Priya Raghunathan,2023-10-04,2026-06-30,135,755,109082.67,80720.79,28361.88,5143.4,1081.0,1035.0,90.73,95.74
+C20566,Stonegate Supercenter,Neighborhood Market,true,Omaha,Midwest,R06,Sam Okonkwo,2023-10-13,2026-06-30,150,786,108309.04,77554.94,30754.1,5104.34,1156.0,1114.0,91.35,96.37
+C20502,Highland Supercenter 502,Neighborhood Market,true,Indianapolis,Midwest,R03,Priya Raghunathan,2023-10-04,2026-07-02,138,729,107922.29,79002.92,28919.37,5076.33,1073.0,1036.0,91.22,96.55
+C20080,Meadowbrook Landing,Supercenter,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2025-12-11,2026-06-28,30,220,107524.34,80193.61,27330.73,4493.5,792.0,776.0,92.27,97.98
+C20280,Lakeview Village,Neighborhood Market,true,Nashville,Southeast,R01,Dana Whitfield,2025-02-19,2026-07-01,97,532,107334.33,78860.28,28474.05,4912.64,900.0,877.0,92.48,97.44
+C20418,Copper Ridge Commons 418,Discount Store,true,Portland,Pacific,R07,Hana Sasaki,2023-10-03,2025-02-08,74,479,105665.73,78322.79,27342.95,5011.42,985.0,966.0,92.48,98.07
+C20594,Oakmont Town Center 594,Express,true,Atlanta,Southeast,R05,Renee Chartrand,2023-10-03,2026-06-29,269,866,104675.21,75984.77,28690.44,5075.52,924.0,883.0,93.65,95.56
+C20303,Union Square Junction 303,Supercenter,true,Nashville,Southeast,R01,Dana Whitfield,2023-10-14,2024-04-24,44,293,103664.56,78596.59,25067.97,4776.24,1032.0,1010.0,91.81,97.87
+C20509,Bayside Square 509,Neighborhood Market,true,San Antonio,Texas & Gulf,R02,Marcus Oyelaran,2024-11-12,2026-06-26,109,617,103456.53,75483.26,27973.26,4984.49,980.0,944.0,92.87,96.33
+C20216,Harvest Point Plaza,Club Warehouse,true,Spokane,Pacific,R07,Hana Sasaki,2023-10-10,2024-06-05,26,211,103271.34,84462.47,18808.87,4897.14,1389.0,1375.0,95.73,98.99
+C20180,Silver Lake Commons,Discount Store,true,Des Moines,Midwest,R06,Sam Okonkwo,2023-10-04,2026-02-06,89,581,102666.93,76181.54,26485.4,4837.48,1172.0,1130.0,93.29,96.42
+C20536,Union Square Station 536,Neighborhood Market,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-04,2025-06-27,126,663,102146.37,74225.21,27921.16,4854.58,1050.0,1012.0,92.46,96.38
+C20577,Highland Landing 577,Express,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-03,2026-07-01,281,937,101871.05,72608.52,29262.53,4948.45,986.0,928.0,92.74,94.12
+C20078,Willow Creek Landing,Neighborhood Market,true,Buffalo,Northeast,R03,Priya Raghunathan,2025-02-05,2026-06-29,97,546,100261.98,74255.06,26006.93,4626.5,886.0,847.0,91.39,95.6
+C20188,Willow Creek Supercenter 188,Discount Store,true,Salt Lake City,Mountain West,R04,Tomasz Bielski,2023-10-27,2025-04-23,74,493,99757.59,73370.8,26386.79,4377.16,998.0,965.0,91.48,96.69
+C20118,Willow Creek Village,Supercenter,true,Portland,Pacific,R07,Hana Sasaki,2023-10-05,2024-05-27,40,274,99597.66,74744.82,24852.84,4546.34,1002.0,974.0,92.7,97.21
+C20424,Brookfield Landing 424,Neighborhood Market,true,San Antonio,Texas & Gulf,R01,Dana Whitfield,2023-10-11,2024-12-06,99,560,98012.7,72292.38,25720.31,4363.74,907.0,884.0,92.86,97.46
+C20388,Clearwater Village,Neighborhood Market,true,Austin,Texas & Gulf,R02,Marcus Oyelaran,2024-10-29,2026-06-30,116,645,97784.63,69020.56,28764.07,4812.13,1025.0,991.0,91.94,96.68
+C20218,Maple Grove Junction,Supercenter,true,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2025-12-15,2026-07-03,29,216,97033.71,71106.57,25927.14,4452.34,877.0,852.0,94.44,97.15
+C20013,Granite Falls Station,Neighborhood Market,true,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2023-10-03,2024-11-13,93,525,96820.12,72402.77,24417.35,4514.54,815.0,781.0,92.38,95.83
+C20126,Granite Falls Junction,Neighborhood Market,true,Des Moines,Midwest,R03,Priya Raghunathan,2023-10-02,2025-06-28,111,600,96132.57,70658.99,25473.59,4390.7,951.0,915.0,92.0,96.21
+C20242,Stonegate Town Center 242,Discount Store,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-02,2024-12-05,66,425,95758.37,71653.25,24105.12,4298.76,917.0,898.0,93.88,97.93
+C20031,Copper Ridge Marketplace,Express,true,Sacramento,Pacific,R07,Hana Sasaki,2023-10-07,2026-07-01,245,824,94005.16,66786.13,27219.02,4370.18,877.0,835.0,91.38,95.21
+C20527,Westfield Station 527,Express,true,Charlotte,Southeast,R01,Dana Whitfield,2023-10-13,2026-07-02,258,843,93895.52,66846.38,27049.13,4572.28,879.0,841.0,92.29,95.68
+C20612,Trailside Plaza 612,Supercenter,true,Baltimore,Mid-Atlantic,R05,Renee Chartrand,2025-07-24,2026-06-28,42,316,93678.59,68307.96,25370.63,4628.31,1029.0,1009.0,91.14,98.06
+C20511,Westfield Town Center,Express,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-10,2026-07-01,249,812,92918.43,65348.44,27569.99,4709.75,845.0,797.0,92.86,94.32
+C20434,Sunfield Depot 434,Pickup & Delivery Hub,false,Philadelphia,Mid-Atlantic,R05,Renee Chartrand,2023-10-03,2026-07-02,148,719,92850.61,70443.85,22406.76,4227.15,857.0,823.0,91.79,96.03
+C20337,Granite Falls Gateway,Neighborhood Market,true,Charlotte,Southeast,R01,Dana Whitfield,2025-02-01,2026-06-25,86,530,92814.48,68698.93,24115.54,4554.19,872.0,834.0,89.06,95.64
+C20358,Kingsport Galleria 358,Express,true,Denver,Mountain West,R04,Tomasz Bielski,2023-10-03,2026-06-27,245,834,90963.96,64573.39,26390.57,4421.86,888.0,842.0,92.93,94.82
+C20328,Fairview Landing 328,Neighborhood Market,true,Denver,Mountain West,R04,Tomasz Bielski,2023-10-06,2026-06-30,123,653,90243.7,65971.01,24272.69,4219.72,973.0,935.0,92.65,96.09
+C20088,Lakeview Pointe 88,Neighborhood Market,true,Spokane,Pacific,R07,Hana Sasaki,2024-09-15,2026-06-27,110,620,89762.55,63861.92,25900.63,4347.67,953.0,917.0,90.81,96.22
+C20262,Sunfield Exchange 262,Express,true,Charlotte,Southeast,R05,Renee Chartrand,2023-10-10,2026-06-23,205,685,89338.51,65382.53,23955.98,4484.9,704.0,669.0,91.39,95.03
+C20284,Kingsport Village,Express,true,Richmond,Mid-Atlantic,R05,Renee Chartrand,2023-10-05,2026-07-01,217,758,88910.01,63645.26,25264.75,4205.88,786.0,744.0,92.74,94.66
+C20250,Ridgeway Market,Pickup & Delivery Hub,false,Nashville,Southeast,R05,Renee Chartrand,2023-10-06,2026-06-28,158,716,88118.07,65566.18,22551.89,4295.51,892.0,855.0,92.74,95.85
+C20608,Summit Exchange 608,Discount Store,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2025-02-15,2026-06-20,62,407,86402.69,61216.74,25185.95,4028.75,892.0,865.0,89.93,96.97
+C20360,Oakmont Marketplace,Express,true,San Antonio,Texas & Gulf,R01,Dana Whitfield,2023-10-06,2026-07-02,245,803,85715.4,61011.13,24704.27,3844.09,842.0,804.0,90.16,95.49
+C20257,Riverbend Commons,Discount Store,true,Kansas City,Midwest,R03,Priya Raghunathan,2023-10-07,2026-07-01,79,501,85351.95,63971.59,21380.36,4035.01,902.0,871.0,93.01,96.56
+C20090,Ironwood Galleria 90,Discount Store,true,Buffalo,Northeast,R03,Priya Raghunathan,2023-10-11,2024-11-27,70,439,84301.96,62427.34,21874.62,3996.14,942.0,917.0,92.48,97.35
+C20423,Clearwater Landing 423,Express,true,Albuquerque,Mountain West,R04,Tomasz Bielski,2023-10-03,2026-06-24,231,764,83331.33,58861.2,24470.12,4214.41,805.0,768.0,90.58,95.4
+C20071,Westfield Marketplace,Express,true,Buffalo,Northeast,R03,Priya Raghunathan,2023-10-06,2026-06-26,244,775,83069.44,58358.89,24710.55,3899.08,814.0,775.0,92.77,95.21
+C20581,Granite Falls Gateway 581,Supercenter,true,Philadelphia,Mid-Atlantic,R06,Sam Okonkwo,2026-02-05,2026-07-01,20,163,82302.0,69338.97,12963.03,4057.72,615.0,594.0,92.64,96.59
+C20329,Bayside Junction,Express,true,Sacramento,Pacific,R07,Hana Sasaki,2023-10-08,2026-06-17,225,793,80966.84,57460.8,23506.04,3912.76,836.0,800.0,90.42,95.69
+C20408,Riverbend Landing,Express,true,Denver,Mountain West,R07,Hana Sasaki,2023-10-24,2026-07-02,216,724,80951.14,57476.71,23474.43,3681.94,771.0,725.0,92.68,94.03
+C20081,Brookfield Depot,Express,true,Nashville,Southeast,R05,Renee Chartrand,2023-10-05,2026-07-01,244,785,80425.26,56832.1,23593.16,3980.0,840.0,800.0,92.23,95.24
+C20409,Kingsport Gateway 409,Neighborhood Market,true,Houston,Texas & Gulf,R01,Dana Whitfield,2025-05-29,2026-07-03,81,439,79088.83,60086.9,19001.93,3599.55,699.0,674.0,89.07,96.42
+C20576,Prairie View Crossing 576,Neighborhood Market,true,San Antonio,Texas & Gulf,R01,Dana Whitfield,2023-10-08,2024-09-12,66,384,78943.7,59575.69,19368.02,3826.2,638.0,623.0,92.19,97.65
+C20383,Fox Run Market,Express,true,Houston,Texas & Gulf,R02,Marcus Oyelaran,2023-10-04,2026-06-29,228,697,78579.52,56299.44,22280.08,3924.01,725.0,686.0,92.54,94.62
+C20601,Highland Pointe 601,Discount Store,true,Salt Lake City,Mountain West,R07,Hana Sasaki,2025-05-08,2026-07-01,55,385,78026.55,57159.88,20866.67,3593.38,851.0,832.0,93.77,97.77
+C20474,Brookfield Plaza 474,Express,true,Spokane,Pacific,R08,Elliot Vance,2023-10-08,2026-06-17,210,705,77884.29,56676.58,21207.71,3781.25,747.0,708.0,90.92,94.78
+C20306,Oakmont Landing,Neighborhood Market,true,Sacramento,Pacific,R08,Elliot Vance,2025-06-12,2026-06-26,82,438,76698.61,55387.32,21311.29,3642.3,749.0,718.0,91.32,95.86
+C20427,Fox Run Center 427,Supercenter,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-06,2024-04-01,34,233,76616.17,57389.51,19226.66,3282.94,844.0,829.0,91.85,98.22
+C20324,Bayside Town Center 324,Supercenter,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-11,2024-04-21,33,217,76228.28,57486.85,18741.43,3064.41,748.0,734.0,91.24,98.13
+C20524,Summit Supercenter 524,Online Fulfillment Center,false,Boise,Mountain West,R07,Hana Sasaki,2026-03-06,2026-06-28,22,171,74373.99,58858.04,15515.95,3822.7,778.0,752.0,91.81,96.66
+C20370,Highland Center 370,Express,true,Portland,Pacific,R08,Elliot Vance,2023-10-07,2026-07-02,208,706,73615.84,52975.69,20640.15,3535.71,745.0,714.0,92.49,95.84
+C20391,Oakmont Landing 391,Neighborhood Market,true,Kansas City,Midwest,R03,Priya Raghunathan,2023-10-19,2025-04-20,83,454,72919.87,53942.6,18977.27,3507.7,669.0,640.0,89.65,95.67
+C20312,Silver Lake Village 312,Supercenter,true,Baton Rouge,Texas & Gulf,R02,Marcus Oyelaran,2025-11-28,2026-07-04,32,229,72873.18,51372.79,21500.39,3631.58,888.0,868.0,89.52,97.75
+C20465,Cedar Park Plaza,Neighborhood Market,true,Austin,Texas & Gulf,R01,Dana Whitfield,2025-05-04,2026-06-18,82,459,72864.19,51045.99,21818.2,3559.04,776.0,748.0,91.5,96.39
+C20269,Prairie View Junction,Express,true,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2023-10-02,2026-06-29,211,671,71993.44,51291.82,20701.62,3310.28,706.0,664.0,93.14,94.05
+C20343,Vista Park Junction,Discount Store,true,Portland,Pacific,R07,Hana Sasaki,2025-03-05,2026-06-29,61,400,71881.56,53208.56,18673.0,3754.32,830.0,802.0,92.5,96.63
+C20320,Vista Park Town Center 320,Club Warehouse,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2026-02-16,2026-06-30,11,102,71127.35,61952.08,9175.27,3376.41,633.0,612.0,94.12,96.68
+C20012,Prairie View Town Center,Express,true,Denver,Mountain West,R07,Hana Sasaki,2023-10-02,2026-07-02,215,689,70388.97,50288.55,20100.42,3246.75,716.0,675.0,91.44,94.27
+C20089,Silver Lake Market 89,Express,true,Indianapolis,Midwest,R06,Sam Okonkwo,2023-10-03,2026-06-16,206,661,68883.8,48606.0,20277.8,3462.22,689.0,654.0,93.65,94.92
+C20228,Willow Creek Crossing,Supercenter,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-26,2024-05-11,26,200,67627.21,49402.0,18225.21,3378.28,687.0,674.0,94.0,98.11
+C20267,Northgate Galleria 267,Express,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-24,2026-06-28,190,601,67616.44,49153.81,18462.62,3258.61,634.0,599.0,93.01,94.48
+C20109,Bayside Marketplace,Express,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-10,2026-07-02,186,622,66940.73,47662.22,19278.5,3117.2,642.0,610.0,93.25,95.02
+C20587,Northgate Commons 587,Express,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-03,2026-01-06,190,655,65948.57,45789.33,20159.24,3270.81,703.0,670.0,91.76,95.31
+C20015,Union Square Town Center,Express,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2023-10-06,2026-07-01,188,603,65162.56,46713.26,18449.3,3203.4,627.0,598.0,90.88,95.37
+C20056,Sunfield Landing 56,Express,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-02,2026-07-03,190,652,63856.69,44444.64,19412.05,3107.46,681.0,638.0,91.72,93.69
+C20547,Trailside Galleria,Express,true,Charlotte,Southeast,R05,Renee Chartrand,2023-10-19,2026-07-01,193,658,63611.91,44717.48,18894.43,2943.63,684.0,646.0,91.64,94.44
+C20396,Kingsport Station 396,Express,true,Albuquerque,Mountain West,R04,Tomasz Bielski,2023-10-07,2026-07-04,184,582,62456.31,44059.89,18396.42,2978.6,618.0,587.0,91.75,94.98
+C20590,Kingsport Galleria 590,Express,true,Worcester,Northeast,R03,Priya Raghunathan,2023-10-07,2026-06-24,181,579,61418.56,44269.81,17148.75,2874.58,593.0,564.0,92.4,95.11
+C20022,Union Square Commons,Discount Store,true,Columbus,Midwest,R03,Priya Raghunathan,2023-10-10,2024-07-24,45,284,61183.33,46023.08,15160.25,2816.39,569.0,547.0,92.96,96.13
+C20143,Highland Landing,Supercenter,true,Hartford,Northeast,R03,Priya Raghunathan,2026-01-05,2026-07-01,31,187,61170.28,45772.34,15397.94,2926.76,694.0,683.0,91.98,98.41
+C20178,Kingsport Supercenter,Express,true,Philadelphia,Mid-Atlantic,R05,Renee Chartrand,2023-10-05,2026-06-30,200,659,61162.44,42410.27,18752.17,2905.24,689.0,652.0,91.81,94.63
+C20270,Lakeview Crossing,Discount Store,true,Indianapolis,Midwest,R03,Priya Raghunathan,2023-10-27,2024-06-17,41,280,60854.6,45181.35,15673.25,2912.71,582.0,567.0,90.0,97.42
+C20084,Prairie View Town Center 84,Express,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2024-11-06,2026-06-29,156,475,60219.99,41666.8,18553.2,2753.19,506.0,484.0,94.32,95.65
+C20549,Highland Landing 549,Supercenter,true,Denver,Mountain West,R07,Hana Sasaki,2025-12-12,2026-06-24,26,176,59499.12,44066.84,15432.28,3103.82,603.0,580.0,90.91,96.19
+C20603,Stonegate Gateway,Express,true,Sacramento,Pacific,R07,Hana Sasaki,2024-10-26,2026-06-28,162,548,59489.12,40866.87,18622.26,2664.14,588.0,563.0,93.07,95.75
+C20421,Fairview Marketplace 421,Discount Store,true,Dallas,Texas & Gulf,R02,Marcus Oyelaran,2025-06-25,2026-06-25,46,270,59364.21,43914.36,15449.85,2879.65,555.0,547.0,94.07,98.56
+C20314,Stonegate Pointe,Express,true,Boise,Mountain West,R04,Tomasz Bielski,2023-10-08,2026-06-27,155,505,59219.07,41658.52,17560.54,2823.79,540.0,517.0,94.06,95.74
+C20489,Cedar Park Plaza 489,Express,true,Denver,Mountain West,R04,Tomasz Bielski,2023-10-08,2026-07-02,175,598,59174.62,41324.66,17849.95,2904.77,630.0,600.0,90.8,95.24
+C20016,Prairie View Gateway,Discount Store,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-12,2024-07-01,37,252,58477.67,45061.3,13416.37,2623.05,466.0,462.0,92.86,99.14
+C20452,Fox Run Town Center 452,Pickup & Delivery Hub,false,Manchester,Northeast,R03,Priya Raghunathan,2025-01-17,2026-07-01,104,479,58370.04,42216.59,16153.45,2857.13,583.0,551.0,92.69,94.51
+C20435,Highland Station 435,Express,true,Spokane,Pacific,R07,Hana Sasaki,2023-10-05,2026-06-30,175,552,58191.84,40605.72,17586.12,2765.5,565.0,532.0,91.12,94.16
+C20111,Sunfield Landing 111,Discount Store,true,Boise,Mountain West,R04,Tomasz Bielski,2025-11-08,2026-07-02,42,257,57033.16,41324.16,15709.0,2616.59,588.0,575.0,95.33,97.79
+C20034,Meadowbrook Center,Neighborhood Market,true,Boise,Mountain West,R07,Hana Sasaki,2025-05-15,2026-06-16,62,359,57010.67,40975.75,16034.93,3039.49,517.0,499.0,92.48,96.52
+C20003,Silver Lake Village,Club Warehouse,true,Austin,Texas & Gulf,R01,Dana Whitfield,2026-01-23,2026-06-18,14,104,56868.47,48136.64,8731.83,2808.0,675.0,649.0,93.27,96.15
+C20461,Copper Ridge Town Center,Supercenter,true,Baton Rouge,Texas & Gulf,R02,Marcus Oyelaran,2026-01-27,2026-06-28,22,153,56647.33,40335.27,16312.07,2942.49,587.0,577.0,93.46,98.3
+C20164,Northgate Commons,Express,true,Nashville,Southeast,R05,Renee Chartrand,2023-10-10,2026-07-03,167,500,56525.71,39361.74,17163.97,2607.56,525.0,500.0,93.0,95.24
+C20574,Highland Town Center,Supercenter,true,Hartford,Northeast,R03,Priya Raghunathan,2025-12-20,2026-06-29,21,161,56326.33,43037.7,13288.63,2780.99,501.0,495.0,93.17,98.8
+C20404,Westfield Supercenter 404,Pickup & Delivery Hub,false,Salt Lake City,Mountain West,R04,Tomasz Bielski,2025-09-15,2026-07-02,89,378,54639.62,42967.31,11672.32,2844.1,495.0,477.0,92.86,96.36
+C20449,Northgate Center,Express,true,Fresno,Pacific,R07,Hana Sasaki,2023-10-06,2026-06-25,154,502,54178.6,38766.42,15412.18,2724.11,543.0,516.0,92.43,95.03
+C20304,Copper Ridge Market 304,Pickup & Delivery Hub,false,Albuquerque,Mountain West,R04,Tomasz Bielski,2023-10-10,2024-09-27,98,435,52478.65,39518.01,12960.63,2233.79,552.0,536.0,93.79,97.1
+C20011,Granite Falls Supercenter,Neighborhood Market,true,Portland,Pacific,R07,Hana Sasaki,2025-09-08,2026-07-02,53,290,49142.58,37407.13,11735.45,2298.11,475.0,461.0,90.69,97.05
+C20046,Clearwater Plaza,Pickup & Delivery Hub,false,Charlotte,Southeast,R01,Dana Whitfield,2025-10-09,2026-06-25,83,371,47652.42,35058.38,12594.04,2094.69,484.0,470.0,91.91,97.11
+C20347,Granite Falls Depot 347,Express,true,Denver,Mountain West,R04,Tomasz Bielski,2023-10-07,2025-02-28,124,438,47554.9,33148.27,14406.63,2198.43,458.0,439.0,88.81,95.85
+C20116,Fairview Crossing 116,Neighborhood Market,true,Charlotte,Southeast,R01,Dana Whitfield,2025-06-08,2026-07-04,54,292,46473.18,33397.44,13075.73,2159.95,441.0,427.0,94.18,96.83
+C20413,Cedar Park Landing 413,Discount Store,true,Richmond,Mid-Atlantic,R05,Renee Chartrand,2023-10-15,2024-04-26,31,193,44228.68,33327.28,10901.4,1978.47,416.0,393.0,93.26,94.47
+C20047,Redbud Station,Pickup & Delivery Hub,false,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-07,2024-07-07,69,337,43171.04,32833.61,10337.43,2151.13,420.0,398.0,92.58,94.76
+C20094,Cedar Park Square,Discount Store,true,Salt Lake City,Mountain West,R04,Tomasz Bielski,2023-10-08,2024-03-31,21,147,41699.01,33634.03,8064.98,2003.21,309.0,304.0,91.84,98.38
+C20157,Brookfield Junction,Supercenter,true,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2026-03-13,2026-07-04,14,113,41616.92,28422.95,13193.98,1913.38,418.0,403.0,92.04,96.41
+C20476,Northgate Gateway 476,Neighborhood Market,true,Houston,Texas & Gulf,R01,Dana Whitfield,2023-10-04,2024-06-18,57,296,41115.19,30468.41,10646.77,1938.63,430.0,415.0,92.23,96.51
+C20604,Willow Creek Pointe 604,Express,true,Des Moines,Midwest,R06,Sam Okonkwo,2023-10-07,2025-06-16,117,387,39864.31,28385.87,11478.44,1856.67,397.0,368.0,91.99,92.7
+C20417,Maple Grove Market,Neighborhood Market,true,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2025-10-12,2026-07-04,42,247,39013.86,29261.24,9752.63,1925.6,390.0,377.0,93.52,96.67
+C20295,Summit Pointe,Supercenter,true,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2026-01-30,2026-06-21,17,121,37930.42,27699.06,10231.36,1659.53,352.0,344.0,90.91,97.73
+C20335,Maple Grove Exchange,Neighborhood Market,true,Salt Lake City,Mountain West,R04,Tomasz Bielski,2025-12-04,2026-07-01,44,223,37757.57,26548.28,11209.29,1723.59,405.0,387.0,93.72,95.56
+C20619,Cedar Park Market 619,Discount Store,true,Spokane,Pacific,R08,Elliot Vance,2025-06-18,2026-06-22,33,189,37326.06,28239.79,9086.27,1844.22,374.0,353.0,93.12,94.39
+C20606,Highland Gateway,Neighborhood Market,true,Orlando,Southeast,R01,Dana Whitfield,2023-10-14,2024-04-27,43,223,36981.97,26658.29,10323.68,1690.24,369.0,360.0,93.27,97.56
+C20169,Fairview Marketplace,Neighborhood Market,true,Atlanta,Southeast,R01,Dana Whitfield,2023-10-09,2024-04-13,36,192,34874.6,26332.29,8542.31,1807.32,322.0,307.0,90.63,95.34
+C20198,Oakmont Town Center,Express,true,Sacramento,Pacific,R07,Hana Sasaki,2025-06-30,2026-07-02,62,233,34520.7,25565.07,8955.64,1654.33,239.0,233.0,91.42,97.49
+C20055,Brookfield Landing,Discount Store,true,Sacramento,Pacific,R08,Elliot Vance,2026-01-17,2026-06-28,19,125,34296.67,28521.28,5775.39,1661.99,281.0,273.0,88.8,97.15
+C20190,Stonegate Market,Club Warehouse,true,Nashville,Southeast,R05,Renee Chartrand,2026-04-21,2026-06-17,7,66,34230.11,27469.5,6760.61,1483.22,445.0,431.0,87.88,96.85
+C20227,Stonegate Market 227,Discount Store,true,Pittsburgh,Mid-Atlantic,R05,Renee Chartrand,2023-10-09,2024-03-10,25,163,32497.6,25029.14,7468.47,1639.23,295.0,285.0,88.96,96.61
+C20438,Summit Commons,Express,true,Pittsburgh,Mid-Atlantic,R06,Sam Okonkwo,2023-10-07,2024-09-14,78,255,32105.42,23238.15,8867.26,1599.76,269.0,257.0,93.33,95.54
+C20200,Highland Supercenter 200,Pickup & Delivery Hub,false,Buffalo,Northeast,R03,Priya Raghunathan,2025-12-09,2026-07-03,53,227,31948.69,23519.44,8429.25,1440.48,305.0,293.0,92.51,96.07
+C20596,Vista Park Landing 596,Pickup & Delivery Hub,false,Denver,Mountain West,R04,Tomasz Bielski,2025-07-16,2026-07-01,59,239,30900.69,22691.06,8209.62,1466.14,294.0,283.0,91.21,96.26
+C20567,Riverbend Marketplace,Neighborhood Market,true,Indianapolis,Midwest,R06,Sam Okonkwo,2023-10-08,2024-05-03,39,204,30713.91,22459.77,8254.14,1522.34,306.0,297.0,93.63,97.06
+C20006,Fairview Crossing,Discount Store,true,Orlando,Southeast,R01,Dana Whitfield,2025-12-27,2026-07-02,21,148,30593.05,23221.53,7371.52,1190.83,291.0,280.0,90.54,96.22
+C20062,Ironwood Square,Express,true,Charlotte,Southeast,R05,Renee Chartrand,2023-10-21,2025-01-01,80,273,30510.86,21748.85,8762.01,1464.9,281.0,262.0,91.58,93.24
+C20256,Willow Creek Plaza,Neighborhood Market,true,Albuquerque,Mountain West,R04,Tomasz Bielski,2023-10-05,2024-04-02,34,183,29365.42,22240.78,7124.64,1254.28,277.0,260.0,90.16,93.86
+C20451,Ironwood Supercenter,Express,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2023-10-10,2024-08-12,77,262,28657.76,20904.54,7753.22,1352.37,269.0,260.0,94.66,96.65
+C20246,Silver Lake Crossing 246,Express,true,Pittsburgh,Mid-Atlantic,R05,Renee Chartrand,2023-10-04,2025-01-26,84,278,27328.12,19647.65,7680.47,1308.01,286.0,274.0,94.24,95.8
+C20290,Riverbend Galleria 290,Supercenter,true,Nashville,Southeast,R01,Dana Whitfield,2026-05-24,2026-06-27,5,41,26609.29,22752.89,3856.41,1480.25,173.0,166.0,97.56,95.95
+C20219,Maple Grove Gateway,Pickup & Delivery Hub,false,Atlanta,Southeast,R05,Renee Chartrand,2025-09-25,2026-07-02,51,214,26157.54,21705.04,4452.5,1253.67,260.0,248.0,91.12,95.38
+C20294,Cedar Park Depot,Supercenter,true,Houston,Texas & Gulf,R02,Marcus Oyelaran,2026-01-12,2026-06-30,12,95,25885.8,19050.36,6835.44,1131.55,313.0,311.0,87.37,99.36
+C20271,Fairview Gateway,Neighborhood Market,true,Denver,Mountain West,R04,Tomasz Bielski,2025-11-11,2026-06-30,31,175,24924.86,17546.41,7378.45,1168.14,249.0,241.0,96.0,96.79
+C20402,Bayside Pointe 402,Pickup & Delivery Hub,false,Denver,Mountain West,R04,Tomasz Bielski,2025-09-29,2026-06-22,46,165,22240.49,17243.63,4996.86,1165.03,203.0,196.0,90.91,96.55
+C20584,Prairie View Commons 584,Express,true,Nashville,Southeast,R01,Dana Whitfield,2025-11-06,2026-06-28,70,216,21948.25,15482.68,6465.57,992.74,231.0,222.0,93.98,96.1
+C20073,Northgate Station,Neighborhood Market,true,Albuquerque,Mountain West,R04,Tomasz Bielski,2026-01-18,2026-06-28,25,140,21744.65,15119.98,6624.67,1049.89,241.0,233.0,90.71,96.68
+C20333,Clearwater Square,Neighborhood Market,true,Sacramento,Pacific,R07,Hana Sasaki,2023-10-05,2024-03-14,30,164,21181.42,15642.24,5539.19,926.67,249.0,238.0,90.85,95.58
+C20194,Fairview Center,Neighborhood Market,true,Worcester,Northeast,R03,Priya Raghunathan,2026-02-09,2026-07-03,24,154,20131.89,15050.34,5081.55,931.93,228.0,212.0,90.91,92.98
+C20550,Brookfield Commons 550,Express,true,Philadelphia,Mid-Atlantic,R06,Sam Okonkwo,2025-07-29,2026-07-03,54,183,19558.14,13119.67,6438.47,906.19,196.0,188.0,93.44,95.92
+C20186,Highland Supercenter,Discount Store,true,Richmond,Mid-Atlantic,R06,Sam Okonkwo,2026-04-15,2026-06-28,9,49,19042.47,14395.4,4647.07,898.25,104.0,98.0,87.76,94.23
+C20041,Bayside Center,Express,true,Baltimore,Mid-Atlantic,R06,Sam Okonkwo,2025-05-23,2026-06-30,56,182,18768.95,13143.21,5625.74,857.23,187.0,178.0,91.76,95.19
+C20068,Copper Ridge Crossing,Express,true,Birmingham,Southeast,R01,Dana Whitfield,2023-10-03,2024-03-19,45,137,18746.54,14073.4,4673.14,927.36,141.0,131.0,91.24,92.91
+C20199,Maple Grove Marketplace,Express,true,Austin,Texas & Gulf,R01,Dana Whitfield,2023-10-14,2024-05-14,54,187,18449.72,13157.94,5291.78,880.41,194.0,182.0,89.3,93.81
+C20466,Lakeview Marketplace 466,Discount Store,true,Birmingham,Southeast,R01,Dana Whitfield,2026-03-06,2026-06-28,9,61,15425.68,12208.98,3216.7,852.48,107.0,107.0,95.08,100.0
+C20429,Ridgeway Junction,Neighborhood Market,true,Houston,Texas & Gulf,R01,Dana Whitfield,2026-03-26,2026-06-29,13,80,15315.95,11580.46,3735.5,734.0,126.0,119.0,87.5,94.44
+C20497,Highland Supercenter 497,Supercenter,true,Fresno,Pacific,R07,Hana Sasaki,2026-05-18,2026-06-23,7,45,12898.34,9552.33,3346.01,647.81,151.0,149.0,88.89,98.68
+C20040,Stonegate Crossing,Supercenter,true,Fresno,Pacific,R07,Hana Sasaki,2026-03-19,2026-06-26,6,44,11660.44,8125.27,3535.17,535.81,123.0,121.0,100.0,98.37
+C20363,Vista Park Depot,Neighborhood Market,true,Houston,Texas & Gulf,R01,Dana Whitfield,2026-04-24,2026-06-25,12,67,10003.84,6872.49,3131.35,490.75,115.0,111.0,91.04,96.52
+C20044,Cedar Park Exchange,Supercenter,true,Hartford,Northeast,R03,Priya Raghunathan,2026-05-17,2026-06-14,3,29,9522.5,7618.44,1904.06,515.67,82.0,77.0,100.0,93.9
+C20544,Ironwood Market,Express,true,Fresno,Pacific,R08,Elliot Vance,2023-10-11,2024-04-06,29,97,9110.45,6406.59,2703.86,475.89,107.0,100.0,94.85,93.46
+C20528,Fox Run Crossing 528,Discount Store,true,Baton Rouge,Texas & Gulf,R01,Dana Whitfield,2026-05-08,2026-06-23,4,29,7758.71,5026.79,2731.92,360.42,73.0,70.0,89.66,95.89
+C20339,Ridgeway Plaza 339,Supercenter,true,Dallas,Texas & Gulf,R01,Dana Whitfield,2026-05-01,2026-06-03,5,32,7431.5,4984.78,2446.72,296.31,108.0,105.0,96.88,97.22
+C20165,Vista Park Landing,Supercenter,true,Austin,Texas & Gulf,R01,Dana Whitfield,2026-05-12,2026-07-02,5,21,6420.32,4930.41,1489.91,278.11,55.0,53.0,95.24,96.36
+C20364,Granite Falls Gateway 364,Pickup & Delivery Hub,false,Hartford,Northeast,R03,Priya Raghunathan,2026-05-15,2026-06-14,7,42,6068.0,4402.77,1665.23,235.75,70.0,70.0,97.62,100.0
+C20457,Harvest Point Junction 457,Discount Store,true,Richmond,Mid-Atlantic,R06,Sam Okonkwo,2026-05-11,2026-06-23,4,25,4802.73,3308.49,1494.24,187.51,53.0,51.0,100.0,96.23
+C20585,Granite Falls Supercenter 585,Pickup & Delivery Hub,false,Birmingham,Southeast,R01,Dana Whitfield,2026-05-19,2026-06-23,6,27,3855.14,3299.0,556.14,202.52,32.0,31.0,74.07,96.88
+C20613,Kingsport Depot,Neighborhood Market,true,Austin,Texas & Gulf,R01,Dana Whitfield,2026-04-28,2026-06-27,8,38,3419.5,2577.77,841.73,156.08,55.0,54.0,94.74,98.18
+C20472,Copper Ridge Supercenter 472,Supercenter,true,Houston,Texas & Gulf,R01,Dana Whitfield,2026-04-25,2026-06-06,2,9,1578.36,1151.81,426.55,78.57,31.0,31.0,77.78,100.0

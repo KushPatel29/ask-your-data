@@ -1,0 +1,16 @@
+# Base chrome only. The personality lives in app/ui.py, which owns its own
+# markup — Streamlit's internal data-testid selectors move between releases, and
+# a theme built on them breaks silently on upgrade. These five values are the
+# stable, supported surface, so they carry the ground and the rest is ours.
+[theme]
+base = "dark"
+primaryColor = "#22D3EE"
+backgroundColor = "#0A0C14"
+secondaryBackgroundColor = "#12151F"
+textColor = "#E6E9F2"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false

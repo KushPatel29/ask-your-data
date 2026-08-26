@@ -1,0 +1,8 @@
+channel_id,channel,channel_group,is_paid,cost_per_click
+1,paid_search,Paid,1,2.35
+2,paid_social,Paid,1,0.95
+3,display,Paid,1,0.55
+4,affiliate,Paid,1,1.6
+5,email,Owned,0,0.04
+6,organic_search,Earned,0,0.0
+7,direct,Owned,0,0.0
