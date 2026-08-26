@@ -84,7 +84,7 @@ far below every insured payer type.
     WHERE status = 'Paid' GROUP BY 1 ORDER BY ncr LIMIT 1
 ```
 
-It reads from **36 tables across 6 business domains**, vendored (synthetic data
+It reads from **71 tables across 11 business domains**, vendored (synthetic data
 only) from the seven repos above — so one interface can answer questions about
 hospital claims, flight-risk employees, GL exceptions, order fill rates,
 wholesale customers, and migration verdicts.
@@ -204,8 +204,13 @@ needs an API key, so it runs on demand rather than in CI.
 | `hr` | Workforce — headcount, attrition, hiring funnel, flight-risk scores |
 | `finance` | GL reconciliation — ERP vs. subledger and the exceptions between them |
 | `supplychain` | Cold-chain distribution — orders, fill rates, inventory lots, forecast |
-| `retail` | Specialty-meats wholesale — customers, revenue, churn risk, cross-sell |
-| `migration` | A legacy→Fabric migration program and its parallel-run GO/NO-GO verdicts |
+| `retail` | Wholesale customers — RFM segments, cross-sell recommendations |
+| `migration` | Legacy-to-Fabric program — moved artifacts and parallel-run validation |
+| `marketing` | Attribution & incrementality — journeys, channel spend, geo experiments |
+| `clinical` | Trial data management — EDC capture, edit-check queries, injected-defect detection |
+| `aml` | Transaction monitoring — scored payments, alert thresholds, case outcomes |
+| `wholesale` | Northgate supercenter chain — department sales, stores, suppliers, labour |
+| `dbt` | The modelled warehouse itself — models, data tests, lineage, KPI mart |
 
 Every table was generated with fixed seeds (Faker and friends) in its source
 repo. `data_manifest.py` is the single source of truth — domain, source path,
@@ -259,14 +264,58 @@ scripts/            vendor_data.py, run_live_eval.py, run_retrieval_eval.py
 Dockerfile          the whole offline suite runs in a container (CI builds it)
 ```
 
+## Retrieving the schema, and checking it was worth it
+
+The assistant used to paste every table into every prompt. At six domains and 36
+tables that cost ~2,738 tokens and was defensible. Adding five more projects took
+it to **11 domains and 71 tables**, and the same block became ~12,741 tokens — so
+a question about claim denials was paying for the AML and clinical schemas it
+never reads.
+
+`engine/retrieval.py` embeds one document per table and pastes only what the
+question needs. The interesting part is not that it works; it is that the repo
+had to prove it was better than not doing it. `scripts/run_retrieval_eval.py`
+scores three strategies against ground truth **parsed out of the reference SQL**
+in `evals/golden_questions.yaml` — the tables a question needs are the tables its
+correct answer selects from, so the labels are derived rather than authored.
+
+| strategy | k | questions fully covered | tables recalled | ~tokens/turn |
+|---|---|---|---|---|
+| full catalogue | — | 100.0% | 100.0% | 12,741 |
+| keyword | 14 | 89.7% | 86.7% | 1,945 |
+| vector | 14 | 94.9% | 95.6% | 3,334 |
+| **hybrid (RRF)** | **14** | **97.4%** | **97.8%** | **3,241** |
+
+Hybrid is reciprocal-rank fusion of the other two, and it exists because each
+fails where the other succeeds. *"Who is the top wholesale customer by revenue?"*
+ranks `retail_customer_analytics` **17th** by embedding and **3rd** by keyword —
+the word "wholesale" drags the vector into the wrong domain, while the literal
+token match does not care about aboutness. RRF reads only the ranks, because
+cosine similarity and integer token overlap have no common scale and normalising
+them would invent one.
+
+**It is not 100%, and more context does not fix it.** Vector recall plateaus at
+94.9% from k=9 through k=16: those misses are ranking failures, not budget
+failures. One question fails under every strategy at every k — `top_category_revenue`
+never retrieves `supplychain_fact_orders`, because that table's description does
+not say what the question asks. The fix is a better description, not a bigger
+prompt, and until it is written the number stays 97.4%.
+
+The embedding model is all-MiniLM-L6-v2 running locally through Chroma's ONNX
+backend, so retrieval — and its evaluation — run with no API key, like the rest
+of this repo.
+
+---
+
 ## What I deliberately didn't build
 
 The point of a portfolio project is as much the restraint as the features:
 
-- **No vector search over business data.** Chroma indexes only 36 schema
-  descriptions, where semantic matching genuinely beats keyword overlap. Every
-  business value still comes from inspectable SQL over DuckDB; embeddings never
-  retrieve claims, employees, customers, or financial rows.
+- **No vector search over business data.** Chroma indexes 71 schema
+  descriptions and nothing else — the one place semantic matching measurably
+  beats keyword overlap. Every business value still comes from inspectable SQL
+  over DuckDB; embeddings never retrieve claims, employees, customers, or
+  financial rows.
 - **No agent framework.** The whole loop is ~80 lines you can read: one call to
   write SQL, one to summarize, a bounded retry. A framework would add layers to
   audit without adding capability.
