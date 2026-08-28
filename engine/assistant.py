@@ -33,6 +33,7 @@ import anthropic
 
 from engine.query import QueryResult, run_query
 from engine.exemplars import exemplar_block
+from engine.providers import AnthropicProvider, ProviderUnavailable, build_provider
 from engine.verify import Verifier, correction_message
 from engine.retrieval import schema_catalog_for
 from engine.warehouse import table_names
@@ -149,20 +150,6 @@ class AssistantUnavailable(RuntimeError):
     original error text is preserved in str(exc)."""
 
 
-def _accumulate_usage(total: dict, msg) -> None:
-    """Sum token usage across the calls that produced one answer, so the apps can
-    show what a question actually cost — including prompt-cache reads, which is
-    how the caching claim in the README is made visible rather than asserted."""
-    usage = getattr(msg, "usage", None)
-    if usage is None:
-        return
-    for key in ("input_tokens", "output_tokens",
-                "cache_read_input_tokens", "cache_creation_input_tokens"):
-        value = getattr(usage, key, None)
-        if value:
-            total[key] = total.get(key, 0) + value
-
-
 def _format_result(res: QueryResult, max_rows: int = 30) -> str:
     if not res.columns:
         return "(no columns)"
@@ -208,9 +195,20 @@ class Assistant:
     """Stateless NL->SQL assistant. Pass `history` (a list of Turn) to enable
     follow-up questions; the caller owns and appends to it."""
 
-    def __init__(self, con, client=None, model: str = MODEL, catalog_builder=None):
+    def __init__(self, con, client=None, model: str = MODEL, catalog_builder=None,
+                 provider=None):
         self.con = con
-        self.client = client or anthropic.Anthropic()
+        # The provider is the seam that makes the model swappable. An injected
+        # client still forces Anthropic, because that is what the test harness
+        # passes and asserts against; otherwise ASK_PROVIDER decides, defaulting
+        # to Anthropic. Local servers (Ollama, llama.cpp, vLLM) arrive through
+        # OpenAICompatProvider without this file knowing.
+        self.client = client
+        self.provider = (
+            provider if provider is not None
+            else AnthropicProvider(client=client, model=model) if client is not None
+            else build_provider(model=model)
+        )
         self.model = model
         self.catalog_builder = catalog_builder or schema_catalog_for
         self.known_tables = tuple(table_names(con))
@@ -250,16 +248,6 @@ class Assistant:
         blocks[-1] = {**blocks[-1], "cache_control": {"type": "ephemeral"}}
         return blocks
 
-    def _create(self, **kwargs):
-        """One place where the SDK is called, so auth/billing/network failures
-        surface as a single friendly exception instead of a stack trace."""
-        try:
-            return self.client.messages.create(**kwargs)
-        except anthropic.APIError as e:
-            raise AssistantUnavailable(str(e)) from e
-        except TypeError as e:  # the SDK's "could not resolve authentication" error
-            raise AssistantUnavailable(str(e)) from e
-
     def ask(self, question: str, history: list = None) -> AskResult:
         history = history or []
         messages = _history_messages(history)
@@ -269,16 +257,16 @@ class Assistant:
         usage, corrections = {}, []
         sql, explanation, result = "", "", None
         for attempt in range(1, MAX_ATTEMPTS + 1):
-            msg = self._create(
-                model=self.model,
-                max_tokens=MAX_OUTPUT_TOKENS,
-                system=system,
-                tools=TOOLS,
-                tool_choice={"type": "any"},
-                messages=messages,
-            )
-            _accumulate_usage(usage, msg)
-            tool_use = next((b for b in msg.content if b.type == "tool_use"), None)
+            try:
+                resp = self.provider.create_tool_call(
+                    system=system, messages=messages,
+                    tools=TOOLS, max_tokens=MAX_OUTPUT_TOKENS,
+                )
+            except ProviderUnavailable as e:
+                raise AssistantUnavailable(str(e)) from e
+            for key, value in (resp.usage or {}).items():
+                usage[key] = usage.get(key, 0) + value
+            tool_use = resp.tool_call
             if tool_use is None:
                 return AskResult(question, refused=True, attempts=attempt,
                                  corrections=corrections, usage=usage,
@@ -343,16 +331,19 @@ class Assistant:
     def _summarize(self, question: str, result: QueryResult, usage: dict) -> str:
         """Turn the result table into one or two plain-English sentences, grounded
         strictly in the returned rows."""
-        msg = self._create(
-            model=self.model,
-            max_tokens=400,
-            system=("Answer the user's question in one or two sentences using ONLY "
-                    "the SQL result provided. Never invent or round beyond what is "
-                    "shown. If there are no rows, say nothing matched."),
-            messages=[{
-                "role": "user",
-                "content": f"Question: {question}\n\nSQL result:\n{_format_result(result)}",
-            }],
-        )
-        _accumulate_usage(usage, msg)
-        return "".join(b.text for b in msg.content if b.type == "text").strip()
+        try:
+            resp = self.provider.complete(
+                max_tokens=400,
+                system=("Answer the user's question in one or two sentences using ONLY "
+                        "the SQL result provided. Never invent or round beyond what is "
+                        "shown. If there are no rows, say nothing matched."),
+                messages=[{
+                    "role": "user",
+                    "content": f"Question: {question}\n\nSQL result:\n{_format_result(result)}",
+                }],
+            )
+        except ProviderUnavailable as e:
+            raise AssistantUnavailable(str(e)) from e
+        for key, value in (resp.usage or {}).items():
+            usage[key] = usage.get(key, 0) + value
+        return (resp.text or "").strip()

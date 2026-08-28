@@ -117,6 +117,14 @@ class Provider(Protocol):
         max_tokens: int,
     ) -> ProviderResponse: ...
 
+    def complete(
+        self,
+        *,
+        system: str,
+        messages: list[dict],
+        max_tokens: int,
+    ) -> ProviderResponse: ...
+
     def health(self) -> dict: ...
 
 
@@ -326,6 +334,34 @@ class AnthropicProvider:
         text = "".join(getattr(b, "text", "") for b in msg.content if b.type == "text")
         call = ToolCall(block.name, dict(block.input)) if block else None
         return ProviderResponse(tool_call=call, usage=usage, text=text)
+
+    def complete(self, *, system, messages, max_tokens) -> ProviderResponse:
+        """Plain text, no tools - the summarize call.
+
+        Separate from create_tool_call because that one forces
+        tool_choice={"type": "any"}, and forcing a tool call to obtain a
+        sentence is the wrong contract: it would make the summary the argument
+        of a function the model has no reason to call.
+        """
+        try:
+            msg = self.client.messages.create(
+                model=self.model, max_tokens=max_tokens,
+                system=system, messages=messages,
+            )
+        except self._anthropic.APIError as e:
+            raise ProviderUnavailable(str(e)) from e
+        except TypeError as e:
+            raise ProviderUnavailable(str(e)) from e
+
+        usage = {}
+        u = getattr(msg, "usage", None)
+        for key in ("input_tokens", "output_tokens",
+                    "cache_read_input_tokens", "cache_creation_input_tokens"):
+            value = getattr(u, key, None) if u else None
+            if value:
+                usage[key] = value
+        text = "".join(getattr(b, "text", "") for b in msg.content if b.type == "text")
+        return ProviderResponse(tool_call=None, usage=usage, text=text)
 
     def health(self) -> dict:
         has_key = bool(os.environ.get("ANTHROPIC_API_KEY")
@@ -537,6 +573,23 @@ class OpenAICompatProvider:
         # No usable tool call. Assistant.ask() turns this into an honest refusal
         # rather than executing anything.
         return ProviderResponse(None, usage, last_text, repairs)
+
+    def complete(self, *, system, messages, max_tokens) -> ProviderResponse:
+        """Plain text from an OpenAI-compatible server. No tools, no contract
+        preamble - nothing here needs to be parsed back into a structure."""
+        head = system if isinstance(system, str) else self._flatten_system(system)
+        payload = {
+            "model": self.model,
+            "max_tokens": max_tokens,
+            "messages": [{"role": "system", "content": head}] + [
+                {"role": m["role"],
+                 "content": m["content"] if isinstance(m["content"], str) else str(m["content"])}
+                for m in messages
+            ],
+        }
+        body = self._post("/chat/completions", payload)
+        text, _calls = self._text_and_calls(body)
+        return ProviderResponse(tool_call=None, usage=self._usage(body), text=text or "")
 
     def health(self) -> dict:
         try:
