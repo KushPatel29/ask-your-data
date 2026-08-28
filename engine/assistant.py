@@ -29,8 +29,10 @@ import os
 import re
 from dataclasses import dataclass, field
 
-import anthropic
-
+# No `import anthropic` here any more, and that absence is the point: after
+# the provider seam this module has no vendor SDK dependency at all. The
+# Anthropic client lives in engine/providers.py alongside every other
+# backend, so swapping the model never touches the reasoning loop.
 from engine.query import QueryResult, run_query
 from engine.exemplars import exemplar_block
 from engine.providers import AnthropicProvider, ProviderUnavailable, build_provider
