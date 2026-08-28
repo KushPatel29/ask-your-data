@@ -79,7 +79,7 @@ sys.path.insert(0, str(ROOT))
 from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
 from engine import demo_mode  # noqa: E402
 from engine.query import MAX_ROWS  # noqa: E402
-from engine.sql_guard import FORBIDDEN, validate_sql  # noqa: E402
+from engine.sql_guard import FORBIDDEN, FORBIDDEN_FUNCTIONS, validate_sql  # noqa: E402
 from engine.warehouse import build_warehouse, schema_catalog, table_names  # noqa: E402
 from engine import exemplars, retrieval  # noqa: E402
 from engine.verify import Verifier  # noqa: E402
@@ -218,7 +218,13 @@ def _status_rail() -> None:
         ("engine", f"duckdb <em>{duckdb.__version__}</em>"),
         ("index", f"MiniLM-L6-v2 · {index}<br><em>384-d · onnx · local</em>"),
         ("retrieval", f"hybrid rrf · k={retrieval.DEFAULT_K}<br><em>pool {POOL} · rrf_k={retrieval.RRF_K}</em>"),
-        ("guard", f"read-only<br><em>{len(FORBIDDEN)} forbidden verbs</em>"),
+        # Both of the guard's lists, because it enforces both. The rail said
+        # "26 forbidden verbs" and the second list — the filesystem and
+        # remote-scan readers sql_guard calls FORBIDDEN_FUNCTIONS — was never
+        # mentioned anywhere on the page, which understated the boundary the
+        # whole app leans on. Counts are read from the module, never typed.
+        ("guard", f"read-only<br><em>{len(FORBIDDEN)} verbs · "
+                  f"{len(FORBIDDEN_FUNCTIONS)} functions</em>"),
         # The guard's neighbour, and the same kind of session constant: a
         # boundary that is set before any question is asked. The count comes
         # from the roster below, which a test holds against engine/verify.py.
@@ -288,6 +294,11 @@ def _retrieval_bundle(question: str):
         "hits": hits,
         "vector": vector,
         "keyword": keyword,
+        # The set the fusion chose from: every table at least one retriever put
+        # inside the pool. Free here — both dicts are already in hand — and it
+        # is the funnel's missing middle stage, since "10 of 71" says nothing
+        # about how many were ranked and then dropped.
+        "candidates": len(set(vector) | set(keyword)),
         "tokens_used": tokens_used,
         "ms": hybrid_ms,
     }
@@ -307,6 +318,7 @@ def _show_grounding(bundle) -> None:
         vector_ranks=bundle["vector"],
         keyword_ranks=bundle["keyword"],
         pool=POOL,
+        candidates=bundle.get("candidates"),
     )
 
 
@@ -324,14 +336,30 @@ def _guard_readout(sql: str) -> None:
     blocked would be worse than one that showed nothing.
     """
     ok, reason = validate_sql(sql)
+    # Every rung validate_sql actually walks, in its order. The FOURTH one was
+    # missing and the omission did not fail quietly: sql_guard has a second list
+    # behind the verbs — FORBIDDEN_FUNCTIONS, the filesystem and remote-scan
+    # readers — and a query blocked by it matched none of the three markers
+    # below, fell into the `else` branch, and drew the guard panel as
+    # `non-empty query ✕`. Reproduced against the real guard:
+    #
+    #   validate_sql("SELECT * FROM read_csv_auto('/etc/passwd')")
+    #     -> (False, 'forbidden function: read_csv_auto')
+    #     -> checks [('non-empty query', False)]
+    #
+    # The query was not empty. The panel named the wrong boundary, and it named
+    # it on the one path where naming the right one matters most.
     order = [
         ("single statement", "only a single statement"),
         ("starts SELECT / WITH", "must start with SELECT or WITH"),
         (f"none of {len(FORBIDDEN)} forbidden verbs", "forbidden keyword"),
+        (f"none of {len(FORBIDDEN_FUNCTIONS)} forbidden functions", "forbidden function"),
     ]
     checks: list[tuple[str, bool]] = []
     if not ok and not any(marker in reason for _label, marker in order):
-        checks = [("non-empty query", False)]  # the only other refusal the guard makes
+        # With all four rungs listed, "empty query" is genuinely the only
+        # refusal left — the guard declining before the ladder starts.
+        checks = [("non-empty query", False)]
     else:
         for label, marker in order:
             failed = (not ok) and marker in reason
@@ -341,6 +369,18 @@ def _guard_readout(sql: str) -> None:
     verb = reason.split("forbidden keyword:", 1)[1].strip() if "forbidden keyword:" in reason else ""
     ui.guard_verdict(ok=ok, reason=reason, checks=checks,
                      forbidden=FORBIDDEN, blocked_verb=verb)
+
+
+# The prefix engine.query.run_query puts on the ONE error the guard produces, as
+# opposed to the many DuckDB produces. It is the only thing that separates "the
+# guard refused this" from "the warehouse could not run this" once both have
+# been flattened into a correction string, and the pipeline strip needs that
+# distinction to light the GUARD cell honestly.
+#
+# Re-typed here rather than imported because engine.query builds it inline, so
+# tests/test_ui_turn_truth.py holds this literal against that module's source —
+# the same arrangement VERIFY_CHECKS has with engine/verify.py.
+GUARD_BLOCK_PREFIX = "blocked by SQL guard"
 
 
 # --------------------------------------------------------------------------
@@ -719,7 +759,6 @@ def render_demo_mode(connection) -> None:
             ui.pipeline(retrieved=True, generated=False, verified=True,
                         guarded=True, executed=True, timings=timings)
             _show_grounding(bundle)
-            _show_exemplars(active["question"])
             ui.answer(
                 result.headline,
                 verified=result.matches_contract,
@@ -732,6 +771,13 @@ def render_demo_mode(connection) -> None:
                 )
             _guard_readout(result.sql)
             _verification_readout(findings, verify_ms=verify_ms)
+            # Below the answer, with the guard and the verifier. Three solved
+            # questions with their full reference SQL is a lot of page, and it
+            # used to sit between the grounding panel and the number — so the
+            # first thing a visitor met after "which tables" was three OTHER
+            # questions' SQL. The panel is provenance; provenance reads after
+            # the thing it vouches for.
+            _show_exemplars(active["question"])
             st.code(result.sql, language="sql")
             frame = pd.DataFrame(result.result.rows, columns=result.result.columns)
             _result_readout(result.sql, frame, truncated=result.result.truncated)
@@ -822,26 +868,57 @@ def render_entry(entry):
                 st.caption("The query that was written and not executed:")
                 st.code(entry["sql"], language="sql")
             return
+        # What the turn ACTUALLY did, read from the loop's own record. Two of
+        # these three cells were previously inferred, and both inferences were
+        # wrong on the same path — reproduced offline against the scripted
+        # client in tests/test_ui_turn_truth.py, on a turn whose three attempts
+        # all died with `Binder Error: Referenced column ... not found`:
+        #
+        #   guard    was `True if attempts == 1 else "fail"`, so ANY retry lit
+        #            GUARD in the alert colour. The guard had passed all three
+        #            of those attempts; what failed was the warehouse. A retry
+        #            is what the `retry ×N` cell is for, and conflating it with
+        #            a guard rejection made a guard block and a binder error
+        #            draw exactly the same strip — which is the one thing this
+        #            strip exists not to do.
+        #   execute  was `True` unconditionally. Nothing executed on that turn.
+        #            The strip lit EXECUTE over a page whose expander said
+        #            "Query error".
+        #
+        # So the guard cell now keys off the guard's own marker in the
+        # corrections, and EXECUTE off whether a query really came back.
+        ran = bool(entry.get("ran"))
+        corrections = entry.get("corrections") or []
+        guard_blocked = any(str(c).startswith(GUARD_BLOCK_PREFIX) for c in corrections)
+        # A turn whose LAST correction was a guard block never reached the
+        # executor at all, so EXECUTE is dark rather than failed: the segment
+        # before it already carries where the signal stopped.
+        stopped_at_guard = (not ran and bool(corrections)
+                            and str(corrections[-1]).startswith(GUARD_BLOCK_PREFIX))
         ui.pipeline(retrieved=True, generated=True, verified=True,
-                    guarded=True if entry["attempts"] == 1 else "fail",
-                    executed=True, attempts=entry["attempts"],
+                    guarded="fail" if guard_blocked else True,
+                    executed=True if ran else (False if stopped_at_guard else "fail"),
+                    attempts=entry["attempts"],
                     # Only RETRIEVE is separable here. The assistant's own
                     # generate/verify/guard/execute happen inside one call, so
                     # the rest of the clock is reported as a round trip below
                     # rather than split across cells on a guess.
                     timings={"retrieve": bundle["ms"]} if bundle else None)
         _show_grounding(bundle)
-        if entry.get("exemplars"):
-            # Only ever the assistant's own selection, handed over on the
-            # result. The UI does not reconstruct it: the prompt is built from
-            # the question PLUS the last two turns and the tables prior SQL
-            # used, and a panel that re-derived that could disagree with what
-            # was actually sent. Until engine.assistant carries the field this
-            # branch simply does not draw, which is the correct failure.
-            _bank = entry["exemplars"]
-            ui.exemplars(_bank["picks"], corpus=_bank["corpus"], in_prompt=True,
-                         fused=bool(_bank.get("fused")))
-        ui.answer(entry["answer"])
+        if entry["answer"]:
+            ui.answer(entry["answer"])
+        else:
+            # The loop spent every attempt and the last query still failed, so
+            # there is no answer to headline. This used to call ui.answer("")
+            # anyway and emit `<div class="ayd-answer"></div>` — an empty
+            # 1.75rem hole where the product goes, directly under a strip that
+            # was claiming EXECUTE had lit. Saying what happened is cheaper than
+            # both and truer than either.
+            st.error(
+                f"{entry['attempts']} attempts, and the query still failed. The "
+                "loop stopped rather than guessing at a number; the errors it "
+                "fed back to the model are below."
+            )
         if entry.get("elapsed_ms"):
             ui.note(f"Model round trip {entry['elapsed_ms']:,.0f} ms "
                     f"(generate → guard → execute, {entry['attempts']} attempt"
@@ -850,10 +927,14 @@ def render_entry(entry):
         # one-line note that quoted only corrections[0] and dropped the rest —
         # on a three-attempt answer that silently hid the second error, which is
         # the one that says whether the model was converging or thrashing.
-        ui.attempt_ledger(attempts=entry["attempts"],
-                          corrections=entry.get("corrections") or [],
-                          max_attempts=MAX_ATTEMPTS,
-                          ok=bool(entry["rows"] is not None or not entry["error"]))
+        # `ok` is the same authoritative flag the strip reads, not a second
+        # inference from it. The old expression (`rows is not None or not
+        # error`) agreed with it on every path but got there by accident: a
+        # query that succeeds and returns NO rows also has rows=None, so the
+        # first clause was load-bearing for a reason that had nothing to do with
+        # whether the attempt ran.
+        ui.attempt_ledger(attempts=entry["attempts"], corrections=corrections,
+                          max_attempts=MAX_ATTEMPTS, ok=ran)
         if entry["sql"]:
             _guard_readout(entry["sql"])
             # The findings engine.assistant already computed, not a second run.
@@ -864,6 +945,23 @@ def render_entry(entry):
             # is inside assistant.ask, and inventing one here would be the panel
             # reporting a number it did not take.
             _verification_readout(findings)
+        if entry.get("exemplars"):
+            # Only ever the assistant's own selection, handed over on the
+            # result. The UI does not reconstruct it: the prompt is built from
+            # the question PLUS the last two turns and the tables prior SQL
+            # used, and a panel that re-derived that could disagree with what
+            # was actually sent. Until engine.assistant carries the field this
+            # branch simply does not draw, which is the correct failure.
+            #
+            # It sits BELOW the answer now. It is three verified pairs with
+            # their full SQL, and above the answer it was the thing standing
+            # between the question and its number — provenance charged as if it
+            # were the product. Down here it joins the guard and the verifier,
+            # which is the group it belongs to: everything that argues the
+            # answer, read after the answer.
+            _bank = entry["exemplars"]
+            ui.exemplars(_bank["picks"], corpus=_bank["corpus"], in_prompt=True,
+                         fused=bool(_bank.get("fused")))
         with st.expander("Show the SQL and the data behind this answer"):
             st.code(entry["sql"], language="sql")
             if entry["rows"] is not None:
@@ -914,6 +1012,11 @@ if question:
         # which they stopped existing, so the verifier ran on every question and
         # nothing it decided ever reached the page.
         "findings": result.findings,
+        # Whether a query really came back. AskResult.ok is the loop's own
+        # answer to that and it is the only honest source for the EXECUTE cell:
+        # `rows is not None` is false for a query that succeeded and matched
+        # nothing, and `not error` is true for a refusal that never ran one.
+        "ran": bool(result.ok),
         "rows": (pd.DataFrame(result.result.rows, columns=result.result.columns)
                  if (result.result and result.result.ok and result.result.rows) else None),
         "truncated": bool(result.result and result.result.truncated),

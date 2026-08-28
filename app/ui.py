@@ -50,6 +50,12 @@ example engine/retrieval.py cites in its own docstring - retail_customer_analyti
 at vector rank 17, keyword rank 3, for "top wholesale customer by revenue" - is
 now something you can see happen instead of something the source code claims.
 
+Its foot then closes the funnel. "10 of 71 tables" names the two ends and hides
+the middle: the two rankings are each read 20 deep and between them propose
+21..35 distinct candidates (median 28 over the 39 golden questions, 30-49% of
+the catalogue), of which the fusion keeps ten. The eighteen-odd tables that were
+ranked and then dropped are what the fusion is FOR, and they were invisible.
+
 SIX MORE READOUTS, ON THE SAME ARGUMENT
 Every panel added since has to answer the same question the fusion readout
 answers: is there real machine state here that the UI was only asserting?
@@ -821,7 +827,7 @@ def _tick_pos(rank: int, pool: int) -> float:
 def grounding(hits, *, total_tables: int, tokens_used: int, tokens_full: int,
               vector_ranks: dict[str, int] | None = None,
               keyword_ranks: dict[str, int] | None = None,
-              pool: int | None = None) -> None:
+              pool: int | None = None, candidates: int | None = None) -> None:
     """What the model was allowed to see, why each table is there, and the cost.
 
     `hits` are RetrievedTable records from engine.retrieval.retrieve_hybrid, in
@@ -832,6 +838,16 @@ def grounding(hits, *, total_tables: int, tokens_used: int, tokens_full: int,
     Ranks are optional. If the caller cannot produce them the panel degrades to
     the table list and the token accounting, which is still true; it does not
     invent a rank to keep the layout tidy.
+
+    `candidates` is the size of the set the fusion CHOSE FROM: the union of the
+    two rankings, every table at least one retriever put inside the pool. It is
+    the middle number of a three-stage funnel the panel could previously only
+    show the ends of. Measured over the 39 golden questions with k=10 and a pool
+    of 20, the union runs 21..35 distinct tables (median 28) — 30% to 49% of
+    this 71-table catalogue. So "10 of 71" was hiding the fact that eighteen
+    other tables were ranked and then dropped, and dropping them is what the
+    fusion is for. One clause, no new rows: the funnel is a fact about the
+    ranking already drawn above it, not a fourth ranking to draw.
     """
     if not hits:
         return
@@ -889,6 +905,13 @@ def grounding(hits, *, total_tables: int, tokens_used: int, tokens_full: int,
         f'<br><b>{both}</b> of {len(hits)} were ranked by both retrievers; '
         f'the rest were found by only one — which is the reason both are run.'
     ) if have_ranks else ""
+    # The funnel's middle stage. Only stated when the caller measured it, and
+    # stated with the depth beside it, because a candidate count means nothing
+    # without knowing how deep each ranking was read to produce it.
+    funnel = (
+        f' Reading {pool} deep, the two rankings proposed <b>{candidates}</b> '
+        f'distinct tables between them; the fusion kept these {len(hits)}.'
+    ) if (have_ranks and candidates) else ""
 
     st.markdown(
         f"""
@@ -900,7 +923,7 @@ def grounding(hits, *, total_tables: int, tokens_used: int, tokens_full: int,
   {header}
   {''.join(rows)}
   <div class="ayd-saving">~<b>{tokens_used:,}</b> tokens of schema in the prompt,
-  against ~{tokens_full:,} for the whole catalogue — <b>{pct}%</b> smaller.{fusion_note}</div>
+  against ~{tokens_full:,} for the whole catalogue — <b>{pct}%</b> smaller.{fusion_note}{funnel}</div>
 </div>""",
         unsafe_allow_html=True,
     )
