@@ -44,12 +44,58 @@ def build_warehouse(data_dir: Path = DATA_DIR) -> duckdb.DuckDBPyConnection:
             f"SELECT * FROM read_csv_auto(?, header=true, sample_size=-1)",
             [str(csv)],
         )
+
+    _seal(con)
     return con
 
 
+def _seal(con) -> None:
+    """Drop the connection's access to the filesystem and the network.
+
+    The SQL guard is a mutation-verb filter. It was never a boundary, and a
+    plain SELECT is enough to leave the database entirely:
+
+        SELECT * FROM read_csv_auto('/path/to/.env')
+        SELECT * FROM glob('*')
+        SELECT * FROM read_text('engine/sql_guard.py')
+
+    All three are genuine single SELECT statements with no forbidden verb in
+    them, so the guard passes them, the verifier passes them, and DuckDB
+    executes them. Verified: glob returned real paths from this repo, read_text
+    returned the guard's own source, and read_csv_auto over https AUTOLOADED
+    httpfs and made a live request - even though INSTALL and LOAD are both on
+    the forbidden list, because the autoloader never issues those statements.
+
+    On a public demo with no login that is arbitrary remote file read.
+
+    Adding function names to the keyword list would not fix it; that is a
+    denylist against a surface DuckDB keeps extending. Turning the capability
+    off is a real boundary. It has to happen AFTER loading, because loading is
+    itself a filesystem read - and enable_external_access is one-way, which is
+    exactly the property wanted here: nothing later in the process can re-enable
+    it, including SQL the model writes.
+    """
+    for setting in (
+        "SET autoinstall_known_extensions=false",
+        "SET autoload_known_extensions=false",
+        "SET enable_external_access=false",  # must be last: one-way, and the
+                                             # two above cannot be set after it
+    ):
+        con.execute(setting)
+
+
 def table_columns(con, name):
-    """[(column_name, column_type), ...] for one table."""
-    return [(r[0], r[1]) for r in con.execute(f'DESCRIBE "{name}"').fetchall()]
+    """[(column_name, column_type), ...] for one table.
+
+    Goes through con.cursor(), not con.execute(). The Streamlit app shares one
+    connection across every session via @st.cache_resource, and a DuckDB
+    connection keeps ONE result set: a second caller's execute() overwrites the
+    first's before it has fetched. Measured under 40 threads, this returned an
+    empty column list 13 times instead of raising - and an empty column list is
+    not an error anywhere downstream, it is a table that looks like it has no
+    columns. run_query already used a cursor; these read helpers did not.
+    """
+    return [(r[0], r[1]) for r in con.cursor().execute(f'DESCRIBE "{name}"').fetchall()]
 
 
 def schema_catalog(con: duckdb.DuckDBPyConnection) -> str:
@@ -69,7 +115,7 @@ def schema_catalog(con: duckdb.DuckDBPyConnection) -> str:
 
 
 def table_names(con):
-    return [r[0] for r in con.execute(
+    return [r[0] for r in con.cursor().execute(
         "SELECT table_name FROM information_schema.tables ORDER BY table_name").fetchall()]
 
 

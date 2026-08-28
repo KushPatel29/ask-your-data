@@ -50,7 +50,7 @@ example engine/retrieval.py cites in its own docstring - retail_customer_analyti
 at vector rank 17, keyword rank 3, for "top wholesale customer by revenue" - is
 now something you can see happen instead of something the source code claims.
 
-FOUR MORE READOUTS, ON THE SAME ARGUMENT
+SIX MORE READOUTS, ON THE SAME ARGUMENT
 Every panel added since has to answer the same question the fusion readout
 answers: is there real machine state here that the UI was only asserting?
 
@@ -70,6 +70,38 @@ answers: is there real machine state here that the UI was only asserting?
                    back to the model. It used to be a sentence.
   `result_shape()` rows × columns in DuckDB's own type names (DESCRIBE, 0.18–
                    0.61ms), and how much of the row cap the answer used.
+  `verification()` the layer that catches SQL which runs and is WRONG. It ran on
+                   every turn and rendered nothing at all — engine/verify.py put
+                   its findings on AskResult and app/streamlit_app.py dropped
+                   them building the transcript entry, so the cost of checking
+                   was paid and none of the benefit collected. Severity is form,
+                   not a third hue: filled chip / hollow chip / bare, matching
+                   the error-warn-note ladder that module documents. The rule
+                   board is the forbidden-verb board's argument moved one stage
+                   downstream. Measured on the 39 golden queries, both halves
+                   cost 0.30–2.37ms together (median 0.66) and produce ZERO
+                   findings — which is what a check that fires on good SQL
+                   would not do.
+  `exemplars()`    which solved question/SQL pairs the few-shot selector put
+                   nearest this question, out of the 39 the accuracy contract
+                   asserts — including the leave-one-out rule dropping the
+                   question's own pair, which is what makes an eval over this
+                   corpus mean anything and had never been visible. Nothing here
+                   is amber even though the pairs are committed: amber marks a
+                   value CI re-checks, and widening it to "anything from a
+                   committed file" would cost the badge on the answer the only
+                   thing it means.
+
+A REFUSAL IS A READOUT TOO
+engine/assistant.py has two ways to refuse and the UI was narrating them as
+one sentence: the model calling cannot_answer, and the verifier still holding a
+blocking finding on the final attempt, where the loop declines to execute SQL it
+cannot stand behind. Only the first is "I can't answer that from the loaded
+data". The second wrote a query and refused to run it — a far more interesting
+thing to say — and it is now said by `verification(refused=True)` with the
+refused SQL shown unrun beneath it. It also closed a leak: on that path the
+refusal reason is verify.correction_message(), whose closing lines are addressed
+to the MODEL, and they were being pasted into a warning a human reads.
 
 And the pipeline strip's connectors are drawn rather than typed, carrying state:
 a segment lights only where the signal crossed it, so a turn that stopped at the
@@ -118,7 +150,7 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
    reading getComputedStyle off the running app rather than by looking at it. */
 .ayd-mono, .ayd-stats, .ayd-pipe, .ayd-rail, .ayd-ground-panel, .ayd-map,
 .ayd-guard, .ayd-note, .ayd-verified, .ayd-plan, .ayd-att, .ayd-shape,
-.ayd-cols-list{
+.ayd-cols-list, .ayd-ver, .ayd-ex{
   font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
 
 /* A reticle rather than a box: two corners, not four sides. Enough to read as
@@ -299,6 +331,101 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
   border:1px solid transparent; border-radius:2px; padding:0 .18rem; }
 .ayd-verb[data-hit="1"]{ color:var(--ayd-alert); border-color:rgba(251,113,133,.45);
   background:rgba(251,113,133,.1); }
+
+/* ---- verifier ---------------------------------------------------------- */
+/* The guard answers "is this allowed to run". The verifier answers the harder
+   one: "did what ran mean anything". It is the only stage that can reject SQL
+   which parses, binds, executes in three milliseconds and returns rows — and
+   until now it ran on every turn and put nothing on the page at all.
+
+   Severity is told apart by FORM, not by a third hue, the same rule the fusion
+   ticks follow. error is a filled chip, warn is the same colour hollow, note is
+   muted with no chip at all. That is exactly the ladder engine/verify.py
+   documents: error never reaches the reader, warn buys one correction attempt,
+   note only annotates — so the visual weight tracks the cost of being wrong.
+
+   The rule board underneath is the forbidden-verb board's argument applied to
+   this boundary: "nothing structural was found" is a claim, and the checks that
+   could have fired are the evidence for it. It is deliberately silent about
+   whether a check was APPLICABLE — Verifier.check_sql short-circuits on a
+   single-table query and does not report that it did, and a UI that inferred
+   applicability would be re-deriving structure the verifier owns. A quiet rule
+   means "did not fire", which is true either way. */
+.ayd-ver{ border:1px solid var(--ayd-line); border-radius:3px; background:var(--ayd-panel);
+  padding:.6rem .8rem; margin:.2rem 0 .9rem; font-family:var(--ayd-mono) !important;
+  font-size:.7rem; color:var(--ayd-muted); }
+.ayd-ver[data-worst="clean"]{ border-left:2px solid var(--ayd-machine); }
+.ayd-ver[data-worst="note"]{ border-left:2px solid var(--ayd-line); }
+.ayd-ver[data-worst="warn"], .ayd-ver[data-worst="error"]{ border-left:2px solid var(--ayd-alert); }
+.ayd-ver-head{ font-size:.62rem; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--ayd-muted); margin-bottom:.45rem; display:flex; justify-content:space-between;
+  gap:1rem; flex-wrap:wrap; }
+.ayd-ver-head b{ color:var(--ayd-machine); }
+.ayd-ver-head b[data-alert="1"]{ color:var(--ayd-alert); }
+/* The refusal line. It is the loudest thing this panel can say, so it says it
+   in words rather than by shouting in colour: the turn ended here, and the
+   query that was written is on screen below unrun. */
+.ayd-ver-refused{ color:var(--ayd-alert); letter-spacing:.02em; text-transform:none;
+  font-size:.7rem; line-height:1.5; margin:0 0 .5rem; }
+.ayd-ver-row{ display:grid; grid-template-columns:52px 148px minmax(0,1fr); gap:.6rem;
+  align-items:baseline; padding:.3rem 0; border-top:1px solid rgba(35,40,56,.55); }
+.ayd-ver-row:first-of-type{ border-top:0; }
+/* filled / hollow / bare — one shape per rung of the severity ladder. */
+.ayd-sev{ font-size:.58rem; letter-spacing:.11em; text-transform:uppercase;
+  text-align:center; border-radius:2px; padding:.05rem .2rem; border:1px solid transparent; }
+.ayd-sev[data-sev="error"]{ color:var(--ayd-alert); border-color:rgba(251,113,133,.45);
+  background:rgba(251,113,133,.1); }
+.ayd-sev[data-sev="warn"]{ color:var(--ayd-alert); border-color:rgba(251,113,133,.45); }
+.ayd-sev[data-sev="note"]{ color:var(--ayd-muted); }
+.ayd-ver-check{ color:var(--ayd-machine); overflow-wrap:anywhere; }
+.ayd-ver-msg{ color:var(--ayd-ink); line-height:1.45; overflow-wrap:anywhere; }
+/* Same board as the forbidden verbs, same reason. Muted rather than the line
+   colour: a rule nobody can read is not restraint. Measured 4.94:1 on panel. */
+.ayd-rules{ display:flex; flex-wrap:wrap; gap:.16rem .3rem; margin-top:.5rem;
+  padding-top:.5rem; border-top:1px solid var(--ayd-line); }
+.ayd-rule{ font-size:.6rem; letter-spacing:.06em; color:var(--ayd-muted);
+  border:1px solid transparent; border-radius:2px; padding:0 .18rem; }
+.ayd-rule[data-hit="error"], .ayd-rule[data-hit="warn"]{ color:var(--ayd-alert);
+  border-color:rgba(251,113,133,.45); background:rgba(251,113,133,.1); }
+.ayd-rule[data-hit="note"]{ color:var(--ayd-ink); border-color:var(--ayd-line); }
+
+/* ---- exemplar bank ----------------------------------------------------- */
+/* Which solved questions were put in front of the model. engine/exemplars.py
+   picks the k nearest verified question/SQL pairs out of the same 39 the
+   accuracy contract asserts, and the reader had no way to know any of it
+   happened.
+
+   Nothing here is amber, and that was a decision rather than an oversight. The
+   pairs do come out of a committed file, which is nearly the amber rule — but
+   amber marks a VALUE this app computed and CI re-checks, not source material
+   the prompt quoted. Widening it to "anything committed" would cost the badge
+   on the answer the only thing it means. The SELECTION is the machine's own
+   work (one MiniLM embedding, then reciprocal rank fusion against the retrieved
+   tables), so the selection is cyan and the provenance is stated in words. */
+.ayd-ex{ border:1px solid var(--ayd-line); border-left:2px solid var(--ayd-machine);
+  border-radius:3px; background:var(--ayd-panel); padding:.6rem .8rem .65rem;
+  margin:.2rem 0 .9rem; font-family:var(--ayd-mono) !important; font-size:.7rem;
+  color:var(--ayd-muted); }
+.ayd-ex-head{ font-size:.62rem; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--ayd-muted); margin-bottom:.5rem; display:flex; justify-content:space-between;
+  gap:1rem; flex-wrap:wrap; }
+.ayd-ex-head b{ color:var(--ayd-ink); }
+.ayd-ex-row{ padding:.34rem 0; border-top:1px solid rgba(35,40,56,.55); }
+.ayd-ex-row:first-of-type{ border-top:0; }
+.ayd-ex-top{ display:grid; grid-template-columns:20px minmax(0,1fr) auto; gap:.6rem;
+  align-items:baseline; }
+.ayd-ex-n{ color:var(--ayd-muted); font-size:.66rem; }
+.ayd-ex-q{ color:var(--ayd-ink); line-height:1.4; overflow-wrap:anywhere; }
+.ayd-ex-meta{ color:var(--ayd-muted); font-size:.66rem; white-space:nowrap; }
+.ayd-ex-meta b{ color:var(--ayd-machine); font-weight:400; }
+/* The reference SQL is the substance of an exemplar, so it is shown exactly and
+   never re-wrapped. A long one scrolls in its own track rather than reflowing
+   into a paragraph or pushing the page sideways. */
+.ayd-ex-sql{ margin-top:.2rem; margin-left:calc(20px + .6rem); font-size:.68rem;
+  color:var(--ayd-ink); white-space:pre; overflow-x:auto; padding-bottom:.15rem; }
+.ayd-ex-foot{ margin-top:.5rem; padding-top:.45rem; border-top:1px solid var(--ayd-line);
+  font-size:.68rem; color:var(--ayd-muted); line-height:1.55; }
+.ayd-ex-foot b{ color:var(--ayd-machine); }
 
 /* ---- attempt ledger ---------------------------------------------------- */
 /* The self-correction loop is the most machine-like thing the assistant does
@@ -483,6 +610,17 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
      being squeezed into a ~190px column and wrapped to six. */
   .ayd-att-row{ grid-template-columns:auto auto; row-gap:.18rem; column-gap:.8rem; }
   .ayd-att-why{ grid-column:1 / -1; }
+  /* Same treatment for the verifier: the finding's message IS the panel, and a
+     ~130px column at 375px wraps it to eight lines. The severity chip and the
+     rule that fired take the first line; the sentence takes the rest. */
+  .ayd-ver-row{ grid-template-columns:auto auto; row-gap:.18rem; column-gap:.7rem; }
+  .ayd-ver-check{ text-align:left; }
+  .ayd-ver-msg{ grid-column:1 / -1; }
+  /* The domain/score pair drops under the question rather than squeezing it,
+     and the SQL loses its hanging indent so the scroll track is full width. */
+  .ayd-ex-top{ grid-template-columns:20px minmax(0,1fr); row-gap:.14rem; }
+  .ayd-ex-meta{ grid-column:2; }
+  .ayd-ex-sql{ margin-left:0; }
   .ayd-op{ grid-template-columns:minmax(0,1fr) 72px; gap:.5rem; }
   /* A ten-deep plan spends 10 × 3ch on guides before the operator name starts,
      which at 375px is most of the row. Two characters per level still carries
@@ -581,6 +719,7 @@ def status_rail(cells: list[tuple[str, str]]) -> None:
 
 def pipeline(*, retrieved: bool = False, generated: bool = False,
              guarded: bool | str = False, executed: bool = False,
+             verified: bool | str | None = None,
              attempts: int = 1, timings: dict[str, float] | None = None) -> None:
     """The stages this turn actually went through.
 
@@ -592,6 +731,18 @@ def pipeline(*, retrieved: bool = False, generated: bool = False,
     with no entry shows no number rather than a zero, because "not measured"
     and "took no time" are different claims and this panel does not make the
     second one on the first one's behalf.
+
+    `verified` is the VERIFY stage and it is opt-in — omitted entirely when
+    None, which is not the same as dark. A dark cell claims a stage exists and
+    did not run; on a path where engine.verify is genuinely not wired in, the
+    honest strip is the one that never mentions it.
+
+    It sits between GENERATE and GUARD because that is where the only BLOCKING
+    half runs: Verifier.check_sql is structural and happens before run_query,
+    which is what makes a refusal possible at all. The advisory half
+    (check_result) runs after execution and cannot fail the turn, so it is
+    reported in the verifier panel rather than given a second cell here — one
+    cell for two moments would blur the order the strip exists to show.
     """
     timings = timings or {}
 
@@ -609,8 +760,10 @@ def pipeline(*, retrieved: bool = False, generated: bool = False,
             stamp = f'<span class="t">{shown}</span>'
         return f'<span class="ayd-step" data-on="{on}">{label}{stamp}</span>'
 
-    stages = [("retrieve", retrieved), ("generate", generated),
-              ("guard", guarded), ("execute", executed)]
+    stages = [("retrieve", retrieved), ("generate", generated)]
+    if verified is not None:
+        stages.append(("verify", verified))
+    stages += [("guard", guarded), ("execute", executed)]
 
     def link(left, right) -> str:
         """State of the segment BETWEEN two stages, read as "did anything cross".
@@ -839,6 +992,166 @@ def guard_verdict(*, ok: bool, reason: str, checks: list[tuple[str, bool]],
   — {html.escape(reason)}</div>
   <div class="ayd-checks">{items}</div>
   {verbs}
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+
+# The three rungs of engine.verify's severity ladder, worst first. Kept as a
+# plain tuple rather than imported so this module stays free of engine imports;
+# the caller passes severities as strings and _SEVERITY_ORDER only decides which
+# of them is the worst one present.
+_SEVERITY_ORDER = ("error", "warn", "note")
+
+
+def verification(findings, *, checks=None, verify_ms: float | None = None,
+                 refused: bool = False, ran: bool = True) -> None:
+    """What engine.verify decided about the query that just ran.
+
+    `findings` is a list of (check, severity, message) triples — plain tuples,
+    not Finding objects, so this module keeps its rule of importing nothing from
+    engine. `checks` is the roster of rules that could have fired, as (name,
+    severity) pairs; passing it draws the board, omitting it renders only the
+    findings.
+
+    `refused` says this finding set ENDED the turn. That is a genuinely
+    different thing from an advisory note travelling with an answer, and it is
+    the state the panel exists for: engine.assistant's final-attempt path
+    returns refused=True with the blocking finding as the reason, having
+    declined to execute SQL it could not stand behind. So the panel says the
+    query was written and not run, and the caller shows it unrun below.
+
+    `ran=False` renders nothing at all. A turn where the verifier did not run —
+    a refusal before any SQL existed — must not draw an empty board, because a
+    board of quiet rules is a claim that they were checked.
+    """
+    if not ran:
+        return
+    findings = list(findings or [])
+    worst = next((level for level in _SEVERITY_ORDER
+                  if any(str(s) == level for _c, s, _m in findings)), "clean")
+    fired = {str(check): str(severity) for check, severity, _m in findings}
+
+    rows = "".join(
+        f'<div class="ayd-ver-row">'
+        f'<div class="ayd-sev" data-sev="{html.escape(str(severity))}">'
+        f'{html.escape(str(severity))}</div>'
+        f'<div class="ayd-ver-check">{html.escape(str(check))}</div>'
+        f'<div class="ayd-ver-msg">{html.escape(" ".join(str(message).split()))}</div>'
+        f'</div>'
+        for check, severity, message in findings
+    )
+
+    board = ""
+    if checks:
+        board = '<div class="ayd-rules">' + "".join(
+            f'<span class="ayd-rule" data-hit="{html.escape(fired.get(str(name), "0"))}">'
+            f'{html.escape(str(name))}</span>'
+            for name, _severity in checks
+        ) + "</div>"
+
+    count = len(findings)
+    # "clean" is not the same sentence as "one note", and neither is the same as
+    # "blocked". The head states the outturn in words rather than leaving the
+    # reader to infer it from a border colour they may not have learned yet.
+    if refused:
+        verdict = "refused"
+    elif not count:
+        verdict = "no findings"
+    else:
+        verdict = f"{count} finding{'' if count == 1 else 's'}"
+    alert = "1" if worst in ("error", "warn") else "0"
+    stamp = (f'{verify_ms:,.2f}ms' if verify_ms is not None and verify_ms >= 0.01
+             else ("&lt;0.01ms" if verify_ms is not None else "structural + result"))
+    scope = f'{len(checks)} rules' if checks else 'structural + result'
+
+    refusal = ""
+    if refused:
+        refusal = (
+            '<p class="ayd-ver-refused">The loop ran out of attempts with this '
+            'still unresolved, so the query below was written and never executed. '
+            'Running it would have produced a number and a confident sentence '
+            'about it, which is the failure this layer exists to prevent.</p>'
+        )
+
+    st.markdown(
+        f"""
+<div class="ayd-ver ayd-hud" data-worst="{worst}">
+  <div class="ayd-ver-head">
+    <span>verifier · <b data-alert="{alert}">{verdict}</b> · {scope}</span>
+    <span>{stamp}</span>
+  </div>
+  {refusal}{rows}{board}
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+
+def exemplars(picks, *, corpus: int, in_prompt: bool, fused: bool = False,
+              select_ms: float | None = None) -> None:
+    """The solved questions the few-shot selector put nearest this one.
+
+    `picks` are (question, domain, sql, score) tuples in selection order, best
+    first — again plain tuples rather than engine.exemplars.Exemplar, so this
+    module imports nothing from engine.
+
+    `in_prompt` is the honesty switch and it is not decoration. In live mode
+    these pairs are really in the system prompt and the panel says so. In demo
+    mode no prompt is built at all — no model runs — so the panel says what is
+    true there instead: this is the bank's ranking for this question, with the
+    question's own pair excluded by the leave-one-out rule that makes an eval
+    over this corpus mean anything.
+
+    `score` is the cosine similarity Chroma returned (1 - distance), which is
+    the text signal only. When the selector also had retrieved tables to fuse
+    against, the ORDER is the fused one and the score is not what produced it —
+    so the score is labelled `sim` rather than presented as the ranking key.
+
+    `fused` is that second signal, and it is a parameter rather than a constant
+    because the two callers genuinely differ. Demo mode hands select_exemplars
+    the tables retrieval just chose. engine.assistant hands it the tables PRIOR
+    SQL used, which on a first question is the empty tuple — so the same panel
+    would be describing a text-only ranking there. Naming a signal that was not
+    used is the one thing a readout of a mechanism must not do, so the caller
+    that knows says which it was.
+    """
+    if not picks:
+        return
+    rows = []
+    for index, (question, domain, sql, score) in enumerate(picks, 1):
+        meta = f'{html.escape(str(domain))} · sim <b>{float(score):.2f}</b>'
+        rows.append(
+            f'<div class="ayd-ex-row">'
+            f'<div class="ayd-ex-top">'
+            f'<div class="ayd-ex-n">{index}</div>'
+            f'<div class="ayd-ex-q">{html.escape(str(question))}</div>'
+            f'<div class="ayd-ex-meta">{meta}</div>'
+            f'</div>'
+            f'<div class="ayd-ex-sql">{html.escape(" ".join(str(sql).split()))}</div>'
+            f'</div>'
+        )
+    where = ("in this turn's system prompt" if in_prompt
+             else "no prompt is built in demo mode")
+    stamp = f'selected in {select_ms:,.0f}ms' if select_ms is not None else 'rrf'
+    ranking = ("ranked by embedding similarity, fused by reciprocal rank with the "
+               "tables retrieval selected for this question"
+               if fused else
+               "ranked by embedding similarity alone — no table signal was "
+               "available to fuse against")
+    foot = (
+        f'<div class="ayd-ex-foot">Verified question/SQL pairs from '
+        f'<b>evals/golden_questions.yaml</b>, the same file the accuracy contract '
+        f'asserts against — {ranking}. A question is never shown its own pair.</div>'
+    )
+    st.markdown(
+        f"""
+<div class="ayd-ex ayd-hud">
+  <div class="ayd-ex-head">
+    <span>few-shot bank · <b>{len(picks)}</b> of {corpus} solved questions · {html.escape(where)}</span>
+    <span>{html.escape(stamp)}</span>
+  </div>
+  {''.join(rows)}
+  {foot}
 </div>""",
         unsafe_allow_html=True,
     )

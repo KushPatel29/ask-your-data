@@ -390,7 +390,12 @@ def schema_catalog_for(
     con,
     *,
     k: int = DEFAULT_K,
-    strategy: str = "vector",
+    # "hybrid", because hybrid is what the eval measured and what the README
+    # quotes. This defaulted to "vector" while the repo advertised hybrid's
+    # numbers, so production ran at 94.9% question coverage against a published
+    # 100% - the assistant never passes strategy=, so the default IS the
+    # shipped behaviour.
+    strategy: str = "hybrid",
     include_tables: tuple[str, ...] | list[str] = (),
 ) -> str:
     """A `schema_catalog()`-shaped block containing only the retrieved tables.

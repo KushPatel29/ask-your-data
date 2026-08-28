@@ -33,6 +33,37 @@ cheap (measured across the 39 golden queries: EXPLAIN 0.20-1.70 ms, DESCRIBE
 0.18-0.61 ms). Neither executes the query, and neither runs on SQL the guard
 has not already passed, so showing the plan cannot become a second execution
 path around the safety boundary.
+
+WHO COMPUTES WHAT, AND WHY IT IS NOT SYMMETRIC
+The verifier and the few-shot bank are each rendered from two different sources
+depending on the mode, and the asymmetry is the honest part rather than an
+oversight.
+
+  verifier   LIVE mode reads the findings engine.assistant already computed and
+             put on AskResult. It does NOT re-run the checks: that would be a
+             second verifier which could disagree with the one whose verdict
+             actually gated execution, the same trap `_guard_readout` avoids by
+             never re-scanning the SQL itself. DEMO mode has no assistant, so it
+             runs them here — the checks are deterministic and key-free, and
+             this is the only way a visitor without an API key ever sees the
+             stage at all. Measured on the 39 golden queries with the
+             container's caches warm: 0.30-2.37 ms (median 0.66) for both
+             halves, and zero findings on every one of them.
+
+  few-shot   The reverse. DEMO mode selects here, because no prompt exists to
+             report and the ranking is the true thing to show. LIVE mode does
+             NOT reconstruct: the assistant selects against the question PLUS
+             the last two turns and the tables prior SQL used, and a panel that
+             re-derived that could disagree with what was really sent. It draws
+             only from a field the engine hands over, and until that field
+             exists it draws nothing — which is the correct failure.
+
+Selecting exemplars is a MiniLM forward pass, not a search: measured 276-1152 ms
+(median 319) end to end, against 1.1-6.6 ms (median 2.1) when the caller supplies
+a vector it already has. That is why the collection is built at page load — left
+lazy, the first question in a fresh container paid 2,916 ms inside its own render
+— and why the one engine change worth asking for is a way to hand this the
+embedding engine.retrieval computed for the identical question a moment earlier.
 """
 
 import sys
@@ -50,7 +81,8 @@ from engine import demo_mode  # noqa: E402
 from engine.query import MAX_ROWS  # noqa: E402
 from engine.sql_guard import FORBIDDEN, validate_sql  # noqa: E402
 from engine.warehouse import build_warehouse, schema_catalog, table_names  # noqa: E402
-from engine import retrieval  # noqa: E402
+from engine import exemplars, retrieval  # noqa: E402
+from engine.verify import Verifier  # noqa: E402
 from app import ui  # noqa: E402
 
 st.set_page_config(page_title="Ask Your Data", page_icon="💬", layout="wide")
@@ -82,9 +114,42 @@ def warm_retrieval(_con):
     """
     try:
         retrieval.build_index(_con)
-        return True
     except Exception:
         return False
+    # The exemplar bank embeds against its own Chroma collection, and the FIRST
+    # embedding in a process pays for the ONNX session as well as the forward
+    # pass. Measured by driving this script headlessly: leaving it lazy put
+    # 2,916 ms inside the first question's render — nine times the 319 ms median
+    # a warm process pays — landing exactly where nothing can explain it. Built
+    # here, it lands under the spinner that already exists for the schema index,
+    # which is the same argument this function was written for.
+    #
+    # Failure is swallowed separately from the line above: the schema index is
+    # what RETRIEVAL_READY reports on, and a bank that will not build must not
+    # make the rail say retrieval fell back to the full catalogue.
+    try:
+        exemplars.build_index()
+    except Exception:
+        pass
+    return True
+
+
+@st.cache_resource
+def get_verifier(_con):
+    """One Verifier for the container.
+
+    It caches a column list and a uniqueness probe per (table, key) and both
+    describe a warehouse that is built from CSV at startup and never written to,
+    so the caches are valid for the process's life — and a fresh Verifier per
+    turn would re-pay the fan-out probes that make `join_fanout` affordable.
+
+    Constructed in BOTH modes on purpose. engine.verify imports nothing beyond
+    the manifest and DuckDB; it needs no API key, and the checks it runs are the
+    same checks whether the SQL was written by the model or committed to the
+    accuracy contract. Demo mode running them on the reference SQL is a real
+    thing happening, not a simulation of one.
+    """
+    return Verifier(_con)
 
 
 @st.cache_resource
@@ -98,12 +163,39 @@ def get_assistant(_con):
 
 con = get_connection()
 RETRIEVAL_READY = warm_retrieval(con)
+verifier = get_verifier(con)
 assistant = get_assistant(con) if LIVE_MODE else None
 st.session_state.setdefault("turns", [])      # engine context (Turn objects)
 st.session_state.setdefault("transcript", [])  # everything we rendered, incl. refusals
 
 TABLE_COUNT = len(table_names(con))
 POOL = max(retrieval.DEFAULT_K * 2, 12)  # the depth retrieve_hybrid reads each ranking to
+
+# The rules Verifier can actually produce a finding for on this app's paths, in
+# the order engine/verify.py's own docstring argues them, each with the severity
+# that module assigns it. Drawn as a board for the same reason the guard draws
+# its 26 verbs: "nothing structural was found" is a claim, and the rules that
+# could have fired are the evidence for it.
+#
+# `ambiguous_entity` is deliberately ABSENT. It exists on Verifier, it is
+# tested, and engine/assistant.py never calls ambiguity_note() — so drawing it
+# would put a rule on the board that cannot fire on any turn this app runs, and
+# a board with a rule that never runs is worse than no board. The moment the
+# assistant calls it, it belongs here; tests/test_ui_readouts.py is what fails
+# when this list and engine/verify.py disagree, so it cannot go stale quietly.
+VERIFY_CHECKS = [
+    ("cross_domain_join", "error"),
+    ("cross_domain_cartesian", "error"),
+    ("cross_domain_reference", "note"),
+    ("cartesian_join", "warn"),
+    # Promoted from warn to error: a fan-out returns a plausible number that is
+    # merely too large, so advisory severity meant the inflated figure reached
+    # the user narrated as fact. Fires on 0 of the 39 golden queries.
+    ("join_fanout", "error"),
+    ("empty_result", "warn"),
+    ("null_scalar", "warn"),
+    ("share_out_of_range", "note"),
+]
 
 ui.masthead(tables=TABLE_COUNT, domains=len(DOMAINS), live=LIVE_MODE)
 
@@ -127,6 +219,10 @@ def _status_rail() -> None:
         ("index", f"MiniLM-L6-v2 · {index}<br><em>384-d · onnx · local</em>"),
         ("retrieval", f"hybrid rrf · k={retrieval.DEFAULT_K}<br><em>pool {POOL} · rrf_k={retrieval.RRF_K}</em>"),
         ("guard", f"read-only<br><em>{len(FORBIDDEN)} forbidden verbs</em>"),
+        # The guard's neighbour, and the same kind of session constant: a
+        # boundary that is set before any question is asked. The count comes
+        # from the roster below, which a test holds against engine/verify.py.
+        ("verifier", f"structural<br><em>{len(VERIFY_CHECKS)} rules · deterministic</em>"),
         ("row cap", f"{MAX_ROWS:,} <em>/ query</em>"),
     ])
 
@@ -245,6 +341,115 @@ def _guard_readout(sql: str) -> None:
     verb = reason.split("forbidden keyword:", 1)[1].strip() if "forbidden keyword:" in reason else ""
     ui.guard_verdict(ok=ok, reason=reason, checks=checks,
                      forbidden=FORBIDDEN, blocked_verb=verb)
+
+
+# --------------------------------------------------------------------------
+# The verifier.
+# --------------------------------------------------------------------------
+
+def _verify_now(sql: str, result, question: str):
+    """Run both halves of the verifier on SQL this app is about to show.
+
+    Used by DEMO MODE only. There is no model there, so nothing has run the
+    verifier for us — but the checks are deterministic, need no key, and cost
+    almost nothing (measured over the 39 golden queries on this warehouse:
+    check_sql 0.36-5.33 ms, median 0.72; check_result 0.01-1.09 ms, median
+    0.02), so the panel can show real state instead of an empty frame.
+
+    Live mode does NOT come through here. There the findings are the ones
+    engine.assistant already computed and put on AskResult, and re-running the
+    checks in the UI would be a second verifier that could disagree with the one
+    whose verdict actually gated execution — the same trap `_guard_readout`
+    avoids by never re-scanning the SQL itself.
+    """
+    started = time.perf_counter()
+    findings = verifier.check_sql(sql)
+    if result is not None and getattr(result, "ok", False):
+        findings = findings + verifier.check_result(sql, result, question)
+    return findings, 1000 * (time.perf_counter() - started)
+
+
+def _verification_readout(findings, *, verify_ms=None, refused=False) -> None:
+    """Findings as (check, severity, message), which is all app/ui.py accepts.
+
+    Unpacked here rather than in ui.py so that module keeps importing nothing
+    from engine — the same reason `forbidden` is passed in rather than imported
+    there.
+    """
+    ui.verification(
+        [(f.check, f.severity, f.message) for f in findings],
+        checks=VERIFY_CHECKS, verify_ms=verify_ms, refused=refused,
+    )
+
+
+# --------------------------------------------------------------------------
+# The few-shot bank.
+# --------------------------------------------------------------------------
+
+@st.cache_data(show_spinner=False)
+def _exemplar_picks(question: str):
+    """The k nearest solved questions to this one, and what selecting them cost.
+
+    Cached on the question text for the same reason `_retrieval_bundle` is: this
+    is a MiniLM forward pass, measured over the 39 golden questions at 276-1152
+    ms (median 319), and Streamlit reruns the whole script on every widget
+    interaction. Once per question per container, not once per keystroke.
+
+    Almost all of that is the embedding, not the search: handing
+    select_exemplars a vector it already has drops the same call to 1.1-6.6 ms
+    (median 2.1). engine.retrieval embeds this identical question a moment
+    earlier and does not expose the vector, which is the one change that would
+    make this panel free — see the spec note in the track report.
+
+    Returns None rather than raising. Chroma being unavailable must cost a
+    panel, never an answer.
+    """
+    # The tables retrieval already chose for this question, which is the second
+    # ranking select_exemplars fuses against — and passing them is not optional
+    # dressing. Without it the selector is text-only, and the panel's foot says
+    # the pairs were fused with the retrieved tables. A foot that described a
+    # signal the call did not use would be the panel asserting its own mechanism
+    # instead of showing it.
+    bundle = _retrieval_bundle(question)
+    tables = tuple(hit.table for hit in bundle["hits"]) if bundle else ()
+    try:
+        started = time.perf_counter()
+        picks = exemplars.select_exemplars(question, k=exemplars.DEFAULT_K,
+                                           retrieved_tables=tables)
+        elapsed = 1000 * (time.perf_counter() - started)
+    except Exception:
+        return None
+    if not picks:
+        return None
+    return {
+        "picks": [(p.question, p.domain, p.sql, p.score) for p in picks],
+        "corpus": len(exemplars.load_cases()),
+        "fused": bool(tables),
+        "ms": elapsed,
+    }
+
+
+def _show_exemplars(question: str, *, in_prompt: bool = False) -> None:
+    """The few-shot bank's ranking for this question.
+
+    `in_prompt=False` is the demo-mode reading and it is the true one there: no
+    model runs, so no prompt exists and nothing can be "in" it. What IS true is
+    the ranking — the same selector, over the same 39 committed pairs, with the
+    leave-one-out rule dropping the question's own pair. That rule is what makes
+    an eval over this corpus mean anything and it has never been visible; here
+    it is something you can watch happen on a question you know is in the file.
+
+    Live mode passes in_prompt=True and its own picks (see `render_entry`); this
+    reconstruction is NOT used there, because the assistant selects against a
+    context that includes prior turns and a required-table set the UI does not
+    hold, and a panel that guessed at prompt content would be asserting what it
+    cannot check.
+    """
+    bank = _exemplar_picks(question)
+    if not bank:
+        return
+    ui.exemplars(bank["picks"], corpus=bank["corpus"], in_prompt=in_prompt,
+                 fused=bank["fused"], select_ms=bank["ms"])
 
 
 # --------------------------------------------------------------------------
@@ -490,23 +695,31 @@ def render_demo_mode(connection) -> None:
     result = demo_mode.answer(connection, active)
     exec_ms = 1000 * (time.perf_counter() - exec_started)
 
-    timings = {"guard": guard_ms, "execute": exec_ms}
+    # The verifier runs here too. No model wrote this SQL, but the checks are
+    # deterministic and key-free, and running them on the reference SQL is the
+    # only way a visitor without a key ever sees this stage at all. It is also
+    # the stage's own strongest evidence: measured over all 39 golden queries,
+    # both halves produce ZERO findings, which is what a check that fires on
+    # good SQL would not do.
+    findings, verify_ms = _verify_now(active["sql"], result.result, active["question"])
+    timings = {"guard": guard_ms, "verify": verify_ms, "execute": exec_ms}
     if bundle:
         timings["retrieve"] = bundle["ms"]
 
     st.chat_message("user").write(active["question"])
     with st.chat_message("assistant"):
         if not result.ok:
-            ui.pipeline(retrieved=True, generated=False, guarded=False, executed="fail",
-                        timings=timings)
+            ui.pipeline(retrieved=True, generated=False, verified=True,
+                        guarded=False, executed="fail", timings=timings)
             st.error(f"Reference SQL failed: {result.result.error}")
         else:
             # Demo mode runs committed SQL, so GENERATE is honestly dark: no
             # model wrote this. Lighting it would be the one lie this app
-            # cannot afford.
-            ui.pipeline(retrieved=True, generated=False, guarded=True, executed=True,
-                        timings=timings)
+            # cannot afford. VERIFY, by contrast, genuinely ran — see above.
+            ui.pipeline(retrieved=True, generated=False, verified=True,
+                        guarded=True, executed=True, timings=timings)
             _show_grounding(bundle)
+            _show_exemplars(active["question"])
             ui.answer(
                 result.headline,
                 verified=result.matches_contract,
@@ -518,6 +731,7 @@ def render_demo_mode(connection) -> None:
                     "vendored data has drifted and the golden test should be red."
                 )
             _guard_readout(result.sql)
+            _verification_readout(findings, verify_ms=verify_ms)
             st.code(result.sql, language="sql")
             frame = pd.DataFrame(result.result.rows, columns=result.result.columns)
             _result_readout(result.sql, frame, truncated=result.result.truncated)
@@ -564,26 +778,69 @@ def render_entry(entry):
     bundle = _retrieval_bundle(entry["question"])
     st.chat_message("user").write(entry["question"])
     with st.chat_message("assistant"):
+        findings = entry.get("findings") or []
         if entry["refused"]:
-            ui.pipeline(retrieved=True, generated=True, guarded=False, executed=False,
+            # TWO different refusals arrive here and they were being narrated as
+            # one. engine.assistant returns refused=True either because the
+            # model called cannot_answer — the question is out of scope — or
+            # because the verifier still had a blocking finding on the final
+            # attempt and the loop declined to execute SQL it could not stand
+            # behind. Only the first is "I can't answer that from the loaded
+            # data"; the second wrote a query and refused to run it, which is a
+            # much more interesting thing to say and the reason the verifier
+            # panel exists.
+            #
+            # It also stops a leak. On the verification path `reason` is
+            # verify.correction_message(), whose closing lines are addressed to
+            # the MODEL ("Write a corrected single SELECT query… call
+            # cannot_answer instead"), and they were being pasted into a warning
+            # a human reads. The findings say the same thing in the reader's
+            # direction, so the panel carries it and the raw prompt text does
+            # not reach the page.
+            blocked = bool(findings) and bool(entry["sql"])
+            ui.pipeline(retrieved=True, generated=True,
+                        verified="fail" if blocked else None,
+                        guarded=False, executed=False,
                         timings={"retrieve": bundle["ms"]} if bundle else None)
-            st.warning(f"I can't answer that from the loaded data: {entry['reason']}")
+            if blocked:
+                st.warning("I wrote a query for this and then refused to run it — "
+                           "the structural checks below say the result would not "
+                           "have meant anything.")
+                _verification_readout(findings, refused=True)
+            else:
+                st.warning(f"I can't answer that from the loaded data: {entry['reason']}")
             # A refusal can arrive on attempt 2 or 3 — the model corrected once,
             # then declined — and that history is the interesting part of a
             # refusal. It used to be dropped on the floor by this early return.
             ui.attempt_ledger(attempts=entry["attempts"],
                               corrections=entry.get("corrections") or [],
                               max_attempts=MAX_ATTEMPTS, ok=False)
+            if blocked:
+                # The refused SQL, shown unrun. A refusal that hides its own
+                # query asks to be taken on trust, which is the one currency
+                # this app does not deal in.
+                st.caption("The query that was written and not executed:")
+                st.code(entry["sql"], language="sql")
             return
-        ui.pipeline(retrieved=True, generated=True,
+        ui.pipeline(retrieved=True, generated=True, verified=True,
                     guarded=True if entry["attempts"] == 1 else "fail",
                     executed=True, attempts=entry["attempts"],
                     # Only RETRIEVE is separable here. The assistant's own
-                    # generate/guard/execute happen inside one call, so the rest
-                    # of the clock is reported as a round trip below rather than
-                    # split across cells on a guess.
+                    # generate/verify/guard/execute happen inside one call, so
+                    # the rest of the clock is reported as a round trip below
+                    # rather than split across cells on a guess.
                     timings={"retrieve": bundle["ms"]} if bundle else None)
         _show_grounding(bundle)
+        if entry.get("exemplars"):
+            # Only ever the assistant's own selection, handed over on the
+            # result. The UI does not reconstruct it: the prompt is built from
+            # the question PLUS the last two turns and the tables prior SQL
+            # used, and a panel that re-derived that could disagree with what
+            # was actually sent. Until engine.assistant carries the field this
+            # branch simply does not draw, which is the correct failure.
+            _bank = entry["exemplars"]
+            ui.exemplars(_bank["picks"], corpus=_bank["corpus"], in_prompt=True,
+                         fused=bool(_bank.get("fused")))
         ui.answer(entry["answer"])
         if entry.get("elapsed_ms"):
             ui.note(f"Model round trip {entry['elapsed_ms']:,.0f} ms "
@@ -599,6 +856,14 @@ def render_entry(entry):
                           ok=bool(entry["rows"] is not None or not entry["error"]))
         if entry["sql"]:
             _guard_readout(entry["sql"])
+            # The findings engine.assistant already computed, not a second run.
+            # Re-verifying here would be a second verifier that could disagree
+            # with the one whose verdict actually gated execution — the trap
+            # `_guard_readout` avoids by never re-scanning the SQL itself. No
+            # timing is shown for the same reason: the clock that measured it
+            # is inside assistant.ask, and inventing one here would be the panel
+            # reporting a number it did not take.
+            _verification_readout(findings)
         with st.expander("Show the SQL and the data behind this answer"):
             st.code(entry["sql"], language="sql")
             if entry["rows"] is not None:
@@ -644,6 +909,11 @@ if question:
         "sql": result.sql,
         "attempts": result.attempts,
         "corrections": result.corrections,
+        # Previously dropped here. engine.assistant computes these on every turn
+        # and puts them on AskResult; the transcript entry was the point at
+        # which they stopped existing, so the verifier ran on every question and
+        # nothing it decided ever reached the page.
+        "findings": result.findings,
         "rows": (pd.DataFrame(result.result.rows, columns=result.result.columns)
                  if (result.result and result.result.ok and result.result.rows) else None),
         "truncated": bool(result.result and result.result.truncated),

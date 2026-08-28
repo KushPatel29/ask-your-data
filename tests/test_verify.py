@@ -109,7 +109,11 @@ FANOUT = ("SELECT SUM(s.completed) FROM clinical_subjects s "
 def test_fanout_is_detected(verifier):
     findings = verifier.check_sql(FANOUT)
     assert checks(findings) == {"join_fanout"}
-    assert findings[0].severity == WARN
+    # ERROR, not WARN. A fan-out returns a plausible number that is simply too
+    # big, so advisory severity meant the inflated figure was narrated as fact.
+    # It fires on 0 of the 39 golden queries, so blocking costs nothing.
+    assert findings[0].severity == ERROR
+    assert findings[0].blocking
 
 
 def test_the_fanout_really_does_change_the_number(con):

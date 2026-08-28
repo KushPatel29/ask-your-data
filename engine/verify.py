@@ -211,7 +211,7 @@ def parse_sql(con, sql: str) -> dict | None:
     have been wrong on the golden set's own queries — five of them nest CTEs.
     """
     try:
-        raw = con.execute("SELECT json_serialize_sql(?)",
+        raw = con.cursor().execute("SELECT json_serialize_sql(?)",
                           [(sql or "").strip().rstrip(";").strip()]).fetchone()[0]
         ast = json.loads(raw)
     except Exception:
@@ -405,7 +405,7 @@ class Verifier:
     def columns_of(self, table: str) -> set[str]:
         if table not in self._columns:
             try:
-                rows = self.con.execute(f'DESCRIBE "{table}"').fetchall()
+                rows = self.con.cursor().execute(f'DESCRIBE "{table}"').fetchall()
                 self._columns[table] = {str(r[0]).lower() for r in rows}
             except Exception:
                 self._columns[table] = set()
@@ -427,7 +427,7 @@ class Verifier:
         if key not in self._unique:
             try:
                 selected = ", ".join(f'"{c}"' for c in columns)
-                total, distinct = self.con.execute(
+                total, distinct = self.con.cursor().execute(
                     f'SELECT COUNT(*), COUNT(DISTINCT ({selected})) FROM "{table}"'
                 ).fetchone()
                 self._unique[key] = (total == distinct)
@@ -632,8 +632,21 @@ class Verifier:
                         continue
                     seen.add((source, other))
                     aggregates = ", ".join(sorted(sources[source]))
+                    # ERROR, not WARN. A fan-out does not fail, return nothing,
+                    # or look odd - it returns a plausible number that is simply
+                    # too big, because the join multiplied the rows before the
+                    # aggregate saw them. Advisory severity meant the inflated
+                    # figure was narrated to the user as fact. Measured against
+                    # all 39 golden queries this fires on 0 of them, so blocking
+                    # costs no false positives and the retry loop gets a
+                    # specific, actionable correction instead.
+                    #
+                    # Keep the severity on the same line as the rule name:
+                    # tests/test_ui_readouts.py scrapes this file to prove the
+                    # UI's rule board has not drifted, and a comment inserted
+                    # between them makes the rule invisible to that scan.
                     findings.append(Finding(
-                        "join_fanout", WARN,
+                        "join_fanout", ERROR,
                         f"{aggregates} reads {source}, but the join key "
                         f"({', '.join(other_key)}) is not unique on {other}, so every "
                         f"{source} row is repeated once per matching {other} row and the "
@@ -710,7 +723,7 @@ class Verifier:
                 if not left or not right or left == right:
                     continue
                 try:
-                    shared = self.con.execute(
+                    shared = self.con.cursor().execute(
                         f'SELECT COUNT(*) FROM (SELECT "{left_col}" FROM "{left}" '
                         f'INTERSECT SELECT "{right_col}" FROM "{right}")').fetchone()[0]
                 except Exception:
