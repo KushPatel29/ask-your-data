@@ -277,3 +277,113 @@ def test_an_uncapped_plan_does_not_say_it_was_capped(rendered):
                   plan_ms=0.4, total=1, returned=1)
     body = ui.st.take()
     assert "operators shown" not in body and "<b>1</b> operators" in body
+
+
+# --------------------------------------------------------------------------
+# The compiled path. PLAN and GENERATE are the same position and different
+# claims, which is the one thing this strip must never blur.
+# --------------------------------------------------------------------------
+
+def _cells(ui, **kwargs):
+    import re
+
+    ui.st.take()
+    ui.pipeline(**kwargs)
+    body = ui.st.take()
+    return re.findall(r'class="ayd-step" data-on="[^"]*">([a-z ]+?)(?:<|$)', body)
+
+
+def test_a_compiled_turn_says_plan_and_never_generate(rendered):
+    """Lighting GENERATE for a compiled query is the claim that a model wrote it.
+
+    That would be the single most misleading pixel in this app, so the cell is
+    replaced rather than reused: `planned` and `generated` occupy one position
+    and exactly one of them can be true of any turn.
+    """
+    ui, _panels = rendered
+    cells = _cells(ui, retrieved=True, planned=True, guarded=True, executed=True)
+    assert "plan" in cells
+    assert "generate" not in cells
+
+
+def test_a_model_turn_still_says_generate(rendered):
+    ui, _panels = rendered
+    cells = _cells(ui, retrieved=True, generated=True, guarded=True, executed=True)
+    assert "generate" in cells
+    assert "plan" not in cells
+
+
+def test_a_refused_plan_breaks_the_link_after_plan_not_before(rendered):
+    """Same directional rule the guard block already has, applied to PLAN.
+
+    The question DID reach the compiler, so the segment into PLAN is lit; what
+    the compiler then decided is PLAN's own cell to report. The segment OUT of
+    it carries the failure, because that is where the turn stopped, and
+    everything downstream stays dark because nothing crossed.
+    """
+    ui, _panels = rendered
+    assert _links(ui, retrieved=True, planned="fail", guarded=False,
+                  executed=False) == ["1", "fail", "0"]
+
+
+def test_the_trace_marks_missed_words_differently_from_unbindable_ones(rendered):
+    """Three word groups, three meanings, and only one of them is a debt.
+
+    `bound` is what the plan used. `loose` is what nothing in 71 tables
+    contains, excused from the coverage denominator rather than silently
+    dropped. `missed` is what the warehouse HAS and this plan did not use — the
+    only group that says the planner left something on the table, and the only
+    one drawn in the alert colour.
+    """
+    _ui, panels = rendered
+    body = panels["plan_trace"]
+    assert 'data-w="bound"' in body
+    assert 'data-w="missed"' in body
+    assert 'data-w="loose"' in body
+
+
+def test_the_trace_reports_a_refusal_as_a_refusal(rendered):
+    _ui, panels = rendered
+    assert "no plan met the floor" in panels["plan_trace_refused"]
+    assert "of the question bound" in panels["plan_trace"]
+
+
+def test_the_masthead_never_calls_a_keyless_session_a_demo(rendered):
+    """It read "demo · committed reference SQL" whenever no key was set.
+
+    That stopped being true the moment the compiler started answering the chat
+    box: keyless turns are compiled from the schema, not served from
+    evals/golden_questions.yaml. A masthead naming the wrong engine is worse
+    than one naming none — it is the first claim a visitor reads, and the SQL
+    below it would quietly contradict it.
+    """
+    ui, _panels = rendered
+    ui.st.take()
+    ui.masthead(tables=71, domains=11, live=False)
+    keyless = ui.st.take()
+    assert "compiled from the schema" in keyless
+    assert "committed reference SQL" not in keyless
+
+    ui.st.take()
+    ui.masthead(tables=71, domains=11, live=True)
+    assert "model-authored" in ui.st.take()
+
+
+def test_the_grounding_panel_claims_no_tokens_when_none_were_spent(rendered):
+    """On a compiled turn there is no prompt, so there is no schema budget."""
+    ui, _panels = rendered
+
+    class Hit:
+        def __init__(self, table, domain, score):
+            self.table, self.domain, self.score = table, domain, score
+
+    hits = [Hit("hr_fact_employees", "hr", 0.032)]
+    ui.st.take()
+    ui.grounding(hits, total_tables=71, tokens_used=0, tokens_full=12741)
+    compiled = ui.st.take()
+    assert "No prompt and no tokens" in compiled
+    assert "tokens of schema in the prompt" not in compiled
+
+    ui.st.take()
+    ui.grounding(hits, total_tables=71, tokens_used=3241, tokens_full=12741)
+    assert "tokens of schema in the prompt" in ui.st.take()

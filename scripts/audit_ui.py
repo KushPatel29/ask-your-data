@@ -203,6 +203,15 @@ def render_all(ui, fx) -> dict[str, str]:
         timings={"retrieve": 310.0, "guard": 0.2, "execute": 1.9}))
     grab("pipeline_blocked", lambda: ui.pipeline(
         retrieved=True, generated=True, guarded="fail", executed=False, attempts=3))
+    # The compiled path. PLAN replaces GENERATE rather than sitting beside it,
+    # so both states are rendered here: a turn the compiler answered and one it
+    # refused, which is the shape that must never light GENERATE.
+    grab("pipeline_planned", lambda: ui.pipeline(
+        retrieved=True, planned=True, verified=True, guarded=True, executed=True,
+        timings={"retrieve": 164.0, "plan": 5.0, "guard": 0.2, "execute": 2.1}))
+    grab("pipeline_plan_refused", lambda: ui.pipeline(
+        retrieved=True, planned="fail", guarded=False, executed=False,
+        timings={"retrieve": 183.0, "plan": 4.0}))
 
     class Hit:
         def __init__(self, table, domain, score):
@@ -248,6 +257,20 @@ def render_all(ui, fx) -> dict[str, str]:
         rows=5, truncated=False, cap=200))
     grab("result_shape_capped", lambda: ui.result_shape(
         [("order_id", "BIGINT")], rows=200, truncated=True, cap=200))
+    grab("plan_trace", lambda: ui.plan_trace(
+        [("table", f"{HOSTILE} — 1 join"),
+         ("metric", "AVG(base_salary)"),
+         ("grouped by", "department"),
+         ("filter", f'status = \'{HOSTILE}\' (from "{HOSTILE}")')],
+        coverage=1.0, considered=13,
+        bound=["average", "department", "salary"],
+        missed=[HOSTILE], loose=["dataset"], plan_ms=5.0))
+    grab("plan_trace_refused", lambda: ui.plan_trace(
+        [("table", "marketing_experiment_geo_weekly — 0 joins"),
+         ("metric", "COUNT(*)")],
+        coverage=0.4, considered=10, bound=["experiment", "geo"],
+        missed=["holdout", "incremental", "lift"], loose=[],
+        plan_ms=4.0, refused=True))
     grab("answer", lambda: ui.answer("1,428", verified=True,
                                      verified_note="Asserted in evals/golden_questions.yaml."))
     grab("domain_card", lambda: ui.domain_card(HOSTILE, "A domain blurb."))
@@ -273,7 +296,8 @@ def check_markup(panels: dict[str, str]) -> list[str]:
                 continue
             if closing:
                 if not stack or stack[-1] != tag:
-                    problems.append(f"{name}: </{tag}> closes <{stack[-1] if stack else 'nothing'}>")
+                    opened = stack[-1] if stack else "nothing"
+                    problems.append(f"{name}: </{tag}> closes <{opened}>")
                     break
                 stack.pop()
             else:

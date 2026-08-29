@@ -76,20 +76,37 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
-from engine import demo_mode  # noqa: E402
-from engine.query import MAX_ROWS  # noqa: E402
-from engine.sql_guard import FORBIDDEN, FORBIDDEN_FUNCTIONS, validate_sql  # noqa: E402
-from engine.warehouse import build_warehouse, schema_catalog, table_names  # noqa: E402
-from engine import exemplars, retrieval  # noqa: E402
-from engine.verify import Verifier  # noqa: E402
 from app import ui  # noqa: E402
+from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
+from engine import (  # noqa: E402
+    demo_mode,  # noqa: E402
+    exemplars,
+    planner,
+    retrieval,
+)
+from engine.query import MAX_ROWS, run_query  # noqa: E402
+from engine.semantics import Layer  # noqa: E402
+from engine.sql_guard import FORBIDDEN, FORBIDDEN_FUNCTIONS, validate_sql  # noqa: E402
+from engine.verify import Verifier  # noqa: E402
+from engine.warehouse import build_warehouse, schema_catalog, table_names  # noqa: E402
 
 st.set_page_config(page_title="Ask Your Data", page_icon="💬", layout="wide")
 
 ui.inject()
 
-LIVE_MODE = demo_mode.has_api_key()
+def _session_key() -> str:
+    """A key the visitor pasted, if any. Never persisted, never logged.
+
+    The deployed app has no key of its own -- putting one on a public URL is an
+    unmetered spend surface -- so the model path was unreachable for everybody
+    who visited. This makes it reachable for anyone who brings their own,
+    without the deployment ever holding one. It lives in st.session_state, which
+    is per-browser-session and dies with the tab.
+    """
+    return str(st.session_state.get("byok", "") or "").strip()
+
+
+LIVE_MODE = demo_mode.has_api_key() or bool(_session_key())
 
 
 @st.cache_resource
@@ -98,7 +115,8 @@ def get_connection():
     return build_warehouse()
 
 
-@st.cache_resource(show_spinner="Preparing the schema index (first run downloads the embedding model)…")
+@st.cache_resource(show_spinner="Preparing the schema index "
+                                "(first run downloads the embedding model)…")
 def warm_retrieval(_con):
     """Build the Chroma index once, at startup, with the wait made visible.
 
@@ -134,6 +152,19 @@ def warm_retrieval(_con):
     return True
 
 
+@st.cache_resource(show_spinner="Profiling the warehouse (roles, grains, join graph)…")
+def get_layer(_con):
+    """The semantic layer the keyless planner compiles against.
+
+    Built once per container. It probes every column's cardinality and every
+    table's grain, which is ~90 extra COUNT(DISTINCT) statements on top of one
+    pass per table -- measured at 2.4 s over these 71 tables, which is why it
+    sits behind the same kind of cache and spinner as the schema index rather
+    than inside the first question's render.
+    """
+    return Layer(_con)
+
+
 @st.cache_resource
 def get_verifier(_con):
     """One Verifier for the container.
@@ -161,10 +192,34 @@ def get_assistant(_con):
     return Assistant(_con)
 
 
+def _live_assistant(_con):
+    """The assistant for THIS session, honouring a pasted key.
+
+    Not cached on the connection alone: two visitors can be in the same
+    container with different keys, and a @st.cache_resource assistant would hand
+    the second one the first one's client. When a session key is present the
+    Assistant is built per session and kept in session_state; the keyless-server
+    path still uses the shared cached one.
+    """
+    key = _session_key()
+    if not key:
+        return get_assistant(_con)
+    if st.session_state.get("_assistant_key") != key:
+        import anthropic
+
+        from engine.assistant import Assistant
+
+        st.session_state["_assistant"] = Assistant(
+            _con, client=anthropic.Anthropic(api_key=key))
+        st.session_state["_assistant_key"] = key
+    return st.session_state["_assistant"]
+
+
 con = get_connection()
 RETRIEVAL_READY = warm_retrieval(con)
+layer = get_layer(con)
 verifier = get_verifier(con)
-assistant = get_assistant(con) if LIVE_MODE else None
+assistant = _live_assistant(con) if LIVE_MODE else None
 st.session_state.setdefault("turns", [])      # engine context (Turn objects)
 st.session_state.setdefault("transcript", [])  # everything we rendered, incl. refusals
 
@@ -217,7 +272,8 @@ def _status_rail() -> None:
         ("warehouse", f"<s>{TABLE_COUNT}</s> tables <em>· {len(DOMAINS)} domains</em>"),
         ("engine", f"duckdb <em>{duckdb.__version__}</em>"),
         ("index", f"MiniLM-L6-v2 · {index}<br><em>384-d · onnx · local</em>"),
-        ("retrieval", f"hybrid rrf · k={retrieval.DEFAULT_K}<br><em>pool {POOL} · rrf_k={retrieval.RRF_K}</em>"),
+        ("retrieval", f"hybrid rrf · k={retrieval.DEFAULT_K}<br>"
+                      f"<em>pool {POOL} · rrf_k={retrieval.RRF_K}</em>"),
         # Both of the guard's lists, because it enforces both. The rail said
         # "26 forbidden verbs" and the second list — the filesystem and
         # remote-scan readers sql_guard calls FORBIDDEN_FUNCTIONS — was never
@@ -304,8 +360,14 @@ def _retrieval_bundle(question: str):
     }
 
 
-def _show_grounding(bundle) -> None:
-    """Which tables the retriever selected for this question, why, and what it saved."""
+def _show_grounding(bundle, *, tokens: bool = True) -> None:
+    """Which tables the retriever selected for this question, why, and what it saved.
+
+    `tokens=False` on the compiled path. The retrieval is identical and worth
+    showing -- the same ranking decides which tables the planner may bind
+    against -- but no prompt is assembled and no tokens are spent, so the panel
+    must not report a schema budget it did not pay.
+    """
     if not bundle:
         return
     # Hybrid is what schema_catalog_for() actually uses, so the readout shows
@@ -313,7 +375,7 @@ def _show_grounding(bundle) -> None:
     ui.grounding(
         bundle["hits"],
         total_tables=TABLE_COUNT,
-        tokens_used=bundle["tokens_used"],
+        tokens_used=bundle["tokens_used"] if tokens else 0,
         tokens_full=_full_catalog_tokens(),
         vector_ranks=bundle["vector"],
         keyword_ranks=bundle["keyword"],
@@ -366,7 +428,8 @@ def _guard_readout(sql: str) -> None:
             checks.append((label, not failed))
             if failed:
                 break
-    verb = reason.split("forbidden keyword:", 1)[1].strip() if "forbidden keyword:" in reason else ""
+    verb = (reason.split("forbidden keyword:", 1)[1].strip()
+            if "forbidden keyword:" in reason else "")
     ui.guard_verdict(ok=ok, reason=reason, checks=checks,
                      forbidden=FORBIDDEN, blocked_verb=verb)
 
@@ -678,15 +741,183 @@ def _render_sidebar(active_question: str | None) -> None:
             {domain: [(table, table in selected) for table in tables]
              for domain, tables in grouped.items()},
             retrieved=len(selected), total=TABLE_COUNT,
+            destination=("sent to the model" if LIVE_MODE
+                         else "handed to the compiler"),
         )
         st.subheader("What you can ask about")
         for domain, blurb in DOMAINS.items():
             ui.domain_card(domain, blurb)
         st.divider()
+        _render_key_control()
+        st.divider()
         if st.button("Start a new conversation"):
             st.session_state.turns = []
             st.session_state.transcript = []
             st.rerun()
+
+
+def _render_key_control() -> None:
+    """Bring your own key.
+
+    The deployment holds no key of its own and should not: a key on a public URL
+    is an unmetered spend surface, and the alternative this repo chose instead
+    was to ship the keyless engine that now drives the chat box. But that left
+    the model path unreachable for everyone, including anyone who has a key and
+    wants to see the two engines answer the same question.
+
+    So the visitor can supply one. It is stored in `st.session_state`, which is
+    per-browser-session, in memory, and gone when the tab closes: it is never
+    written to disk, never logged, and never sent anywhere except Anthropic's
+    API by the same client `engine/assistant.py` already used. The input is
+    `type="password"` so it does not sit on screen in a screen-share.
+    """
+    if demo_mode.has_api_key():
+        st.caption("Model: configured by the server environment.")
+        return
+    st.markdown("**Use your own API key**")
+    st.caption(
+        "Optional. With a key the model writes the SQL instead of the compiler, "
+        "and the same guard, verifier and executor run on what it writes. "
+        "Held in this browser session only — never stored, never logged."
+    )
+    typed = st.text_input(
+        "Anthropic API key", type="password", key="byok_input",
+        placeholder="sk-ant-...", label_visibility="collapsed",
+    )
+    if st.session_state.get("byok"):
+        if st.button("Switch back to the keyless compiler"):
+            st.session_state["byok"] = ""
+            st.session_state.pop("_assistant", None)
+            st.session_state.pop("_assistant_key", None)
+            st.session_state.turns = []
+            st.session_state.transcript = []
+            st.rerun()
+        return
+    if typed and typed != st.session_state.get("byok"):
+        st.session_state["byok"] = typed
+        # The transcript is cleared rather than carried across. The two engines
+        # produce differently shaped entries and are drawn by different
+        # renderers, so a mixed transcript would ask render_entry to draw a
+        # planner turn -- and every field it reads for the attempt ledger and
+        # the token line would be missing.
+        st.session_state.turns = []
+        st.session_state.transcript = []
+        st.rerun()
+
+
+def _plan_turn(question: str) -> dict:
+    """Compile a question without a model, run it, and record what happened.
+
+    Deliberately shaped like the live path's transcript entry, because the same
+    renderer draws both. The planner gets no privileges for being
+    deterministic: its SQL goes through the same `validate_sql`, the same
+    `run_query`, and the same `Verifier` the model's SQL goes through, and the
+    only difference the page shows is which cell of the pipeline strip lights.
+    """
+    # Retrieval and planning are timed SEPARATELY, because they are separate
+    # stages and the strip draws a cell for each. Timed together, the first
+    # question in a container reported PLAN 501ms -- almost all of it the MiniLM
+    # forward pass behind the schema index, none of it spent compiling anything.
+    # A stage that bills another stage's clock is the same class of error as a
+    # cell that lights on the wrong evidence.
+    bundle = _retrieval_bundle(question)
+    hits = [hit.table for hit in bundle["hits"]] if bundle else []
+    started = time.perf_counter()
+    result = planner.plan_question(question, layer, retrieved=hits)
+    plan_ms = 1000 * (time.perf_counter() - started)
+
+    entry = {
+        "question": question,
+        "engine": "planner",
+        "refused": result.refused,
+        "reason": result.reason,
+        "answer": "",
+        "sql": result.sql,
+        "attempts": 1,
+        "corrections": [],
+        "findings": [],
+        "ran": False,
+        "rows": None,
+        "truncated": False,
+        "error": "",
+        "usage": {},
+        "plan_ms": plan_ms,
+        "retrieve_ms": bundle["ms"] if bundle else None,
+        "bundle": bundle,
+        "trace": _plan_trace_payload(result),
+    }
+    if result.refused:
+        return entry
+
+    guard_started = time.perf_counter()
+    ok, reason = validate_sql(result.sql)
+    entry["guard_ms"] = 1000 * (time.perf_counter() - guard_started)
+    if not ok:
+        # Has never happened: the compiler emits SELECT from a grammar that has
+        # no way to write anything else. The branch exists because "it cannot
+        # happen" is not a thing this repo lets a boundary assert about itself,
+        # and the guard is the boundary whether or not the thing behind it is
+        # trusted.
+        entry["refused"] = True
+        entry["reason"] = f"{GUARD_BLOCK_PREFIX}: {reason}"
+        entry["corrections"] = [f"{GUARD_BLOCK_PREFIX}: {reason}"]
+        return entry
+
+    exec_started = time.perf_counter()
+    ran = run_query(con, result.sql)
+    entry["exec_ms"] = 1000 * (time.perf_counter() - exec_started)
+    findings, verify_ms = _verify_now(result.sql, ran, question)
+    entry["findings"] = findings
+    entry["verify_ms"] = verify_ms
+    entry["ran"] = bool(ran.ok)
+    entry["error"] = "" if ran.ok else ran.error
+    if ran.ok and ran.rows:
+        entry["rows"] = pd.DataFrame(ran.rows, columns=ran.columns)
+        entry["truncated"] = bool(ran.truncated)
+        entry["answer"] = _plan_headline(result.plan, ran)
+    elif ran.ok:
+        entry["answer"] = "No rows matched."
+    return entry
+
+
+def _plan_trace_payload(result) -> dict:
+    """What ui.plan_trace needs, split out so the renderer stays presentational.
+
+    The three word groups are the coverage arithmetic made visible: `bound` is
+    what the plan used, `loose` is what nothing in 71 tables contains (excused
+    from the denominator, not silently dropped), and `missed` is what the
+    warehouse knows and this plan did not use — the only group that is a debt.
+    """
+    plan = result.plan
+    return {
+        "rationale": plan.rationale() if plan else [],
+        "coverage": plan.coverage if plan else 0.0,
+        "considered": result.considered,
+        "bound": sorted(plan.explained) if plan else [],
+        "missed": sorted(plan.unexplained - result.unbound) if plan else [],
+        "loose": sorted(result.unbound),
+        "refused": result.refused,
+    }
+
+
+def _plan_headline(plan, ran) -> str:
+    """One sentence, built from the plan rather than written about it.
+
+    No language model is involved, so this cannot be a summary — it is a
+    restatement of the query in words, which is the honest thing a compiler can
+    offer. The number always comes from `ran`, never from anywhere else.
+    """
+    value = ran.rows[0][0]
+    if plan.group_by is not None and ran.row_count > 1:
+        return (f"{ran.row_count} groups by {plan.group_by.name}"
+                + (f", ordered {plan.order}" if plan.order else "")
+                + ". The full breakdown is below.")
+    if plan.aggregate == planner.RANK and len(ran.rows[0]) > 1:
+        return f"{value} — {plan.measure.name} {ran.rows[0][1]:,.2f}"
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        shown = f"{value:,}" if float(value).is_integer() else f"{value:,.2f}"
+        return f"{shown}"
+    return str(value)
 
 
 EXAMPLES = [
@@ -695,6 +926,20 @@ EXAMPLES = [
     "What's the overall order fill rate?",
     "Who is the top wholesale customer by revenue?",
     "How many migration artifacts passed parallel-run validation?",
+]
+
+# Separate from EXAMPLES on purpose. Those five were chosen to show the MODEL
+# off, and four of the five are questions the compiler correctly refuses —
+# offering them in keyless mode would be handing a visitor a row of buttons that
+# mostly answer "I can't". These five are inside the grammar, and every one of
+# them is in evals/planner_questions.yaml with reference SQL under test, so this
+# list cannot drift into promising something the planner stopped doing.
+PLANNER_EXAMPLES = [
+    "How many denied claims are there?",
+    "What is the average salary by department?",
+    "Total paid amount by payer type",
+    "Which department has the highest average tenure?",
+    "What percentage of transactions are cash?",
 ]
 
 
@@ -762,7 +1007,8 @@ def render_demo_mode(connection) -> None:
             ui.answer(
                 result.headline,
                 verified=result.matches_contract,
-                verified_note="Asserted in evals/golden_questions.yaml and re-checked by CI on every push.",
+                verified_note=("Asserted in evals/golden_questions.yaml "
+                               "and re-checked by CI on every push."),
             )
             if not result.matches_contract:
                 st.warning(
@@ -787,22 +1033,161 @@ def render_demo_mode(connection) -> None:
                 "The model-authored path is what the API key unlocks."
             )
 
+    return active["question"]
+
+
+def render_plan_entry(entry) -> None:
+    """One keyless turn: what the compiler bound, and what the database returned.
+
+    A separate renderer from the live path rather than a flag on it. The two
+    turns genuinely differ in what exists to show — there is no retry ledger
+    because there is no retry, no token spend because no tokens were spent, and
+    a binding trace that the model path cannot produce — and a single renderer
+    threading `if planner` through six branches would be harder to read than
+    two, while quietly inviting exactly the kind of cell that lights on the
+    wrong evidence.
+    """
+    st.chat_message("user").write(entry["question"])
+    trace = entry.get("trace") or {}
+    timings = {}
+    for label, key in (("retrieve", "retrieve_ms"), ("plan", "plan_ms"),
+                       ("guard", "guard_ms"), ("verify", "verify_ms"),
+                       ("execute", "exec_ms")):
+        if entry.get(key) is not None:
+            timings[label] = entry[key]
+
+    with st.chat_message("assistant"):
+        if entry["refused"]:
+            ui.pipeline(retrieved=True, planned="fail", guarded=False,
+                        executed=False, timings=timings)
+            st.warning(f"I can't compile that one: {entry['reason']}")
+            if trace.get("rationale") or trace.get("loose") or trace.get("missed"):
+                ui.plan_trace(trace["rationale"], coverage=trace["coverage"],
+                              considered=trace["considered"], bound=trace["bound"],
+                              missed=trace["missed"], loose=trace["loose"],
+                              plan_ms=entry.get("plan_ms"), refused=True)
+            st.caption(
+                "A refusal here is the compiler working, not failing. It answers "
+                "what it can bind to columns and values, and says so when it "
+                "cannot — an API key puts the model on this box, and the model "
+                "is what resolves the questions this grammar cannot."
+            )
+            return
+
+        ui.pipeline(retrieved=True, planned=True, verified=True, guarded=True,
+                    executed=True if entry["ran"] else "fail", timings=timings)
+        _show_grounding(entry.get("bundle"), tokens=False)
+        if entry["answer"]:
+            ui.answer(entry["answer"])
+        elif entry["error"]:
+            st.error(f"Query error: {entry['error']}")
+        ui.plan_trace(trace["rationale"], coverage=trace["coverage"],
+                      considered=trace["considered"], bound=trace["bound"],
+                      missed=trace["missed"], loose=trace["loose"],
+                      plan_ms=entry.get("plan_ms"))
+        _guard_readout(entry["sql"])
+        _verification_readout(entry["findings"], verify_ms=entry.get("verify_ms"))
+        st.code(entry["sql"], language="sql")
+        if entry["rows"] is not None:
+            _result_readout(entry["sql"], entry["rows"],
+                            truncated=bool(entry["truncated"]))
+            st.dataframe(entry["rows"], use_container_width=True, hide_index=True)
+        st.caption(
+            "Compiled from the schema by engine/planner.py — no model, no API "
+            "key, no cost. Every clause above traces to a word in the question."
+        )
+
+
+KEYLESS_NOTICE = (
+    "**No API key is configured, and the chat box below still works.** This app "
+    "carries two engines. With a key, a language model writes the SQL. Without "
+    "one — right now — `engine/planner.py` compiles your question directly "
+    "against the schema: it reads the warehouse's own column roles, join graph "
+    "and dimension values, binds your words to them, and emits SQL through the "
+    "same read-only guard and the same verifier the model's SQL goes through. "
+    "It answers questions nobody pre-registered, and when it cannot bind a "
+    "question it refuses and shows you which words it could not place. "
+    "Measured, both ways: `python scripts/run_planner_eval.py`."
+)
+
+
+def _link_question() -> str:
+    """A question passed in the URL as `?q=...`, asked once on first load.
+
+    Deep-linking a question is worth having on its own -- "here is the exact
+    thing I meant, click it" is how anyone shares a result -- and it is also
+    what makes a screenshot of this app reproducible instead of a thing someone
+    typed by hand once.
+
+    Asked ONCE per session, not once per rerun: Streamlit re-executes the whole
+    script on every widget interaction, and a query param that survives that
+    would re-ask its question after every click, appending a duplicate turn to
+    the transcript each time.
+    """
+    if st.session_state.get("_link_used"):
+        return ""
+    try:
+        raw = st.query_params.get("q", "")
+    except Exception:
+        return ""
+    st.session_state["_link_used"] = True
+    return str(raw or "").strip()[:400]
+
+
+def render_keyless(connection) -> None:
+    """The keyless app: a working chat box, then the accuracy contract below it.
+
+    This used to be a dropdown of 39 pre-registered questions with the chat
+    input rendered `disabled=True` underneath. That was honest and it was also
+    the wrong product: the public deployment is the only version most people
+    ever touch, and it could not answer a question nobody had thought of in
+    advance — the exact failure this project accuses dashboards of.
+    """
+    # No `icon=`. Streamlit renders a Material Symbols ligature, and the glyph
+    # only appears once that font has loaded -- until then the icon's NAME sits
+    # in the layout as literal text ("function"), overlapping the first line of
+    # the notice. A banner whose job is to explain the engine should not open
+    # with a stray word, and the icon was carrying no information anyway.
+    st.info(KEYLESS_NOTICE)
+
+    link = _link_question()
+    clicked = None
+    if not st.session_state.transcript and not link:
+        st.write("Try one of these, or type your own:")
+        for column, example in zip(st.columns(len(PLANNER_EXAMPLES)),
+                                   PLANNER_EXAMPLES, strict=True):
+            if column.button(example, use_container_width=True):
+                clicked = example
+
+    for entry in st.session_state.transcript:
+        render_plan_entry(entry)
+
+    question = st.chat_input("Ask a question about the data...") or clicked or link
+    if question:
+        with st.spinner("Compiling your question into SQL..."):
+            entry = _plan_turn(question)
+        st.session_state.transcript.append(entry)
+        st.rerun()
+
     st.divider()
-    st.subheader("What the live mode adds")
-    st.markdown(
-        "With a key, the box below becomes a real chat: you ask anything in "
-        "plain English, the model writes the SQL, a read-only guard validates "
-        "it before execution, failed queries are fed their own error back for "
-        "up to three attempts, and out-of-scope questions are refused rather "
-        "than guessed at. Every answer still shows its SQL."
-    )
-    st.chat_input("Ask a question about the data...", disabled=True)
-    st.caption("Disabled in demo mode — no model is configured.")
-    _render_sidebar(active["question"])
+    with st.expander("The accuracy contract — 39 questions whose SQL is committed "
+                     "and re-run by CI on every push"):
+        st.caption(
+            "Separate from the box above, and a different kind of evidence. "
+            "These questions ship with reference SQL in "
+            "`evals/golden_questions.yaml`; picking one runs that committed "
+            "query live and shows whether the result still matches the value CI "
+            "asserts. Nothing here is written by the model OR by the planner."
+        )
+        contract_question = render_demo_mode(connection)
+
+    last = (st.session_state.transcript[-1]["question"]
+            if st.session_state.transcript else contract_question)
+    _render_sidebar(last)
 
 
 if not LIVE_MODE:
-    render_demo_mode(con)
+    render_keyless(con)
     st.stop()
 
 # Live mode only, so demo mode never imports the anthropic client.

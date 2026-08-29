@@ -174,10 +174,12 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .ayd-mast{ border-bottom:1px solid var(--ayd-line); padding:.2rem 0 1.1rem; margin-bottom:1rem; }
 .ayd-kicker{ font-family:var(--ayd-mono) !important; font-size:.68rem; letter-spacing:.19em;
   text-transform:uppercase; color:var(--ayd-machine); display:flex; gap:.6rem; align-items:center; }
-.ayd-kicker::after{ content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--ayd-line),transparent); }
+.ayd-kicker::after{ content:''; flex:1; height:1px;
+  background:linear-gradient(90deg,var(--ayd-line),transparent); }
 /* Streamlit sets font-family on h1 with !important of its own, so a bare
    class loses even when it also declares !important. Element+class wins. */
-.ayd-mast h1.ayd-title{ font-family:var(--ayd-cond) !important; font-weight:700; font-size:2.7rem; line-height:1.02;
+.ayd-mast h1.ayd-title{ font-family:var(--ayd-cond) !important; font-weight:700;
+  font-size:2.7rem; line-height:1.02;
   letter-spacing:-.015em; margin:.5rem 0 .4rem; color:var(--ayd-ink); }
 .ayd-sub{ color:var(--ayd-muted); max-width:62ch; font-size:.95rem; line-height:1.55; margin:0; }
 .ayd-stats{ display:flex; gap:1.6rem; flex-wrap:wrap; margin-top:1rem;
@@ -278,7 +280,8 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .ayd-score{ color:var(--ayd-muted); text-align:right; font-size:.7rem; }
 
 .ayd-saving{ margin-top:.6rem; padding-top:.55rem; border-top:1px solid var(--ayd-line);
-  font-family:var(--ayd-mono) !important; font-size:.7rem; color:var(--ayd-muted); line-height:1.6; }
+  font-family:var(--ayd-mono) !important; font-size:.7rem;
+  color:var(--ayd-muted); line-height:1.6; }
 .ayd-saving b{ color:var(--ayd-machine); }
 
 /* ---- schema map -------------------------------------------------------- */
@@ -320,6 +323,36 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .ayd-check::before{ content:'✓'; color:var(--ayd-machine); margin-right:.35rem; }
 .ayd-check[data-pass="0"]{ color:var(--ayd-alert); }
 .ayd-check[data-pass="0"]::before{ content:'✕'; color:var(--ayd-alert); }
+
+/* The compiler trace. One row per binding decision, each carrying the words in
+   the question that bought it. This panel exists because the deterministic
+   planner can do something the model cannot: name the evidence for every clause
+   it wrote. A model can be asked to explain itself and will produce plausible
+   prose; engine/planner.py returns the actual bindings it used, so this is a
+   readout rather than a rationalisation. */
+.ayd-trace{ border:1px solid var(--ayd-line); border-radius:3px; background:var(--ayd-panel);
+  padding:.6rem .8rem; margin:.2rem 0 .9rem; font-family:var(--ayd-mono) !important;
+  font-size:.7rem; color:var(--ayd-muted); border-left:2px solid var(--ayd-machine); }
+.ayd-trace-head{ font-size:.62rem; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--ayd-muted); margin-bottom:.5rem; }
+.ayd-trace-head b{ color:var(--ayd-machine); }
+.ayd-trace-row{ display:flex; gap:.6rem; padding:.16rem 0; align-items:baseline; }
+.ayd-trace-key{ min-width:5.6rem; color:var(--ayd-muted); font-size:.62rem;
+  letter-spacing:.09em; text-transform:uppercase; flex:none; }
+.ayd-trace-val{ color:var(--ayd-ink); word-break:break-word; }
+.ayd-words{ display:flex; flex-wrap:wrap; gap:.16rem .3rem; margin-top:.5rem;
+  padding-top:.5rem; border-top:1px solid var(--ayd-line); }
+.ayd-word{ font-size:.6rem; letter-spacing:.06em; border:1px solid transparent;
+  border-radius:2px; padding:0 .22rem; }
+/* Bound: the planner used this word. Loose: nothing in 71 tables contains it,
+   so it was excused from the coverage denominator rather than silently dropped.
+   Missed: the warehouse HAS this word somewhere and this plan did not use it —
+   the only one of the three that is a debt. */
+.ayd-word[data-w="bound"]{ color:var(--ayd-machine); border-color:rgba(34,211,238,.35);
+  background:rgba(34,211,238,.08); }
+.ayd-word[data-w="loose"]{ color:var(--ayd-muted); border-color:var(--ayd-line); }
+.ayd-word[data-w="missed"]{ color:var(--ayd-alert); border-color:rgba(251,113,133,.4);
+  background:rgba(251,113,133,.08); }
 
 /* The forbidden-verb array. Same argument as the schema map, applied to the
    safety boundary: "none of 26 forbidden verbs" is a claim, and the 26 drawn out
@@ -520,16 +553,19 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
    colour the way a purely structural mark could. */
 .ayd-shape em{ font-style:normal; color:var(--ayd-muted); }
 .ayd-shape u{ text-decoration:none; color:var(--ayd-alert); }
-.ayd-cols-list{ display:flex; flex-wrap:wrap; gap:.16rem .45rem; font-family:var(--ayd-mono) !important;
+.ayd-cols-list{ display:flex; flex-wrap:wrap; gap:.16rem .45rem;
+  font-family:var(--ayd-mono) !important;
   font-size:.65rem; color:var(--ayd-muted); margin:0 0 .5rem; }
 .ayd-coltype b{ color:var(--ayd-ink); font-weight:500; }
 .ayd-coltype i{ font-style:normal; color:var(--ayd-machine); opacity:.8; }
 
 /* ---- answer ------------------------------------------------------------ */
-.ayd-answer{ font-family:var(--ayd-cond) !important; font-weight:600; font-size:1.75rem; line-height:1.22;
+.ayd-answer{ font-family:var(--ayd-cond) !important; font-weight:600;
+  font-size:1.75rem; line-height:1.22;
   color:var(--ayd-ink); margin:.15rem 0 .45rem; letter-spacing:-.01em;
   font-variant-numeric:tabular-nums; }
-.ayd-verified{ display:inline-flex; align-items:center; gap:.45rem; font-family:var(--ayd-mono) !important;
+.ayd-verified{ display:inline-flex; align-items:center; gap:.45rem;
+  font-family:var(--ayd-mono) !important;
   font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ayd-verified);
   border:1px solid rgba(251,191,36,.35); background:rgba(251,191,36,.07);
   border-radius:2px; padding:.2rem .5rem; }
@@ -679,14 +715,25 @@ def build_marker() -> str:
 
 
 def masthead(*, tables: int, domains: int, live: bool) -> None:
-    mode = "live · model-authored SQL" if live else "demo · committed reference SQL"
+    """The banner. `mode` is the one line on this page that says which engine ran.
+
+    It used to read "demo · committed reference SQL" whenever no key was set,
+    and that stopped being true the moment engine/planner.py started answering
+    the chat box: keyless turns are compiled from the schema, not served from
+    evals/golden_questions.yaml. A masthead that names the wrong engine is worse
+    than one that names none, because it is the first claim a visitor reads and
+    the SQL below it would quietly contradict it.
+    """
+    mode = ("live · model-authored SQL" if live
+            else "keyless · compiled from the schema")
     st.markdown(
         f"""
 <div class="ayd-mast">
   <div class="ayd-kicker">Ask your data</div>
   <h1 class="ayd-title">A question goes in.<br>SQL comes out, and you see all of it.</h1>
   <p class="ayd-sub">Natural language over the analytics warehouses from my portfolio projects.
-  It retrieves the schema the question needs, writes DuckDB SQL, checks it read-only before running it,
+  It retrieves the schema the question needs, writes DuckDB SQL, checks it
+  read-only before running it,
   and shows the query next to the number.</p>
   <div class="ayd-stats">
     <span><b>{tables}</b> tables</span>
@@ -724,6 +771,7 @@ def status_rail(cells: list[tuple[str, str]]) -> None:
 
 
 def pipeline(*, retrieved: bool = False, generated: bool = False,
+             planned: bool | str = False,
              guarded: bool | str = False, executed: bool = False,
              verified: bool | str | None = None,
              attempts: int = 1, timings: dict[str, float] | None = None) -> None:
@@ -766,7 +814,16 @@ def pipeline(*, retrieved: bool = False, generated: bool = False,
             stamp = f'<span class="t">{shown}</span>'
         return f'<span class="ayd-step" data-on="{on}">{label}{stamp}</span>'
 
-    stages = [("retrieve", retrieved), ("generate", generated)]
+    # PLAN and GENERATE occupy the same position and are mutually exclusive,
+    # because they are two different things that could have produced the SQL and
+    # exactly one of them did. Lighting GENERATE for a compiled query would be
+    # the single most misleading pixel in this app: it is the claim that a model
+    # wrote something a grammar wrote. Keyless mode used to leave the cell dark
+    # and disable the chat box; now it lights its own cell with its own name.
+    if planned:
+        stages = [("retrieve", retrieved), ("plan", planned)]
+    else:
+        stages = [("retrieve", retrieved), ("generate", generated)]
     if verified is not None:
         stages.append(("verify", verified))
     stages += [("guard", guarded), ("execute", executed)]
@@ -810,6 +867,45 @@ def pipeline(*, retrieved: bool = False, generated: bool = False,
     if attempts > 1:
         parts.append(f'<span class="ayd-step" data-on="fail">retry ×{attempts - 1}</span>')
     st.markdown(f'<div class="ayd-pipe">{"".join(parts)}</div>', unsafe_allow_html=True)
+
+
+def plan_trace(rationale, *, coverage: float, considered: int,
+               bound: list[str], missed: list[str], loose: list[str],
+               plan_ms: float | None = None, refused: bool = False) -> None:
+    """Every binding the compiler made, and the words that paid for each one.
+
+    The panel a language model cannot honestly produce. `rationale` comes off
+    `Plan.rationale()` -- the plan's own record of which column it chose for
+    which role -- and the word chips underneath are the coverage arithmetic
+    itself: which words were bound, which the warehouse has no vocabulary for,
+    and which it knows but this plan did not use. The last group is the only one
+    that is a debt, and it is drawn in the alert colour for that reason.
+
+    On a refusal the same panel renders with whatever the nearest plan managed,
+    which is the useful thing to show: "this is how far I got" beats an apology.
+    """
+    rows = "".join(
+        f'<div class="ayd-trace-row"><span class="ayd-trace-key">{html.escape(key)}</span>'
+        f'<span class="ayd-trace-val">{html.escape(str(value))}</span></div>'
+        for key, value in rationale
+    )
+    chips = "".join(
+        f'<span class="ayd-word" data-w="{kind}">{html.escape(word)}</span>'
+        for kind, words in (("bound", bound), ("missed", missed), ("loose", loose))
+        for word in words
+    )
+    stamp = f" · {plan_ms:,.0f}ms" if plan_ms is not None and plan_ms >= 1 else ""
+    verdict = "no plan met the floor" if refused else f"{coverage:.0%} of the question bound"
+    st.markdown(
+        f"""
+<div class="ayd-trace ayd-hud">
+  <div class="ayd-trace-head">compiled without a model · <b>{html.escape(verdict)}</b>
+  — {considered} candidate table{'' if considered == 1 else 's'} considered{stamp}</div>
+  {rows}
+  {f'<div class="ayd-words">{chips}</div>' if chips else ''}
+</div>""",
+        unsafe_allow_html=True,
+    )
 
 
 def _tick_pos(rank: int, pool: int) -> float:
@@ -862,7 +958,7 @@ def grounding(hits, *, total_tables: int, tokens_used: int, tokens_full: int,
 
     rows = []
     both = 0
-    for index, hit in enumerate(hits):
+    for hit in hits:
         vector = vector_ranks.get(hit.table)
         keyword = keyword_ranks.get(hit.table)
         if vector and keyword:
@@ -884,7 +980,8 @@ def grounding(hits, *, total_tables: int, tokens_used: int, tokens_full: int,
 
         rows.append(
             f'<div class="ayd-row">'
-            f'<div class="ayd-tbl">{html.escape(hit.table)} <i>· {html.escape(hit.domain)}</i></div>'
+            f'<div class="ayd-tbl">{html.escape(hit.table)} '
+            f'<i>· {html.escape(hit.domain)}</i></div>'
             f'{badge(vector)}{badge(keyword, dim=True)}'
             f'<div class="ayd-track">{marks}</div>'
             f'<div class="ayd-score">{hit.score:.5f}</div>'
@@ -901,6 +998,18 @@ def grounding(hits, *, total_tables: int, tokens_used: int, tokens_full: int,
 
     saved = max(0, tokens_full - tokens_used)
     pct = round(100 * saved / tokens_full) if tokens_full else 0
+    # On a compiled turn there is no prompt and there are no tokens, so the
+    # saving line is replaced rather than recomputed. Leaving it would have the
+    # keyless app boasting about a prompt budget it never spends -- a true
+    # sentence about the model path, printed under a turn the model had no part
+    # in, which is the kind of claim this panel exists to make impossible.
+    saving = (
+        f'~<b>{tokens_used:,}</b> tokens of schema in the prompt, against '
+        f'~{tokens_full:,} for the whole catalogue — <b>{pct}%</b> smaller.'
+        if tokens_used else
+        'No prompt and no tokens on this turn: the same ranking chose which '
+        'tables the compiler was allowed to plan against.'
+    )
     fusion_note = (
         f'<br><b>{both}</b> of {len(hits)} were ranked by both retrievers; '
         f'the rest were found by only one — which is the reason both are run.'
@@ -922,20 +1031,26 @@ def grounding(hits, *, total_tables: int, tokens_used: int, tokens_full: int,
   </div>
   {header}
   {''.join(rows)}
-  <div class="ayd-saving">~<b>{tokens_used:,}</b> tokens of schema in the prompt,
-  against ~{tokens_full:,} for the whole catalogue — <b>{pct}%</b> smaller.{fusion_note}{funnel}</div>
+  <div class="ayd-saving">{saving}{fusion_note}{funnel}</div>
 </div>""",
         unsafe_allow_html=True,
     )
 
 
 def schema_map(by_domain: dict[str, list[tuple[str, bool]]], *,
-               retrieved: int, total: int) -> None:
+               retrieved: int, total: int,
+               destination: str = "sent to the model") -> None:
     """One cell per table in the warehouse, lit where the retriever selected it.
 
     The grounding panel says "14 of 71". This draws the 71. The claim the whole
     retrieval module rests on is that most of a warehouse is irrelevant to any
     one question, and a wall of unlit cells argues that better than a ratio.
+
+    `destination` names where the selected tables WENT, and it is a parameter
+    because there are now two answers. The model path sends them to the model;
+    the keyless path hands them to engine/planner.py, which never talks to
+    anything. The header read "sent to the model" unconditionally, which on a
+    compiled turn described a network call that did not happen.
     """
     if not by_domain:
         return
@@ -967,7 +1082,7 @@ def schema_map(by_domain: dict[str, list[tuple[str, bool]]], *,
         f"""
 <div class="ayd-map ayd-hud">
   <div class="ayd-map-head">
-    <span>catalogue · <b>{retrieved}</b> of {total} tables sent to the model</span>
+    <span>catalogue · <b>{retrieved}</b> of {total} tables {destination}</span>
     <span>{len(by_domain)} domains</span>
   </div>
   {''.join(rows)}
@@ -1170,7 +1285,8 @@ def exemplars(picks, *, corpus: int, in_prompt: bool, fused: bool = False,
         f"""
 <div class="ayd-ex ayd-hud">
   <div class="ayd-ex-head">
-    <span>few-shot bank · <b>{len(picks)}</b> of {corpus} solved questions · {html.escape(where)}</span>
+    <span>few-shot bank · <b>{len(picks)}</b> of {corpus} solved questions ·
+    {html.escape(where)}</span>
     <span>{html.escape(stamp)}</span>
   </div>
   {''.join(rows)}
@@ -1226,7 +1342,8 @@ def attempt_ledger(*, attempts: int, corrections: list[str], max_attempts: int,
     st.markdown(
         f"""
 <div class="ayd-att ayd-hud">
-  <div class="ayd-att-head">self-correction · <b>{attempts}</b> of {max_attempts} attempts used</div>
+  <div class="ayd-att-head">self-correction · <b>{attempts}</b> of
+  {max_attempts} attempts used</div>
   {''.join(rows)}
 </div>""",
         unsafe_allow_html=True,
