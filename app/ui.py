@@ -354,6 +354,26 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .ayd-check[data-pass="0"]{ color:var(--ayd-alert); }
 .ayd-check[data-pass="0"]::before{ content:'✕'; color:var(--ayd-alert); }
 
+/* One column of a table, with the role engine/semantics.py inferred for it.
+
+   The sidebar's schema browser is the only place in the app that shows what the
+   layer concluded at COLUMN level, which was a strange gap: every answer the
+   keyless engine gives is downstream of these five verdicts, and none of them
+   were visible anywhere. Roles carry the machine accent, values are quoted in
+   muted text because they are data rather than schema, and a search hit is
+   marked so you can see WHY a table matched. */
+.ayd-cols-browse{ font-family:var(--ayd-mono) !important; font-size:.64rem;
+  line-height:1.55; }
+.ayd-colrow{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:.5rem;
+  padding:.1rem 0; align-items:baseline; }
+.ayd-colname{ color:var(--ayd-ink); overflow-wrap:anywhere; }
+.ayd-colname mark{ background:rgba(34,211,238,.18); color:var(--ayd-machine);
+  padding:0 .1rem; border-radius:2px; }
+.ayd-colrole{ color:var(--ayd-muted); font-size:.58rem; letter-spacing:.1em;
+  text-transform:uppercase; white-space:nowrap; }
+.ayd-colvals{ grid-column:1 / -1; color:var(--ayd-muted); font-size:.6rem;
+  overflow-wrap:anywhere; margin:0 0 .18rem; }
+
 /* What the compiler read out of the warehouse, on the empty state.
 
    The landing page used to end at the example buttons and leave roughly 700px
@@ -983,6 +1003,35 @@ def pipeline(*, retrieved: bool = False, generated: bool = False,
     if attempts > 1:
         parts.append(f'<span class="ayd-step" data-on="fail">retry ×{attempts - 1}</span>')
     st.markdown(f'<div class="ayd-pipe">{"".join(parts)}</div>', unsafe_allow_html=True)
+
+
+def column_list(columns, *, highlight: str = "") -> None:
+    """Every column of one table, with its inferred role and sample values.
+
+    `columns` is (name, role, values). The values are the ones
+    engine/semantics.py indexed into the value lexicon, so what is shown here is
+    literally what the compiler can bind a question to — not a sample chosen for
+    display. `highlight` marks the substring that made this table match a
+    search, which is what turns a list into an explanation.
+    """
+    rows = []
+    for name, role, values in columns:
+        shown = html.escape(name)
+        if highlight and highlight in name.lower():
+            start = name.lower().index(highlight)
+            end = start + len(highlight)
+            shown = (html.escape(name[:start]) + "<mark>"
+                     + html.escape(name[start:end]) + "</mark>"
+                     + html.escape(name[end:]))
+        rows.append(
+            f'<div class="ayd-colrow"><span class="ayd-colname">{shown}</span>'
+            f'<span class="ayd-colrole">{html.escape(role)}</span></div>'
+        )
+        if values:
+            joined = " · ".join(html.escape(str(v)) for v in values)
+            rows.append(f'<div class="ayd-colvals">{joined}</div>')
+    st.markdown(f'<div class="ayd-cols-browse">{"".join(rows)}</div>',
+                unsafe_allow_html=True)
 
 
 def layer_summary(cells: list[tuple[str, str, str]], *, footnote: str = "") -> None:

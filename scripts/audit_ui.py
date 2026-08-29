@@ -257,6 +257,11 @@ def render_all(ui, fx) -> dict[str, str]:
         rows=5, truncated=False, cap=200))
     grab("result_shape_capped", lambda: ui.result_shape(
         [("order_id", "BIGINT")], rows=200, truncated=True, cap=200))
+    grab("column_list", lambda: ui.column_list(
+        [("customer_name", "key", ()),
+         ("status", "dimension", ("Paid", "Denied", HOSTILE)),
+         ("paid_amount", "measure", ())],
+        highlight="status"))
     grab("refusal", lambda: ui.refusal(
         f"I have no way to compute a median — {HOSTILE}", kind="not compiled"))
     grab("refusal_unbound", lambda: ui.refusal(

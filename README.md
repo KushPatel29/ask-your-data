@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-649%20%C2%B7%20648%20run%20without%20an%20API%20key-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-654%20%C2%B7%20653%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
@@ -330,7 +330,7 @@ defend in an interview:
   comparing one scored twelve correct breakdowns as wrong.
 
 ```
-649 tests — 648 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
+654 tests — 653 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
 1 live model test skips without a key.
 ```
 
@@ -361,6 +361,28 @@ needs an API key, so it runs on demand rather than in CI.
 - **Questions are deep-linkable.** `?q=your+question` asks it on load, which is
   how a result gets shared and how the screenshot above is reproducible rather
   than something I typed once.
+- **You can edit the SQL and run it yourself.** This is the part I would defend
+  hardest. The app's argument is *the SQL is shown next to the answer so anyone
+  can audit it* — and until recently auditing it was all you could do. If you
+  read the query and saw it had picked `submitted_amount` where you wanted
+  `paid_amount`, the interface's answer was: leave. Now every answer carries an
+  editor. Nothing is relaxed to allow it: a person is exactly as untrusted as
+  the model and as the compiler, so your query goes through the same
+  `validate_sql`, the same `Verifier` and the same 200-row capped executor.
+  Paste `DROP TABLE healthcare_fact_claims` in and the panel comes back
+  **blocked by the guard**, with `EXECUTE` dark, because the boundary was never
+  about who was writing.
+- **Results download as CSV**, and the sidebar is a schema browser rather than
+  eleven paragraphs of prose: search table names, column names *and indexed
+  values*, so typing `denied` finds `healthcare_fact_claims` through a value in
+  `status` — the same binding the compiler makes, exposed as something you can
+  browse. Each column shows the role `engine/semantics.py` inferred for it,
+  which is otherwise invisible anywhere in the app.
+- **The evidence is one click down, not always open.** Retrieval, the guard, the
+  verifier and the physical plan used to run about 1,400px on every turn, so
+  reading a number meant scrolling past the proof of the number every time.
+  They are the reason to trust the app; they are not the reason to open it. The
+  pipeline strip, the answer, the binding trace and the SQL stay above.
 - **The accuracy contract is still there**, one expander down: 39 questions whose
   reference SQL is committed and re-run by CI on every push. It is a different
   kind of evidence from the chat box and it is now labelled as such, rather than

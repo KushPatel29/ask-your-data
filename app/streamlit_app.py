@@ -70,6 +70,7 @@ import re
 import sys
 import time
 from pathlib import Path
+from urllib.parse import quote_plus
 
 import pandas as pd
 import streamlit as st
@@ -737,6 +738,91 @@ def _result_readout(sql: str, frame, *, truncated: bool = False) -> None:
                     truncated=truncated, cap=MAX_ROWS)
 
 
+@st.cache_data(show_spinner=False)
+def _searchable_schema():
+    """Every table and column, flattened once, for the sidebar's search box.
+
+    Read off engine.semantics rather than the manifest, because the interesting
+    thing about a column here is its ROLE — measure, dimension, key, date, flag
+    — and the manifest does not know that. Nothing else in the app exposes what
+    the layer inferred at the column level, which is a strange omission for the
+    module the whole keyless engine is built on.
+    """
+    if layer is None:
+        return []
+    rows = []
+    for name, table in sorted(layer.tables.items()):
+        rows.append({
+            "table": name,
+            "domain": table.domain,
+            "description": table.description,
+            "rows": table.rows,
+            "columns": [(c.name, c.role, c.values[:4]) for c in table.columns],
+            "haystack": " ".join(
+                [name, table.domain, table.description]
+                + [c.name for c in table.columns]
+                + [v for c in table.columns for v in c.values[:6]]
+            ).lower(),
+        })
+    return rows
+
+
+def _schema_browser(selected: set[str] | None = None) -> None:
+    """A tool where eleven paragraphs of prose used to be.
+
+    The sidebar used to carry a domain card per domain — 11 blocks of text
+    describing the data in general terms, which is documentation and not
+    something you can act on. It could not tell you whether a `department`
+    column existed, which table held it, or what values it takes, so the only
+    way to find out what was askable was to ask and be refused.
+
+    This searches names, descriptions, column names AND indexed values, so
+    typing "denied" finds healthcare_fact_claims through a value in `status` —
+    the same binding the compiler makes, exposed as a thing you can browse.
+    """
+    schema = _searchable_schema()
+    if not schema:
+        st.subheader("What you can ask about")
+        for domain, blurb in DOMAINS.items():
+            ui.domain_card(domain, blurb)
+        return
+
+    st.subheader("Browse the schema")
+    needle = st.text_input(
+        "Search tables, columns and values", key="schema_search",
+        placeholder="denied, salary, channel…", label_visibility="collapsed",
+    ).strip().lower()
+
+    if needle:
+        matches = [r for r in schema if needle in r["haystack"]]
+        cap = f"{len(matches)} of {len(schema)} tables matching “{needle}”"
+        limit = 8
+    else:
+        # With no search, show the tables THIS question retrieved rather than
+        # the first four alphabetically. The alphabetical default opened on
+        # aml_cases every time — an arbitrary table nobody asked about — while
+        # the retriever had already worked out which ten were relevant. The
+        # sidebar should answer "what is this answer standing on", and it has
+        # the answer already.
+        chosen = selected or set()
+        matches = [r for r in schema if r["table"] in chosen] or schema
+        cap = (f"{len(matches)} tables retrieved for this question"
+               if chosen else f"{len(schema)} tables — search to narrow")
+        limit = 6 if chosen else 4
+    st.caption(cap)
+    for row in matches[:limit]:
+        # The table name alone. Appending "· N rows" pushed the label onto two
+        # lines in a 300px sidebar and broke the name mid-word
+        # ("retail_cross_sell_recommend / ations"), which is worse than making
+        # someone open it to see the count.
+        with st.expander(row["table"]):
+            st.caption(f"{row['rows']:,} rows"
+                       + (f" · {row['description']}" if row["description"] else ""))
+            ui.column_list(row["columns"], highlight=needle)
+    if len(matches) > limit:
+        st.caption(f"…and {len(matches) - limit} more. Search to narrow.")
+
+
 def _render_sidebar(active_question: str | None) -> None:
     """The catalogue, with this question's selection lit.
 
@@ -756,9 +842,7 @@ def _render_sidebar(active_question: str | None) -> None:
             destination=("sent to the model" if LIVE_MODE
                          else "handed to the compiler"),
         )
-        st.subheader("What you can ask about")
-        for domain, blurb in DOMAINS.items():
-            ui.domain_card(domain, blurb)
+        _schema_browser(selected)
         st.divider()
         _render_key_control()
         st.divider()
@@ -891,6 +975,99 @@ def _plan_turn(question: str) -> dict:
     elif ran.ok:
         entry["answer"] = "No rows matched."
     return entry
+
+
+def _manual_turn(sql: str, origin: str = "") -> dict:
+    """Run SQL a person typed, through exactly the same boundary.
+
+    This is the feature that turns the page from a demonstration into a tool.
+    The app's whole argument is "the SQL is shown next to the answer so anyone
+    can audit it" — and until now auditing it was all you could do. If you read
+    the query and saw that the compiler had picked `submitted_amount` where you
+    wanted `paid_amount`, the interface's answer was: leave.
+
+    Nothing is relaxed to allow it. A human is exactly as untrusted as the model
+    and as the compiler: the same `validate_sql`, the same `Verifier`, the same
+    capped, cursor-isolated executor. That is the point — the boundary was
+    never about who was writing, so it costs nothing to let you write.
+    """
+    entry = {
+        "question": origin or "Edited query",
+        "engine": "manual",
+        "refused": False,
+        "reason": "",
+        "answer": "",
+        "sql": sql.strip(),
+        "findings": [],
+        "ran": False,
+        "rows": None,
+        "truncated": False,
+        "error": "",
+        "trace": {},
+    }
+    started = time.perf_counter()
+    ok, reason = validate_sql(entry["sql"])
+    entry["guard_ms"] = 1000 * (time.perf_counter() - started)
+    entry["guard_ok"] = ok
+    entry["guard_reason"] = reason
+    if not ok:
+        entry["refused"] = True
+        entry["reason"] = f"{GUARD_BLOCK_PREFIX}: {reason}"
+        entry["refusal_kind"] = "blocked by the guard"
+        return entry
+
+    exec_started = time.perf_counter()
+    ran = run_query(con, entry["sql"])
+    entry["exec_ms"] = 1000 * (time.perf_counter() - exec_started)
+    findings, verify_ms = _verify_now(entry["sql"], ran, origin or "")
+    entry["findings"] = findings
+    entry["verify_ms"] = verify_ms
+    entry["ran"] = bool(ran.ok)
+    entry["error"] = "" if ran.ok else ran.error
+    if ran.ok and ran.rows:
+        entry["rows"] = pd.DataFrame(ran.rows, columns=ran.columns)
+        entry["truncated"] = bool(ran.truncated)
+        value = ran.rows[0][0]
+        entry["answer"] = (_fmt(value) if len(ran.rows) == 1 and len(ran.rows[0]) == 1
+                           else f"{ran.row_count} rows returned.")
+    elif ran.ok:
+        entry["answer"] = "No rows matched."
+    return entry
+
+
+def _sql_editor(entry, index: int) -> None:
+    """The editor attached to one answer.
+
+    Keyed on the transcript index so several turns can each carry their own
+    draft without sharing state. Rendered inside an expander because it is an
+    invitation, not an instruction — the answer above it is complete.
+    """
+    with st.expander("Edit this SQL and run it yourself"):
+        st.caption(
+            "Your query goes through the same read-only guard, the same "
+            "structural verifier and the same 200-row cap as everything else on "
+            "this page. Nothing is relaxed because a person typed it."
+        )
+        # A FORM, not a loose text_area plus a button. Streamlit commits a bare
+        # text_area to session state on blur, and a button click in the same
+        # interaction is processed against the value the server last saw — so
+        # editing the SQL and hitting Run submitted the ORIGINAL query and the
+        # handler correctly answered "that is the same query". A form batches
+        # the field with its submit button, which is the whole reason forms
+        # exist and the only version of this that is not a race.
+        with st.form(key=f"sqlform_{index}", clear_on_submit=False):
+            draft = st.text_area(
+                "SQL", value=entry["sql"], height=170,
+                key=f"sqlbox_{index}", label_visibility="collapsed",
+            )
+            submitted = st.form_submit_button("Run it", type="primary")
+        if submitted:
+            if not draft.strip():
+                st.caption("Nothing to run.")
+            else:
+                st.session_state.transcript.append(
+                    _manual_turn(draft, origin=entry["question"]))
+                st.rerun()
 
 
 def _plan_trace_payload(result) -> dict:
@@ -1129,7 +1306,142 @@ def render_demo_mode(connection) -> None:
     return active["question"]
 
 
-def render_plan_entry(entry) -> None:
+@st.cache_data(show_spinner=False)
+def _nearest_vocabulary(words: tuple[str, ...]) -> list[tuple[str, str]]:
+    """For words the compiler could not place, what the warehouse DOES have.
+
+    A refusal that names the words it could not bind is honest and, on its own,
+    a dead end: the reader is told `lift` meant nothing here and left to guess
+    what would. The semantic layer already holds every column name and every
+    indexed value, so the nearest few are a real answer to "then what CAN I
+    ask", and they cost one pass over a dict.
+
+    Matched on shared prefixes rather than by edit distance. The failures worth
+    catching are "revenue" against `total_revenue` and "employee" against
+    `employee_id` — same stem, different word — and a prefix test finds those
+    without pulling in a similarity library for one panel.
+    """
+    if layer is None or not words:
+        return []
+    out: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for word in words:
+        if len(word) < 4:
+            continue
+        stem = word[:4]
+        for table in layer.tables.values():
+            for column in table.columns:
+                if column.name in seen:
+                    continue
+                if any(part.startswith(stem) for part in column.words):
+                    seen.add(column.name)
+                    out.append((f"{table.name}.{column.name}", column.role))
+                    break
+            if len(out) >= 6:
+                return out
+    return out
+
+
+def _refusal_help(entry) -> None:
+    """Give a refused question somewhere to go.
+
+    Three things a person can act on: the columns whose names are closest to
+    the words that failed, a reminder that the SQL box below takes anything,
+    and the questions this compiler is known to answer.
+    """
+    trace = entry.get("trace") or {}
+    stuck = tuple(sorted(set(trace.get("missed", []) + trace.get("loose", []))))[:4]
+    near = _nearest_vocabulary(stuck)
+    if near:
+        st.markdown("**Closest things this warehouse actually has**")
+        st.markdown("\n".join(
+            f"- `{name}` — {role}" for name, role in near))
+    st.markdown(
+        "You can also **write the SQL yourself** — open any answered question "
+        "above and use its editor, or ask one of the questions on the landing "
+        "page and edit from there."
+    )
+
+
+def _result_block(entry, index: int) -> None:
+    """The rows, how to take them away, and how to change the query.
+
+    Export is not a nicety here. An answer you cannot leave with is a
+    demonstration of an answer; the CSV is what makes this a place you get work
+    done rather than a place you watch work being done.
+    """
+    if entry["rows"] is None:
+        if entry["error"]:
+            st.error(f"Query error: {entry['error']}")
+        return
+    st.dataframe(entry["rows"], use_container_width=True, hide_index=True,
+                 column_config=_numeric_format(entry["rows"]))
+    left, right = st.columns([1, 3])
+    left.download_button(
+        "Download CSV",
+        data=entry["rows"].to_csv(index=False).encode("utf-8"),
+        file_name="ask-your-data.csv", mime="text/csv",
+        key=f"csv_{index}", use_container_width=True,
+    )
+    if entry.get("engine") != "manual":
+        right.caption(
+            "Share this exact question: append "
+            f"`?q={quote_plus(entry['question'])}` to the app URL."
+        )
+
+
+def _evidence_block(entry, trace: dict) -> None:
+    """Everything that argues the answer, one click below it.
+
+    These panels used to be open on every turn, and together they ran about
+    1,400px — so reading a number meant scrolling past the proof of the number,
+    every time, including the twentieth time. They are the reason to trust the
+    app and they are not the reason to open it.
+
+    The pipeline strip, the answer, the binding trace and the SQL stay above:
+    the strip is one line, and the other three ARE the product. Retrieval, the
+    guard, the verifier and the physical plan move in here.
+    """
+    with st.expander("Evidence — retrieval, guard, verifier, query plan"):
+        _show_grounding(entry.get("bundle"), tokens=False)
+        _guard_readout(entry["sql"])
+        _verification_readout(entry["findings"], verify_ms=entry.get("verify_ms"))
+        if entry["rows"] is not None:
+            _result_readout(entry["sql"], entry["rows"],
+                            truncated=bool(entry["truncated"]))
+
+
+def render_manual_entry(entry, index: int) -> None:
+    """A query a person wrote, reported exactly as strictly as a compiled one."""
+    st.chat_message("user").write(f"↳ {entry['sql'].splitlines()[0][:90]}…"
+                                  if len(entry["sql"].splitlines()) > 1
+                                  else f"↳ {entry['sql']}")
+    timings = {k: entry[v] for k, v in
+               (("guard", "guard_ms"), ("verify", "verify_ms"), ("execute", "exec_ms"))
+               if entry.get(v) is not None}
+    with st.chat_message("assistant"):
+        if entry["refused"]:
+            # GUARD lights in the alert colour and EXECUTE stays dark, which is
+            # the true shape of this turn: the statement reached the boundary
+            # and stopped there.
+            ui.pipeline(retrieved=False, planned=False, guarded="fail",
+                        executed=False, timings=timings)
+            ui.refusal(entry["reason"], kind=entry.get("refusal_kind", "blocked"))
+            st.caption("Your query was checked before the database saw it, which "
+                       "is the same thing that happens to the model's SQL.")
+            return
+        ui.pipeline(retrieved=False, planned=False, verified=True, guarded=True,
+                    executed=True if entry["ran"] else "fail", timings=timings)
+        if entry["answer"]:
+            ui.answer(entry["answer"])
+        st.code(entry["sql"], language="sql", wrap_lines=True)
+        _evidence_block(entry, {})
+        _result_block(entry, index)
+        _sql_editor(entry, index)
+        st.caption("You wrote this one. Same guard, same verifier, same row cap.")
+
+
+def render_plan_entry(entry, index: int) -> None:
     """One keyless turn: what the compiler bound, and what the database returned.
 
     A separate renderer from the live path rather than a flag on it. The two
@@ -1163,6 +1475,7 @@ def render_plan_entry(entry) -> None:
                               considered=trace["considered"], bound=trace["bound"],
                               missed=trace["missed"], loose=trace["loose"],
                               plan_ms=entry.get("plan_ms"), refused=True)
+            _refusal_help(entry)
             st.caption(
                 "A refusal here is the compiler working, not failing. It answers "
                 "what it can bind to columns and values, and says so when it "
@@ -1173,7 +1486,6 @@ def render_plan_entry(entry) -> None:
 
         ui.pipeline(retrieved=True, planned=True, verified=True, guarded=True,
                     executed=True if entry["ran"] else "fail", timings=timings)
-        _show_grounding(entry.get("bundle"), tokens=False)
         if entry["answer"]:
             ui.answer(entry["answer"])
         elif entry["error"]:
@@ -1182,8 +1494,6 @@ def render_plan_entry(entry) -> None:
                       considered=trace["considered"], bound=trace["bound"],
                       missed=trace["missed"], loose=trace["loose"],
                       plan_ms=entry.get("plan_ms"))
-        _guard_readout(entry["sql"])
-        _verification_readout(entry["findings"], verify_ms=entry.get("verify_ms"))
         # wrap_lines, not the default horizontal scroll. Measured at 1280 with
         # the sidebar open: the content column is 752px and a joined query is
         # 930px, so 178px of SQL sat off-screen behind a scrollbar. "The SQL is
@@ -1191,11 +1501,9 @@ def render_plan_entry(entry) -> None:
         # central claim, and a claim you have to drag sideways to check is a
         # weaker version of it.
         st.code(entry["sql"], language="sql", wrap_lines=True)
-        if entry["rows"] is not None:
-            _result_readout(entry["sql"], entry["rows"],
-                            truncated=bool(entry["truncated"]))
-            st.dataframe(entry["rows"], use_container_width=True, hide_index=True,
-                         column_config=_numeric_format(entry["rows"]))
+        _evidence_block(entry, trace)
+        _result_block(entry, index)
+        _sql_editor(entry, index)
         st.caption(
             "Compiled from the schema by engine/planner.py — no model, no API "
             "key, no cost. Every clause above traces to a word in the question."
@@ -1213,15 +1521,15 @@ def _layer_cells():
     """
     if layer is None:
         return None
-    s = layer.summary()
+    summary = layer.summary()
     return [
-        (f"{s['role_measure']:,}", "measures",
+        (f"{summary['role_measure']:,}", "measures",
          "numeric columns it can aggregate"),
-        (f"{s['role_dimension']:,}", "dimensions",
+        (f"{summary['role_dimension']:,}", "dimensions",
          "columns it can group by"),
-        (f"{s['joins']:,}", "join edges",
+        (f"{summary['joins']:,}", "join edges",
          "inferred keys, none crossing a domain"),
-        (f"{s['value_phrases']:,}", "value phrases",
+        (f"{summary['value_phrases']:,}", "value phrases",
          "words from the data itself"),
     ]
 
@@ -1318,8 +1626,11 @@ def render_keyless(connection) -> None:
                     clicked = example
         _show_layer_summary()
 
-    for entry in st.session_state.transcript:
-        render_plan_entry(entry)
+    for index, entry in enumerate(st.session_state.transcript):
+        if entry.get("engine") == "manual":
+            render_manual_entry(entry, index)
+        else:
+            render_plan_entry(entry, index)
 
     question = st.chat_input("Ask a question about the data...") or clicked or link
     if question:

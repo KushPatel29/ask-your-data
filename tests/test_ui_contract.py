@@ -576,3 +576,76 @@ def test_the_example_row_passes_height_down_every_rung(rendered):
                  f"{scope} .stButton",
                  f"{scope} .stButton > button"):
         assert rung in css, f"missing rung: {rung}"
+
+
+# --------------------------------------------------------------------------
+# The hand-written query path. A person is exactly as untrusted as the model.
+# --------------------------------------------------------------------------
+
+def test_hand_written_sql_goes_through_the_same_guard():
+    """The editor is only defensible because nothing is relaxed for it.
+
+    Source-level: the suite has no browser, but the boundary is nameable. What
+    must be true is that `_manual_turn` validates before it executes, and that
+    it executes through `run_query` — which validates again — rather than
+    touching the connection itself.
+    """
+    import ast
+
+    tree = ast.parse(_app_source())
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef) and n.name == "_manual_turn")
+    body = ast.unparse(fn)
+    assert "validate_sql" in body, "user SQL must hit the guard"
+    assert "run_query" in body, "user SQL must go through the capped executor"
+    assert "_verify_now" in body, "user SQL must be verified like everything else"
+    # No raw cursor: the executor is the only thing that touches the warehouse.
+    assert ".cursor(" not in body and ".execute(" not in body
+
+
+def test_a_blocked_hand_written_query_never_reaches_execute():
+    """The refusal path must return before any execution is attempted."""
+    import ast
+
+    tree = ast.parse(_app_source())
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef) and n.name == "_manual_turn")
+    src = ast.unparse(fn)
+    guard_at = src.index("validate_sql")
+    run_at = src.index("run_query")
+    early_return = src.index("return entry")
+    assert guard_at < early_return < run_at, (
+        "the guard, its early return, and only then the executor")
+
+
+def test_the_editor_uses_a_form_so_the_draft_cannot_race_the_button():
+    """A bare text_area commits on blur, and the button click is processed
+    against the value the server last saw — so editing the SQL and pressing Run
+    submitted the ORIGINAL query. Measured: the handler answered "that is the
+    same query". A form batches the field with its submit."""
+    import ast
+
+    tree = ast.parse(_app_source())
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef) and n.name == "_sql_editor")
+    body = ast.unparse(fn)
+    assert "st.form(" in body
+    assert "form_submit_button" in body
+
+
+def test_results_can_be_taken_away(rendered):
+    """An answer you cannot leave with is a demonstration of an answer."""
+    source = _app_source()
+    assert "download_button" in source
+    assert "text/csv" in source
+
+
+def test_the_schema_browser_reads_roles_from_the_semantic_layer(rendered):
+    """The sidebar used to carry eleven paragraphs of prose that could not tell
+    you whether a `department` column existed. The layer knows; this is the only
+    place in the app that shows what it concluded per column."""
+    ui, panels = rendered
+    source = _app_source()
+    assert "_searchable_schema" in source
+    assert "layer.tables" in source
+    assert hasattr(ui, "column_list")
