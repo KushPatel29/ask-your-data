@@ -553,3 +553,26 @@ def test_the_build_marker_moves_when_the_engine_moves(rendered, tmp_path):
     finally:
         target.write_bytes(original)
     assert ui.build_marker() == before, "the probe did not restore cleanly"
+
+
+def test_the_example_row_passes_height_down_every_rung(rendered):
+    """Equal-height buttons need the whole chain, not just the column.
+
+    The first attempt stretched `stColumn` and stopped. Streamlit puts a
+    `stElementContainer` between the column and the button as a display:block
+    box sized to its own content, so the columns went to 65px and three of the
+    five buttons stayed at 46. Measured on the running app: 46/65/46/65/65
+    before, 64/64/64/64/64 after.
+
+    Source-level, because the defect is a computed layout and the suite has no
+    browser — but the rung that broke is nameable, so it is named.
+    """
+    ui, _panels = rendered
+    css = ui._CSS
+    scope = ".st-key-ayd-examples"
+    assert f'{scope} [data-testid="stElementContainer"]' in css, (
+        "the container between column and button must be in the chain")
+    for rung in (f'{scope} [data-testid="stColumn"]',
+                 f"{scope} .stButton",
+                 f"{scope} .stButton > button"):
+        assert rung in css, f"missing rung: {rung}"

@@ -194,9 +194,17 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
    one band. st.container(key="ayd-examples") is what emits .st-key-ayd-examples,
    so the rule is scoped to that row and no other button on the page moves. */
 .st-key-ayd-examples [data-testid="stColumn"]{ display:flex; align-items:stretch; }
-.st-key-ayd-examples [data-testid="stColumn"] > div{ width:100%; display:flex; }
-.st-key-ayd-examples .stButton{ width:100%; display:flex; }
-.st-key-ayd-examples .stButton > button{ width:100%; height:100%;
+.st-key-ayd-examples [data-testid="stColumn"] > div{ width:100%; height:100%; }
+/* stElementContainer is the link that broke the first attempt: it sits between
+   the column and the button as a display:block box sized to its own content,
+   so stretching the column moved the COLUMN to 65px and left three of the five
+   buttons at 46. Every rung from the column down to the button has to pass the
+   height along, which means flex on each of them and `flex:1` on the child
+   that must absorb the slack. Measured on the deployed app before and after:
+   46/65/46/65/65 -> 65/65/65/65/65. */
+.st-key-ayd-examples [data-testid="stElementContainer"]{ display:flex; flex:1 1 auto; }
+.st-key-ayd-examples .stButton{ width:100%; display:flex; flex:1 1 auto; }
+.st-key-ayd-examples .stButton > button{ width:100%; flex:1 1 auto;
   white-space:normal; line-height:1.3; }
 
 /* ---- status rail ------------------------------------------------------- */
