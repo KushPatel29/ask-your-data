@@ -257,6 +257,17 @@ def render_all(ui, fx) -> dict[str, str]:
         rows=5, truncated=False, cap=200))
     grab("result_shape_capped", lambda: ui.result_shape(
         [("order_id", "BIGINT")], rows=200, truncated=True, cap=200))
+    grab("refusal", lambda: ui.refusal(
+        f"I have no way to compute a median — {HOSTILE}", kind="not compiled"))
+    grab("refusal_unbound", lambda: ui.refusal(
+        "too much of that question has no counterpart in the warehouse",
+        kind="nothing to bind"))
+    grab("layer_summary", lambda: ui.layer_summary(
+        [("285", "measures", "numeric columns it can aggregate"),
+         ("197", "dimensions", "columns it can group by"),
+         ("56", "join edges", HOSTILE),
+         ("797", "value phrases", "words from the data itself")],
+        footnote=f"All four probed from DuckDB at startup. {HOSTILE}"))
     grab("plan_trace", lambda: ui.plan_trace(
         [("table", f"{HOSTILE} — 1 join"),
          ("metric", "AVG(base_salary)"),

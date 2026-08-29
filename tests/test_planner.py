@@ -592,3 +592,32 @@ def test_numeric_categoricals_up_to_a_full_day_are_dimensions(layer, con):
     result = ask("How many transactions per hour of day?", layer)
     assert result.ok
     assert run_query(con, result.sql).row_count == 24
+
+
+def test_every_refusal_names_its_own_kind(layer):
+    """A refusal has a kind, and the kinds are different facts about the question.
+
+    The UI used to derive this from whether a Plan object had been built, which
+    is a fact about control flow rather than about the question — so "I have no
+    way to compute a median" came out labelled "nothing to bind", when the
+    warehouse binds `salary` perfectly well and it is the GRAMMAR that has no
+    median in it.
+    """
+    cases = {
+        "what's the median salary?": "outside the grammar",
+        "show me the year over year growth": "outside the grammar",
+        "list the departments": "outside the grammar",
+        "asdfqwer zxcv": "nothing to bind",
+        "How many employees left voluntarily?": "not this warehouse",
+        "What was the incremental lift from the geo holdout?": "not enough bound",
+    }
+    for question, expected in cases.items():
+        result = ask(question, layer)
+        assert result.refused, question
+        assert result.kind == expected, f"{question!r} -> {result.kind!r}"
+
+
+def test_an_answered_question_carries_no_refusal_kind(layer):
+    result = ask("How many denied claims are there?", layer)
+    assert result.ok
+    assert result.kind == ""

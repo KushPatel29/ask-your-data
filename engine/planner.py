@@ -338,6 +338,12 @@ class PlanResult:
     reason: str = ""
     candidates: list[str] = field(default_factory=list)
     unbound: set[str] = field(default_factory=set)
+    # Why it refused, in the reader's terms rather than the code's. The UI used
+    # to derive this from whether a Plan object had been built, which is a fact
+    # about control flow and not about the question: "I have no way to compute
+    # a median" came out labelled "nothing to bind", when the warehouse binds
+    # `salary` perfectly well and it is the GRAMMAR that has no median in it.
+    kind: str = ""
     considered: int = 0
     elapsed_ms: float = 0.0
 
@@ -1553,12 +1559,12 @@ def plan_question(question: str, layer: Layer, *,
     started = time.perf_counter()
     words = content_words(question)
     if not words:
-        return PlanResult(question=question, refused=True,
+        return PlanResult(question=question, refused=True, kind="empty question",
                           reason="there is nothing in that question to bind to a table.")
 
     if is_listing_request(question):
         return PlanResult(
-            question=question, refused=True,
+            question=question, refused=True, kind="outside the grammar",
             reason=("I compute aggregates, not listings — every query this "
                     "grammar writes ends in a COUNT, SUM, AVG, share or "
                     "ranking. Ask for a count, a total, or a top-N and I can "
@@ -1566,7 +1572,7 @@ def plan_question(question: str, layer: Layer, *,
     named = unsupported_aggregate(question)
     if named:
         return PlanResult(
-            question=question, refused=True,
+            question=question, refused=True, kind="outside the grammar",
             reason=(f"I have no way to compute a {named} — this grammar writes "
                     "counts, sums, averages, shares and rankings, and nothing "
                     "that needs a window function. Answering with a different "
@@ -1579,7 +1585,7 @@ def plan_question(question: str, layer: Layer, *,
     candidates = _candidate_tables(question, layer, retrieved or [], value_hits)
     if not candidates:
         return PlanResult(
-            question=question, refused=True,
+            question=question, refused=True, kind="nothing to bind",
             reason="no table in the warehouse matches any word in that question.",
             elapsed_ms=1000 * (time.perf_counter() - started))
 
@@ -1602,6 +1608,7 @@ def plan_question(question: str, layer: Layer, *,
     if len(unbound) * 2 >= len(words):
         return PlanResult(
             question=question, refused=True, unbound=unbound,
+            kind="not this warehouse",
             reason=("too much of that question has no counterpart in the "
                     "warehouse (" + ", ".join(sorted(unbound)[:5]) + "). "
                     "I would be answering a simpler question than the one you "
@@ -1609,6 +1616,7 @@ def plan_question(question: str, layer: Layer, *,
     if not accountable:
         return PlanResult(
             question=question, refused=True, unbound=unbound,
+            kind="not this warehouse",
             reason="none of the words in that question appear anywhere in this "
                    "warehouse -- not in a table name, a column, a value, or a "
                    "domain description.")
@@ -1648,6 +1656,7 @@ def plan_question(question: str, layer: Layer, *,
         return PlanResult(
             question=question, plan=nearest, refused=True, candidates=candidates[:6],
             considered=considered, elapsed_ms=elapsed, unbound=unbound,
+            kind="not enough bound",
             reason=(f"I can see {nearest.base}, but too much of the question is "
                     f"unaccounted for" + (f" ({missed})" if missed else "")
                     + ". Naming a column or a value the warehouse uses would let me "
@@ -1656,6 +1665,7 @@ def plan_question(question: str, layer: Layer, *,
         return PlanResult(
             question=question, refused=True, candidates=candidates[:6],
             considered=considered, elapsed_ms=elapsed, unbound=unbound,
+            kind="nothing to bind",
             reason="I could not build a query for that from the loaded tables "
                    "without guessing at what it means.")
     return PlanResult(question=question, plan=best, candidates=candidates[:6],

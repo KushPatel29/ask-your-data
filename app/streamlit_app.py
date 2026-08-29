@@ -66,6 +66,7 @@ lazy, the first question in a fresh container paid 2,916 ms inside its own rende
 embedding engine.retrieval computed for the identical question a moment earlier.
 """
 
+import re
 import sys
 import time
 from pathlib import Path
@@ -842,6 +843,7 @@ def _plan_turn(question: str) -> dict:
         "engine": "planner",
         "refused": result.refused,
         "reason": result.reason,
+        "refusal_kind": result.kind or "not compiled",
         "answer": "",
         "sql": result.sql,
         "attempts": 1,
@@ -911,24 +913,104 @@ def _plan_trace_payload(result) -> dict:
     }
 
 
+def _humanise(name: str) -> str:
+    """`customer_name` -> "customer", `avg_base_salary` -> "base salary".
+
+    Column identifiers leak into the headline otherwise. "5 groups by
+    customer_name, ordered desc" is the query restated in the query's own
+    vocabulary, which is exactly the register a headline should not be in.
+    """
+    words = [w for w in re.split(r"[^a-zA-Z0-9]+", name) if w]
+    drop = {"id", "name", "key", "code", "avg", "sum", "total", "n", "pct"}
+    kept = [w for w in words if w.lower() not in drop] or words
+    return " ".join(kept).lower()
+
+
+def _plural(label: str) -> str:
+    """"customer" -> "customers". Naive, and that is the right amount.
+
+    The alternative was appending the word "groups" to whatever the dimension
+    was called, which produced "the highest of 5 customer groups" — accurate
+    about the SQL and a slightly wrong sentence about the data. These are
+    customers.
+    """
+    if not label or label.endswith("s"):
+        return label
+    if label.endswith("y") and label[-2:-1] not in "aeiou":
+        return label[:-1] + "ies"
+    if label.endswith(("ch", "sh", "x", "z")):
+        return label + "es"
+    return label + "s"
+
+
+def _fmt(value) -> str:
+    """A number a person reads, not a float repr.
+
+    The result grid was printing 100281.5534 next to 93041.791 — different
+    precision on the same column, no thousands separators, in a headline whose
+    job is to be read at a glance.
+    """
+    if isinstance(value, bool) or value is None:
+        return str(value)
+    if isinstance(value, (int, float)):
+        if float(value).is_integer() and abs(value) < 1e15:
+            return f"{int(value):,}"
+        return f"{value:,.2f}"
+    return str(value)
+
+
 def _plan_headline(plan, ran) -> str:
     """One sentence, built from the plan rather than written about it.
 
     No language model is involved, so this cannot be a summary — it is a
     restatement of the query in words, which is the honest thing a compiler can
     offer. The number always comes from `ran`, never from anywhere else.
+
+    It used to restate the PLAN ("5 groups by customer_name, ordered desc"),
+    which told a reader what the compiler did and nothing about their data. When
+    a ranking has a winner, the winner is the answer, so it leads; when a
+    breakdown has no order, the span between its ends is the most useful single
+    sentence available without inventing an interpretation.
     """
-    value = ran.rows[0][0]
-    if plan.group_by is not None and ran.row_count > 1:
-        return (f"{ran.row_count} groups by {plan.group_by.name}"
-                + (f", ordered {plan.order}" if plan.order else "")
-                + ". The full breakdown is below.")
-    if plan.aggregate == planner.RANK and len(ran.rows[0]) > 1:
-        return f"{value} — {plan.measure.name} {ran.rows[0][1]:,.2f}"
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        shown = f"{value:,}" if float(value).is_integer() else f"{value:,.2f}"
-        return f"{shown}"
-    return str(value)
+    rows, value = ran.rows, ran.rows[0][0]
+
+    if plan.aggregate == planner.RANK and len(rows[0]) > 1:
+        return f"{rows[0][0]} — {_humanise(plan.measure.name)} {_fmt(rows[0][1])}"
+
+    if plan.group_by is not None and len(rows[0]) > 1:
+        label = _humanise(plan.group_by.name)
+        if len(rows) == 1:
+            return f"{rows[0][0]} — {_fmt(rows[0][1])}"
+        if plan.order:
+            lead = "highest" if plan.order == "desc" else "lowest"
+            return (f"{rows[0][0]} — {_fmt(rows[0][1])}, the {lead} of "
+                    f"{ran.row_count} {_plural(label)}.")
+        # No ordering was asked for, so naming a "top" would be inventing one.
+        # The two ends of the range are a true summary of an unordered set.
+        numeric = [r[1] for r in rows
+                   if isinstance(r[1], (int, float)) and not isinstance(r[1], bool)]
+        if len(numeric) == len(rows) and numeric:
+            low, high = min(rows, key=lambda r: r[1]), max(rows, key=lambda r: r[1])
+            return (f"{ran.row_count} {_plural(label)}, from {low[0]} "
+                    f"({_fmt(low[1])}) to {high[0]} ({_fmt(high[1])}).")
+        return f"{ran.row_count} {_plural(label)}. The full breakdown is below."
+
+    return _fmt(value)
+
+
+def _numeric_format(frame):
+    """Column config that formats float columns, and nothing else.
+
+    Only floats: an integer count needs no decimals, and a key column that
+    happens to be numeric must not gain thousands separators and stop matching
+    the value in the SQL above it.
+    """
+    config = {}
+    for column in frame.columns:
+        if str(frame[column].dtype).startswith("float"):
+            config[str(column)] = st.column_config.NumberColumn(format="localized")
+    return config or None
+
 
 
 EXAMPLES = [
@@ -1035,7 +1117,7 @@ def render_demo_mode(connection) -> None:
             # questions' SQL. The panel is provenance; provenance reads after
             # the thing it vouches for.
             _show_exemplars(active["question"])
-            st.code(result.sql, language="sql")
+            st.code(result.sql, language="sql", wrap_lines=True)
             frame = pd.DataFrame(result.result.rows, columns=result.result.columns)
             _result_readout(result.sql, frame, truncated=result.result.truncated)
             st.dataframe(frame, use_container_width=True, hide_index=True)
@@ -1071,7 +1153,11 @@ def render_plan_entry(entry) -> None:
         if entry["refused"]:
             ui.pipeline(retrieved=True, planned="fail", guarded=False,
                         executed=False, timings=timings)
-            st.warning(f"I can't compile that one: {entry['reason']}")
+            # The kind comes from engine.planner, which knows why it stopped.
+            # Deriving it here from "did a Plan object get built" labelled the
+            # median refusal "nothing to bind", when the warehouse binds salary
+            # fine and it is the grammar that has no median in it.
+            ui.refusal(entry["reason"], kind=entry.get("refusal_kind", "not compiled"))
             if trace.get("rationale") or trace.get("loose") or trace.get("missed"):
                 ui.plan_trace(trace["rationale"], coverage=trace["coverage"],
                               considered=trace["considered"], bound=trace["bound"],
@@ -1098,15 +1184,58 @@ def render_plan_entry(entry) -> None:
                       plan_ms=entry.get("plan_ms"))
         _guard_readout(entry["sql"])
         _verification_readout(entry["findings"], verify_ms=entry.get("verify_ms"))
-        st.code(entry["sql"], language="sql")
+        # wrap_lines, not the default horizontal scroll. Measured at 1280 with
+        # the sidebar open: the content column is 752px and a joined query is
+        # 930px, so 178px of SQL sat off-screen behind a scrollbar. "The SQL is
+        # shown next to the answer so anyone can audit it" is this project's
+        # central claim, and a claim you have to drag sideways to check is a
+        # weaker version of it.
+        st.code(entry["sql"], language="sql", wrap_lines=True)
         if entry["rows"] is not None:
             _result_readout(entry["sql"], entry["rows"],
                             truncated=bool(entry["truncated"]))
-            st.dataframe(entry["rows"], use_container_width=True, hide_index=True)
+            st.dataframe(entry["rows"], use_container_width=True, hide_index=True,
+                         column_config=_numeric_format(entry["rows"]))
         st.caption(
             "Compiled from the schema by engine/planner.py — no model, no API "
             "key, no cost. Every clause above traces to a word in the question."
         )
+
+
+@st.cache_data(show_spinner=False)
+def _layer_cells():
+    """The semantic layer's counts, read off the layer itself.
+
+    Cached because it is constant for the container, and derived rather than
+    written down: change what engine/semantics.py infers and this panel moves
+    with it. If the layer failed to build there is nothing true to show, so it
+    shows nothing.
+    """
+    if layer is None:
+        return None
+    s = layer.summary()
+    return [
+        (f"{s['role_measure']:,}", "measures",
+         "numeric columns it can aggregate"),
+        (f"{s['role_dimension']:,}", "dimensions",
+         "columns it can group by"),
+        (f"{s['joins']:,}", "join edges",
+         "inferred keys, none crossing a domain"),
+        (f"{s['value_phrases']:,}", "value phrases",
+         "words from the data itself"),
+    ]
+
+
+def _show_layer_summary() -> None:
+    cells = _layer_cells()
+    if not cells:
+        return
+    ui.layer_summary(
+        cells,
+        footnote=("All four probed from DuckDB at startup — no mapping file, no "
+                  "metric layer, nothing hand-written. This is what the compiler "
+                  "knows before you ask it anything."),
+    )
 
 
 KEYLESS_NOTICE = (
@@ -1179,10 +1308,15 @@ def render_keyless(connection) -> None:
     clicked = None
     if not st.session_state.transcript and not link:
         st.write("Try one of these, or type your own:")
-        for column, example in zip(st.columns(len(PLANNER_EXAMPLES)),
-                                   PLANNER_EXAMPLES, strict=True):
-            if column.button(example, use_container_width=True):
-                clicked = example
+        # The container carries .ayd-examples so app/ui.py can stretch the five
+        # buttons to one height. Without it each sizes to its own text and the
+        # row is ragged by up to two lines.
+        with st.container(key="ayd-examples"):
+            for column, example in zip(st.columns(len(PLANNER_EXAMPLES)),
+                                       PLANNER_EXAMPLES, strict=True):
+                if column.button(example, use_container_width=True):
+                    clicked = example
+        _show_layer_summary()
 
     for entry in st.session_state.transcript:
         render_plan_entry(entry)
@@ -1276,7 +1410,7 @@ def render_entry(entry):
                 # query asks to be taken on trust, which is the one currency
                 # this app does not deal in.
                 st.caption("The query that was written and not executed:")
-                st.code(entry["sql"], language="sql")
+                st.code(entry["sql"], language="sql", wrap_lines=True)
             return
         # What the turn ACTUALLY did, read from the loop's own record. Two of
         # these three cells were previously inferred, and both inferences were
@@ -1373,7 +1507,7 @@ def render_entry(entry):
             ui.exemplars(_bank["picks"], corpus=_bank["corpus"], in_prompt=True,
                          fused=bool(_bank.get("fused")))
         with st.expander("Show the SQL and the data behind this answer"):
-            st.code(entry["sql"], language="sql")
+            st.code(entry["sql"], language="sql", wrap_lines=True)
             if entry["rows"] is not None:
                 _result_readout(entry["sql"], entry["rows"],
                                 truncated=bool(entry["truncated"]))

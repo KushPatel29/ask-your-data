@@ -443,3 +443,49 @@ def test_a_pasted_key_is_never_cached_across_sessions():
     decorators = {ast.unparse(d) for d in live.decorator_list}
     assert not any("cache" in d for d in decorators), decorators
     assert "session_state" in ast.unparse(live)
+
+
+# --------------------------------------------------------------------------
+# The two components added in the UI pass: a refusal that belongs to this
+# palette, and the empty state's layer summary.
+# --------------------------------------------------------------------------
+
+def test_a_refusal_claims_neither_accent(rendered):
+    """st.warning's olive was the loudest thing on a near-black page.
+
+    Replacing it raised the real question, and the palette rule above answers
+    it: amber means a committed file backs this number, cyan means a machine
+    derived it, red is a failure. A refusal is none of the three — it is a
+    different KIND of result, not a louder one — so the panel is neutral and
+    its mono heading does the work.
+    """
+    _ui, panels = rendered
+    body = panels["refusal"]
+    assert "ayd-verified" not in body, "amber is reserved for verified values"
+    assert "ayd-alert" not in body, "a refusal is not a failure"
+    assert "ayd-refusal-head" in body, "the heading is what marks it"
+
+
+def test_the_two_refusals_name_themselves_differently(rendered):
+    """"the grammar cannot express this" and "this warehouse has no such words"
+    are different facts, and the heading is where they are told apart."""
+    _ui, panels = rendered
+    assert "not compiled" in panels["refusal"]
+    assert "nothing to bind" in panels["refusal_unbound"]
+
+
+def test_the_layer_summary_states_where_its_numbers_came_from(rendered):
+    """The panel's whole claim is that nothing in it was hand-written."""
+    _ui, panels = rendered
+    body = panels["layer_summary"]
+    assert "probed from DuckDB" in body
+    for n in ("285", "197", "56", "797"):
+        assert n in body
+
+
+def test_the_new_panels_escape_hostile_text(rendered):
+    """Guards the guard: both must actually receive the hostile fixture."""
+    _ui, panels = rendered
+    for name in ("refusal", "layer_summary"):
+        assert "&lt;script&gt;" in panels[name], f"{name} never saw the fixture"
+        assert "<script>" not in panels[name]

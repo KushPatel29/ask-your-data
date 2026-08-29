@@ -186,6 +186,19 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
   font-family:var(--ayd-mono) !important; font-size:.72rem; color:var(--ayd-muted); }
 .ayd-stats b{ color:var(--ayd-ink); font-weight:600; }
 
+/* The example-question row. st.columns lays five buttons side by side and each
+   sizes to its own text, so "Which department has the highest average tenure?"
+   wrapped to four lines while "Total paid amount by payer type" took two — a
+   ragged row of five different heights, which is the first thing on the page a
+   visitor sees. Stretching the column and letting the button fill it makes them
+   one band. st.container(key="ayd-examples") is what emits .st-key-ayd-examples,
+   so the rule is scoped to that row and no other button on the page moves. */
+.st-key-ayd-examples [data-testid="stColumn"]{ display:flex; align-items:stretch; }
+.st-key-ayd-examples [data-testid="stColumn"] > div{ width:100%; display:flex; }
+.st-key-ayd-examples .stButton{ width:100%; display:flex; }
+.st-key-ayd-examples .stButton > button{ width:100%; height:100%;
+  white-space:normal; line-height:1.3; }
+
 /* ---- status rail ------------------------------------------------------- */
 /* Machine state that is true for the whole session, not for one turn: what is
    loaded, which retriever is wired up, what the guard is set to refuse. It sits
@@ -197,10 +210,19 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
    the first cell of the FIRST row - measured at 640px, the first cell of the
    second row drew a 1px stub hard against the container edge. A gap cannot
    produce an edge stub because there is no gap at an edge. */
-.ayd-rail{ display:grid; grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
-  gap:1px; border:1px solid var(--ayd-line); border-radius:3px;
-  background:var(--ayd-line); margin:0 0 1.3rem; overflow:hidden; }
-.ayd-cellgrp{ padding:.5rem .7rem .55rem; min-width:0; background:var(--ayd-panel); }
+/* The separators are drawn ON the cells, not by letting a container background
+   show through 1px gaps. The gap trick is tidier to write and it has one bad
+   failure: seven cells into a six-column grid leaves an orphan on row two, and
+   the five empty column-slots beside it paint the CONTAINER colour. Measured at
+   1280 with the sidebar open, that was a 700px block of #232838 sitting a full
+   step lighter than the panel it borders — reading as a broken cell rather than
+   as empty space. Drawing the rules on the cells makes leftover space panel
+   coloured, so an orphan row simply ends. */
+.ayd-rail{ display:grid; grid-template-columns:repeat(auto-fit,minmax(124px,1fr));
+  gap:0; border:1px solid var(--ayd-line); border-radius:3px;
+  background:var(--ayd-panel); margin:0 0 1.3rem; overflow:hidden; }
+.ayd-cellgrp{ padding:.5rem .7rem .55rem; min-width:0; background:var(--ayd-panel);
+  border-right:1px solid var(--ayd-line); border-bottom:1px solid var(--ayd-line); }
 .ayd-cellgrp .k{ display:block; font-family:var(--ayd-mono) !important; font-size:.6rem;
   letter-spacing:.17em; text-transform:uppercase; color:var(--ayd-muted); margin-bottom:.26rem; }
 .ayd-cellgrp .v{ display:block; font-family:var(--ayd-mono) !important; font-size:.76rem;
@@ -323,6 +345,60 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .ayd-check::before{ content:'✓'; color:var(--ayd-machine); margin-right:.35rem; }
 .ayd-check[data-pass="0"]{ color:var(--ayd-alert); }
 .ayd-check[data-pass="0"]::before{ content:'✕'; color:var(--ayd-alert); }
+
+/* What the compiler read out of the warehouse, on the empty state.
+
+   The landing page used to end at the example buttons and leave roughly 700px
+   of nothing between them and the chat input — over half the first screen at
+   768x1900. The honest thing to put there is not decoration: it is the four
+   numbers that make the keyless engine possible at all, every one of them
+   probed from DuckDB at startup rather than typed into this file. A visitor who
+   reads nothing else learns that the thing answering them derived its own
+   understanding of the schema. */
+.ayd-layer{ display:grid; grid-template-columns:repeat(auto-fit,minmax(184px,1fr));
+  gap:0; border:1px solid var(--ayd-line); border-radius:3px;
+  background:var(--ayd-panel); margin:.2rem 0 1rem; overflow:hidden; }
+.ayd-layer-cell{ padding:.7rem .85rem .75rem; min-width:0;
+  border-right:1px solid var(--ayd-line); border-bottom:1px solid var(--ayd-line); }
+.ayd-layer-n{ display:block; font-family:var(--ayd-cond) !important; font-weight:700;
+  font-size:1.5rem; line-height:1.1; color:var(--ayd-machine);
+  font-variant-numeric:tabular-nums; }
+.ayd-layer-k{ display:block; font-family:var(--ayd-mono) !important; font-size:.6rem;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--ayd-muted);
+  margin-top:.3rem; }
+.ayd-layer-w{ display:block; font-family:var(--ayd-mono) !important; font-size:.62rem;
+  color:var(--ayd-muted); line-height:1.45; margin-top:.2rem; }
+.ayd-layer-foot{ grid-column:1 / -1; padding:.55rem .85rem .6rem;
+  border-bottom:1px solid transparent; font-family:var(--ayd-mono) !important;
+  font-size:.62rem; color:var(--ayd-muted); line-height:1.5; }
+
+/* A refusal, in this palette rather than Streamlit's.
+
+   st.warning paints an olive box with a black-on-yellow icon, which on this
+   near-black instrument panel is the single loudest thing on the page — louder
+   than the answer, in a hue the design system does not otherwise use. And a
+   refusal is not a warning: nothing went wrong. The compiler declined to guess,
+   which is the behaviour this whole project argues for, so it gets the amber
+   the app already reserves for "this claim is backed", not a colour that reads
+   as an error.
+
+   NEITHER accent, though, and the repo's own test is what settled it: amber
+   means "a committed file backs this number" and cyan means "a machine derived
+   this", and a refusal is neither. `--ayd-alert` is the failure state and a
+   refusal is not a failure. So the panel is neutral, and the mono heading does
+   the work of marking it as a different KIND of result rather than a louder
+   one.
+
+   The heading names WHICH kind of refusal, because they are different facts:
+   the grammar cannot express the question, or the question cannot be bound to
+   this warehouse. */
+.ayd-refusal{ border:1px solid var(--ayd-line); border-left:2px solid var(--ayd-muted);
+  border-radius:3px; background:var(--ayd-panel); padding:.7rem .9rem .75rem;
+  margin:.2rem 0 .9rem; }
+.ayd-refusal-head{ font-family:var(--ayd-mono) !important; font-size:.62rem;
+  letter-spacing:.15em; text-transform:uppercase; color:var(--ayd-muted);
+  margin-bottom:.4rem; }
+.ayd-refusal-body{ font-size:.9rem; line-height:1.5; color:var(--ayd-ink); }
 
 /* The compiler trace. One row per binding decision, each carrying the words in
    the question that bought it. This panel exists because the deterministic
@@ -646,7 +722,10 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
   .ayd-rk{ text-align:left; }
   .ayd-rk::before{ content:'v '; color:var(--ayd-muted); }
   .ayd-rk.dim::before{ content:'k '; }
-  .ayd-map-row{ grid-template-columns:74px minmax(0,1fr); }
+  /* 84px, not 74px. `supplychain` is the longest domain name in the manifest
+     and it measures 77px at this size — at 74 it ellipsised to "supplychai…",
+     which is a catalogue that cannot name its own contents. */
+  .ayd-map-row{ grid-template-columns:84px minmax(0,1fr); }
   /* The correction that ended an attempt is a DuckDB error message and it is
      the content of that panel, so at 375px it takes its own line rather than
      being squeezed into a ~190px column and wrapped to six. */
@@ -658,6 +737,14 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
   .ayd-ver-row{ grid-template-columns:auto auto; row-gap:.18rem; column-gap:.7rem; }
   .ayd-ver-check{ text-align:left; }
   .ayd-ver-msg{ grid-column:1 / -1; }
+  /* The compiler trace stacks, for the reason every other panel here stacks:
+     a 5.6rem label column is 90px of a 375px screen, which left 159px for the
+     binding and wrapped "hr_fact_employees — 1 join" onto two lines. The label
+     is four characters of context; the binding is the content. */
+  .ayd-trace-row{ display:grid; grid-template-columns:minmax(0,1fr);
+    row-gap:.05rem; padding:.24rem 0; }
+  .ayd-trace-key{ min-width:0; }
+
   /* The domain/score pair drops under the question rather than squeezing it,
      and the SQL loses its hanging indent so the scroll track is full width. */
   .ayd-ex-top{ grid-template-columns:20px minmax(0,1fr); row-gap:.14rem; }
@@ -867,6 +954,50 @@ def pipeline(*, retrieved: bool = False, generated: bool = False,
     if attempts > 1:
         parts.append(f'<span class="ayd-step" data-on="fail">retry ×{attempts - 1}</span>')
     st.markdown(f'<div class="ayd-pipe">{"".join(parts)}</div>', unsafe_allow_html=True)
+
+
+def layer_summary(cells: list[tuple[str, str, str]], *, footnote: str = "") -> None:
+    """The semantic layer's own counts, for the empty state.
+
+    `cells` is (number, label, gloss). Every value is passed in from
+    engine.semantics' summary of the live warehouse — this component invents
+    nothing, which is the only reason it is worth showing. It fills the space
+    the landing page used to leave blank between the examples and the chat box,
+    and it answers the question a visitor actually has there: what does this
+    thing know before I ask it anything.
+    """
+    body = "".join(
+        f'<div class="ayd-layer-cell"><span class="ayd-layer-n">{html.escape(n)}</span>'
+        f'<span class="ayd-layer-k">{html.escape(k)}</span>'
+        f'<span class="ayd-layer-w">{html.escape(w)}</span></div>'
+        for n, k, w in cells
+    )
+    foot = (f'<div class="ayd-layer-foot">{html.escape(footnote)}</div>'
+            if footnote else "")
+    st.markdown(f'<div class="ayd-layer ayd-hud">{body}{foot}</div>',
+                unsafe_allow_html=True)
+
+
+def refusal(reason: str, *, kind: str = "not compiled") -> None:
+    """The compiler declined, said why, and that is a result rather than an error.
+
+    Deliberately not st.warning. A refusal is the designed behaviour of this
+    app — the thing its README argues for — and painting it in Streamlit's
+    olive alert made it the loudest element on the page, in a hue this palette
+    does not otherwise use.
+
+    It is also deliberately not amber and not red. Amber is reserved for "a
+    committed file backs this number" and red for a failure; a refusal is
+    neither, so the panel is neutral and its mono heading carries the meaning.
+    """
+    st.markdown(
+        f"""
+<div class="ayd-refusal ayd-hud">
+  <div class="ayd-refusal-head">{html.escape(kind)}</div>
+  <div class="ayd-refusal-body">{html.escape(reason)}</div>
+</div>""",
+        unsafe_allow_html=True,
+    )
 
 
 def plan_trace(rationale, *, coverage: float, considered: int,
