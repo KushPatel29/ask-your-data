@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-645%20%C2%B7%20644%20run%20without%20an%20API%20key-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-648%20%C2%B7%20647%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
@@ -330,7 +330,7 @@ defend in an interview:
   comparing one scored twelve correct breakdowns as wrong.
 
 ```
-645 tests — 644 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
+648 tests — 647 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
 1 live model test skips without a key.
 ```
 

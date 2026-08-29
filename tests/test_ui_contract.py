@@ -489,3 +489,67 @@ def test_the_new_panels_escape_hostile_text(rendered):
     for name in ("refusal", "layer_summary"):
         assert "&lt;script&gt;" in panels[name], f"{name} never saw the fixture"
         assert "<script>" not in panels[name]
+
+
+# --------------------------------------------------------------------------
+# The build marker, which is the only way to tell a fresh deploy from a warm
+# container still serving the old one.
+# --------------------------------------------------------------------------
+
+def test_the_build_marker_covers_the_engine_not_just_the_ui(rendered):
+    """It used to watch four files, and the guess failed the first real test.
+
+    The commit that added `engine/planner.py` — a 1,400-line engine that answers
+    every question on the keyless path — touched none of the four and produced
+    an identical marker. So did the one that added `engine/semantics.py`. Four
+    consecutive commits, two of them entire new subsystems, all reported the
+    same build.
+
+    Asserted structurally rather than by hashing: the point is which files are
+    consulted, and a hash test would pass while silently watching the wrong set.
+    """
+    import ast
+    from pathlib import Path
+
+    source = (Path(audit_ui.__file__).resolve().parent.parent
+              / "app" / "ui.py").read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    fn = next(n for n in ast.walk(tree)
+              if isinstance(n, ast.FunctionDef) and n.name == "build_marker")
+    body = ast.unparse(fn)
+    assert "'engine'" in body or '"engine"' in body, (
+        "the marker must hash the engine, or it cannot see a new one")
+    assert "'app'" in body or '"app"' in body
+    assert "data_manifest" in body
+    assert "evals" in body
+
+
+def test_the_build_marker_is_stable_and_short(rendered):
+    ui, _panels = rendered
+    first, second = ui.build_marker(), ui.build_marker()
+    assert first == second, "the marker must not move between two reads"
+    assert len(first) == 7 and all(c in "0123456789abcdef" for c in first)
+
+
+def test_the_build_marker_moves_when_the_engine_moves(rendered, tmp_path):
+    """Proves the watch list is live, by editing a file inside it.
+
+    engine/planner.py is the file the old marker was blind to, so it is the one
+    worth proving. The edit is made and reverted in a temp copy of nothing —
+    the real file is restored in a finally, and the test fails loudly if it
+    cannot be.
+    """
+    from pathlib import Path
+
+    ui, _panels = rendered
+    target = (Path(audit_ui.__file__).resolve().parent.parent
+              / "engine" / "planner.py")
+    before = ui.build_marker()
+    original = target.read_bytes()
+    try:
+        target.write_bytes(original + b"\n# marker probe\n")
+        assert ui.build_marker() != before, (
+            "editing engine/planner.py must change the build marker")
+    finally:
+        target.write_bytes(original)
+    assert ui.build_marker() == before, "the probe did not restore cleanly"

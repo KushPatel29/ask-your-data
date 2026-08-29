@@ -772,27 +772,48 @@ def build_marker() -> str:
     way to tell from the page whether you were looking at the new build or a
     warm container still serving the old one. Hashing the source is more honest
     than a hand-bumped version string, which only ever tells you what someone
-    remembered to change: this moves whenever the UI, the retriever or the
-    manifest actually moves.
+    remembered to change.
 
-    Not git-derived on purpose - the deployed checkout may have no .git, and a
-    marker that silently degrades to "unknown" answers nothing.
+    IT USED TO WATCH FOUR FILES — ui.py, streamlit_app.py, retrieval.py and the
+    manifest — and that was not "the running source", it was a guess at which
+    parts of it mattered. The guess failed the first time it was tested for
+    real: the commit that added `engine/planner.py`, a 1,400-line engine that
+    answers every question on the keyless path, touched none of the four and
+    produced an IDENTICAL marker. So did the commit that added
+    `engine/semantics.py`. Four consecutive commits, two of them entire new
+    subsystems, all reported the same build — and a deploy marker that cannot
+    see a new engine is worse than no marker, because it is consulted and
+    believed.
+
+    So it walks the whole tree now: every .py under app/ and engine/, the
+    manifest, and the YAML contracts that drive what the app answers. The path
+    is hashed alongside the bytes, so adding, renaming or deleting a file moves
+    the marker too.
+
+    Not git-derived on purpose — the deployed checkout may have no .git, and a
+    marker that silently degrades to "unknown" answers nothing. Not cached
+    either: hashing ~20 small files is under a millisecond, and a cached marker
+    would go stale under Streamlit's hot reload, which is precisely when you are
+    watching it.
     """
     import hashlib
 
     root = Path(__file__).resolve().parents[1]
-    watched = [
-        root / "app" / "ui.py",
-        root / "app" / "streamlit_app.py",
-        root / "engine" / "retrieval.py",
-        root / "data_manifest.py",
-    ]
+    watched: list[Path] = []
+    for folder in ("app", "engine"):
+        watched.extend(sorted((root / folder).glob("*.py")))
+    watched.append(root / "data_manifest.py")
+    watched.extend(sorted((root / "evals").glob("*.yaml")))
+
     digest = hashlib.sha256()
-    for path in watched:
+    for path in sorted(watched, key=lambda p: p.relative_to(root).as_posix()):
+        # The path goes in as well as the bytes: a file that appears or
+        # disappears has to move the marker even if nothing else changed.
+        digest.update(path.relative_to(root).as_posix().encode())
         try:
             # Normalise line endings before hashing. Git checks these files out
             # with CRLF on Windows and LF on the Linux box that runs the deploy,
-            # so hashing raw bytes gave identical source two different markers -
+            # so hashing raw bytes gave identical source two different markers —
             # which defeats the entire point of comparing local against live.
             raw = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
             digest.update(raw)
