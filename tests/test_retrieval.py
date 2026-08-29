@@ -85,7 +85,8 @@ def test_hybrid_beats_its_parts_on_the_cases_that_motivated_it(con):
 
 def test_keyword_baseline_is_a_real_alternative(con):
     """The baseline has to actually work, or beating it proves nothing."""
-    hits = retrieval.retrieve_keyword("Which site generates the most data queries per enrolled subject?", con=con)
+    hits = retrieval.retrieve_keyword(
+        "Which site generates the most data queries per enrolled subject?", con=con)
     assert "clinical_query_log" in {h.table for h in hits}
 
 

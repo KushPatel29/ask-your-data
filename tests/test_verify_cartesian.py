@@ -13,10 +13,10 @@ and the implicit `FROM a, b WHERE` form.
 """
 
 import itertools
+from pathlib import Path
 
 import pytest
 import yaml
-from pathlib import Path
 
 from engine.query import run_query
 from engine.verify import DOMAIN_OF, ERROR, WARN, Verifier
@@ -148,7 +148,7 @@ def _generated_joins(con):
     by_domain = {}
     for table, domain in DOMAIN_OF.items():
         by_domain.setdefault(domain, []).append(table)
-    for domain, tables in by_domain.items():
+    for _domain, tables in by_domain.items():
         facts = [t for t in tables if "dim_" not in t]
         dims = [t for t in tables if "dim_" in t]
         for fact, dim in itertools.product(facts, dims):

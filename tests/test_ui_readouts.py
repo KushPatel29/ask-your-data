@@ -400,7 +400,8 @@ def test_no_golden_question_is_ever_shown_its_own_pair():
 
     39 of 39, over the same selector the app calls.
     """
-    from engine import demo_mode, exemplars as ex
+    from engine import demo_mode
+    from engine import exemplars as ex
 
     ex.build_index()
     for case in demo_mode.load_golden_questions():

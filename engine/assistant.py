@@ -29,15 +29,15 @@ import os
 import re
 from dataclasses import dataclass, field
 
-# No `import anthropic` here any more, and that absence is the point: after
-# the provider seam this module has no vendor SDK dependency at all. The
-# Anthropic client lives in engine/providers.py alongside every other
-# backend, so swapping the model never touches the reasoning loop.
-from engine.query import QueryResult, run_query
+# No `import anthropic` anywhere below, and that absence is the point: after the
+# provider seam this module has no vendor SDK dependency at all. The Anthropic
+# client lives in engine/providers.py alongside every other backend, so swapping
+# the model never touches the reasoning loop.
 from engine.exemplars import exemplar_block
 from engine.providers import AnthropicProvider, ProviderUnavailable, build_provider
-from engine.verify import Verifier, correction_message
+from engine.query import QueryResult, run_query
 from engine.retrieval import schema_catalog_for
+from engine.verify import Verifier, correction_message
 from engine.warehouse import table_names
 
 # Opus 5. Thinking is ON BY DEFAULT on this model - omitting the parameter runs

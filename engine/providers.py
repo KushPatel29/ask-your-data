@@ -77,7 +77,6 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-
 # --------------------------------------------------------------------------
 # The contract
 # --------------------------------------------------------------------------
@@ -653,7 +652,8 @@ _PARSER_CASES = [
      '```\n{"name":"answer_with_sql","input":{"sql":"%s","explanation":"x"}}\n```' % _SQL,
      "answer_with_sql"),
     ("prose preamble",
-     'Sure! Here is the query:\n{"name":"answer_with_sql","input":{"sql":"%s","explanation":"x"}}' % _SQL,
+     'Sure! Here is the query:\n{"name":"answer_with_sql","input":'
+     '{"sql":"%s","explanation":"x"}}' % _SQL,
      "answer_with_sql"),
     ("prose epilogue",
      '{"name":"answer_with_sql","input":{"sql":"%s","explanation":"x"}}\nHope that helps!' % _SQL,
@@ -683,7 +683,8 @@ _PARSER_CASES = [
      '{"name":"answer_with_sql","input":{"sql":"%s","explanation":"x","note":None}}' % _SQL,
      "answer_with_sql"),
     ("unescaped newlines in sql",
-     '{"name":"answer_with_sql","input":{"sql":"SELECT COUNT(*)\nFROM hr_fact_employees\nWHERE is_active = 1","explanation":"x"}}',
+     '{"name":"answer_with_sql","input":{"sql":"SELECT COUNT(*)\n'
+     'FROM hr_fact_employees\nWHERE is_active = 1","explanation":"x"}}',
      "answer_with_sql"),
     ("tabs in sql",
      '{"name":"answer_with_sql","input":{"sql":"SELECT\t1","explanation":"x"}}',
@@ -699,7 +700,8 @@ _PARSER_CASES = [
      json.dumps({"name": "cannot_answer", "input": {"reason": "no such table"}}),
      "cannot_answer"),
     ("two objects, first usable",
-     '{"name":"answer_with_sql","input":{"sql":"%s","explanation":"x"}}\n{"name":"cannot_answer","input":{"reason":"y"}}' % _SQL,
+     '{"name":"answer_with_sql","input":{"sql":"%s","explanation":"x"}}\n'
+     '{"name":"cannot_answer","input":{"reason":"y"}}' % _SQL,
      "answer_with_sql"),
     # must NOT parse
     ("prose only", "The answer is 1,483 active employees.", None),

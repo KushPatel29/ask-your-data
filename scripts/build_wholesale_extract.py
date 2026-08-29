@@ -119,7 +119,8 @@ def queries(fact: str, finance: str, marketing: str, labor: str) -> dict[str, st
                 ROUND(SUM(QuantityOrdered), 2)               AS cases_ordered,
                 ROUND(SUM(QuantityShipped), 2)               AS cases_shipped,
                 ROUND(100.0 * COUNT(*) FILTER (WHERE NOT IsLate) / COUNT(*), 2) AS on_time_line_pct,
-                ROUND(100.0 * SUM(QuantityShipped) / NULLIF(SUM(QuantityOrdered), 0), 2) AS fill_rate_pct
+                ROUND(100.0 * SUM(QuantityShipped)
+                      / NULLIF(SUM(QuantityOrdered), 0), 2) AS fill_rate_pct
             FROM {fact}
             GROUP BY 1
             ORDER BY revenue DESC
@@ -134,7 +135,8 @@ def queries(fact: str, finance: str, marketing: str, labor: str) -> dict[str, st
                 ANY_VALUE(SupplierId)                        AS supplier_id,
                 ANY_VALUE(SupplierName)                      AS supplier_name,
                 ANY_VALUE(UnitOfBillingId)                   AS unit_of_billing_id,
-                CASE WHEN ANY_VALUE(UnitOfBillingId) = 3 THEN 'weight' ELSE 'each' END AS billing_basis,
+                CASE WHEN ANY_VALUE(UnitOfBillingId) = 3 THEN 'weight'
+                     ELSE 'each' END AS billing_basis,
                 ANY_VALUE(IsCatchWeight)                     AS is_scale_item,
                 ROUND(100.0 * ANY_VALUE(YieldPct), 2)        AS sell_through_pct,
                 ROUND(AVG(ListPrice), 4)                     AS avg_list_price,
@@ -169,9 +171,11 @@ def queries(fact: str, finance: str, marketing: str, labor: str) -> dict[str, st
                 ROUND(SUM({REVENUE}), 2)                     AS revenue,
                 ROUND(SUM({COGS}), 2)                        AS cogs,
                 ROUND(SUM({REVENUE}) - SUM({COGS}), 2)       AS gross_margin,
-                ROUND(100.0 * (SUM({REVENUE}) - SUM({COGS})) / NULLIF(SUM({REVENUE}), 0), 2) AS gross_margin_pct,
+                ROUND(100.0 * (SUM({REVENUE}) - SUM({COGS}))
+                      / NULLIF(SUM({REVENUE}), 0), 2) AS gross_margin_pct,
                 ROUND(100.0 * COUNT(*) FILTER (WHERE NOT IsLate) / COUNT(*), 2) AS on_time_line_pct,
-                ROUND(100.0 * SUM(QuantityShipped) / NULLIF(SUM(QuantityOrdered), 0), 2) AS fill_rate_pct,
+                ROUND(100.0 * SUM(QuantityShipped)
+                      / NULLIF(SUM(QuantityOrdered), 0), 2) AS fill_rate_pct,
                 COUNT(*) FILTER (WHERE IsStockout)           AS stockout_lines,
                 ROUND(AVG(TransitDays), 2)                   AS avg_transit_days
             FROM {fact}
@@ -191,7 +195,8 @@ def queries(fact: str, finance: str, marketing: str, labor: str) -> dict[str, st
                 ROUND(SUM({REVENUE}), 2)                     AS revenue,
                 ROUND(SUM({COGS}), 2)                        AS cogs,
                 ROUND(SUM({REVENUE}) - SUM({COGS}), 2)       AS gross_margin,
-                ROUND(100.0 * SUM({REVENUE}) / NULLIF(MAX(MonthlyQuota), 0), 2) AS quota_attainment_pct,
+                ROUND(100.0 * SUM({REVENUE})
+                      / NULLIF(MAX(MonthlyQuota), 0), 2) AS quota_attainment_pct,
                 COUNT(DISTINCT OrderId)                      AS orders,
                 COUNT(DISTINCT CustomerId)                   AS active_stores,
                 COUNT(*)                                     AS order_lines
@@ -202,7 +207,8 @@ def queries(fact: str, finance: str, marketing: str, labor: str) -> dict[str, st
         # ---- monthly finance summary (already monthly at source)
         "finance_monthly": f"""
             SELECT
-                CAST(month AS DATE) AS month, month_label, fiscal_year, fiscal_period, days_in_month,
+                CAST(month AS DATE) AS month, month_label, fiscal_year,
+                fiscal_period, days_in_month,
                 gross_sales, discounts, revenue, cogs, gross_profit, orders,
                 operating_expenses, opex_selling, opex_warehouse, opex_occupancy,
                 opex_admin, opex_technology, opex_marketing,
@@ -241,7 +247,8 @@ def queries(fact: str, finance: str, marketing: str, labor: str) -> dict[str, st
                 ROUND(SUM(absence_h), 2)                     AS absence_hours,
                 ROUND(SUM(labor_cost), 2)                    AS labor_cost,
                 ROUND(SUM(overtime_cost), 2)                 AS overtime_cost,
-                ROUND(100.0 * SUM(overtime_h) / NULLIF(SUM(paid_hours), 0), 2) AS overtime_hours_pct,
+                ROUND(100.0 * SUM(overtime_h)
+                      / NULLIF(SUM(paid_hours), 0), 2) AS overtime_hours_pct,
                 ROUND(SUM(labor_cost) / NULLIF(SUM(paid_hours), 0), 2) AS cost_per_paid_hour,
                 COUNT(DISTINCT employee_code) FILTER (WHERE separation_flag) AS separations
             FROM (
@@ -267,8 +274,10 @@ def main():
     repo = src_root / "wholesale-analytics-platform"
 
     fact = f"read_parquet('{(repo / 'cache/fact_dataset/**/*.parquet').as_posix()}')"
-    finance = f"read_parquet('{(repo / 'cache/finance/fact_dataset/finance_demo.parquet').as_posix()}')"
-    marketing = f"read_parquet('{(repo / 'cache/marketing/fact_dataset/marketing_demo.parquet').as_posix()}')"
+    finance_path = (repo / "cache/finance/fact_dataset/finance_demo.parquet").as_posix()
+    finance = f"read_parquet('{finance_path}')"
+    marketing_path = (repo / "cache/marketing/fact_dataset/marketing_demo.parquet").as_posix()
+    marketing = f"read_parquet('{marketing_path}')"
     labor = f"read_parquet('{(repo / 'cache/labor/fact_dataset/labor_demo.parquet').as_posix()}')"
 
     out_repo = repo / "cache" / "ask_your_data"

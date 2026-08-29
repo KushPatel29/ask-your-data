@@ -466,7 +466,8 @@ def experiment_tokeniser(con, cases, base, fixed, qvecs) -> None:
     for cname, corpus in (("base corpus", base), ("fixed corpus", fixed)):
         for tname, tok in (("atomic", _tokens), ("split", _tokens_split)):
             results.append(
-                score(f"{cname} · keyword · {tname}", corpus, cases, qvecs, sel_keyword(tokenise=tok))
+                score(f"{cname} · keyword · {tname}", corpus, cases, qvecs,
+                      sel_keyword(tokenise=tok))
             )
             results.append(
                 score(f"{cname} · hybrid · {tname}", corpus, cases, qvecs, sel_hybrid(tokenise=tok))
@@ -656,13 +657,14 @@ def experiment_columns(con, cases, corpus, qvecs) -> None:
     print("\n  One document per column, rolled up to the parent table:")
     col_docs, col_owner = [], []
     for name in corpus.names:
-        for cname, ctype in corpus.columns.get(name, []):
+        for cname, _ctype in corpus.columns.get(name, []):
             col_docs.append(
                 f"{cname.replace('_', ' ')} — a column of {name} "
                 f"({corpus.domains[name]} domain). {corpus.descriptions[name]}"
             )
             col_owner.append(name)
-    print(f"    corpus size: {len(col_docs)} column documents vs {len(corpus.names)} table documents")
+    print(f"    corpus size: {len(col_docs)} column documents "
+          f"vs {len(corpus.names)} table documents")
     cvecs = embed(col_docs)
     owner = np.array(col_owner)
 
@@ -849,7 +851,8 @@ def experiment_combined(con, cases, base, fixed, qvecs) -> None:
     print("=" * 78)
 
     def sel_split_hybrid(c, case, qv):
-        return [n for n, _ in hybrid_ranking(c, case.question, qv, tokenise=_tokens_split)[:DEFAULT_K]]
+        ranked = hybrid_ranking(c, case.question, qv, tokenise=_tokens_split)
+        return [n for n, _ in ranked[:DEFAULT_K]]
 
     def sel_split_rerank(c, case, qv):
         fused = hybrid_ranking(c, case.question, qv, tokenise=_tokens_split)
@@ -922,9 +925,11 @@ PARAPHRASES = {
     "top_customer": "Who buys the most from us?",
     "high_churn_customers": "How many buyers look like they are about to leave?",
     "total_exceptions": "How many places do our two sets of books disagree?",
-    "site_query_rate_per_subject": "Which hospital raises the most data problems per person enrolled?",
+    "site_query_rate_per_subject":
+        "Which hospital raises the most data problems per person enrolled?",
     "aml_riskiest_channel": "Which way of paying gets flagged as dodgy most often?",
-    "wholesale_lowest_margin_department": "Which part of the shop makes the least profit per dollar sold?",
+    "wholesale_lowest_margin_department":
+        "Which part of the shop makes the least profit per dollar sold?",
     "dbt_most_tested_model": "Which table in our pipeline has the most checks on it?",
     "expected_nrv_total": "Of the money still owed to us, how much will we really see?",
 }
@@ -1018,7 +1023,9 @@ EXPERIMENTS = (
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--only", choices=EXPERIMENTS, action="append", default=None)
     ap.add_argument("--verify", action="store_true")
     args = ap.parse_args(argv)
@@ -1028,7 +1035,8 @@ def main(argv=None) -> int:
     cases = load_cases(con)
     base = build_corpus(con)
     qvecs = embed([c.question for c in cases])
-    print(f"\n{len(base.names)} tables · {len(cases)} labelled questions · k={DEFAULT_K} unless stated")
+    print(f"\n{len(base.names)} tables · {len(cases)} labelled questions · "
+          f"k={DEFAULT_K} unless stated")
 
     if args.verify:
         verify(con, cases, base, qvecs)

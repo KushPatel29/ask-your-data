@@ -27,7 +27,7 @@ import yaml
 
 from engine.query import run_query
 from engine.sql_guard import validate_sql
-from engine.verify import Verifier, parse_sql, _relations
+from engine.verify import Verifier, _relations, parse_sql
 from engine.warehouse import schema_catalog, table_columns
 
 GOLDEN = Path(__file__).resolve().parent.parent / "evals" / "golden_questions.yaml"
