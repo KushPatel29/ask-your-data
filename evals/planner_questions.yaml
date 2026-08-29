@@ -1,0 +1,478 @@
+# The keyless planner's accuracy contract.
+#
+# `evals/golden_questions.yaml` grades the MODEL. Its questions deliberately
+# carry business definitions the schema does not contain ("net collection rate",
+# "cost-optimal threshold", "incremental lift"), because resolving those is what
+# you are paying a language model for. Scoring `engine/planner.py` against that
+# file alone measures how badly a compiler does at a job it was never given.
+#
+# This file grades the PLANNER, on the job it actually claims: ordinary ad-hoc
+# questions of a kind nobody pre-registered, phrased the way someone would type
+# them into a chat box. The reference SQL was written first, by hand, from the
+# schema -- NOT lifted from what the planner produced. Two of these were written
+# knowing the planner refuses them, and they are kept for exactly that reason:
+# an eval set trimmed to what already passes measures nothing.
+#
+# `expect` is the reference SQL's own first-row-first-column value, computed
+# against the vendored data and frozen here, so CI catches data drift and
+# planner drift as separate failures. `expect_rows` pins how many rows the
+# reference returns, so a breakdown that silently collapses to one row fails.
+#
+# scripts/run_planner_eval.py runs both sides and reports match / differs /
+# refused. tests/test_planner_contract.py is what makes it a contract.
+
+- id: denied_claims
+  domain: healthcare
+  question: How many denied claims are there?
+  sql: SELECT COUNT(*) FROM healthcare_fact_claims WHERE status = 'Denied'
+  expect: 876
+  expect_rows: 1
+
+- id: avg_allowed_amount
+  domain: healthcare
+  question: What is the average allowed amount per claim?
+  sql: SELECT AVG(allowed_amount) FROM healthcare_fact_claims
+  expect: 1428.852728
+  expect_rows: 1
+
+- id: paid_by_payer_type
+  domain: healthcare
+  question: Total paid amount by payer type
+  sql: >
+    SELECT p.payer_type, SUM(c.paid_amount)
+    FROM healthcare_fact_claims c
+    JOIN healthcare_dim_payer p ON c.payer_id = p.payer_id
+    GROUP BY 1 ORDER BY 1
+  expect: Commercial
+  expect_rows: 5
+
+- id: claims_by_ar_bucket
+  domain: healthcare
+  question: How many claims per ar bucket?
+  sql: SELECT ar_bucket, COUNT(*) FROM healthcare_fact_claims GROUP BY 1 ORDER BY 1
+  expect: 0-30
+  expect_rows: 6
+
+- id: avg_days_to_adjudicate
+  domain: healthcare
+  question: What is the average days to adjudicate?
+  sql: SELECT AVG(days_to_adjudicate) FROM healthcare_fact_claims
+  expect: 22.102805
+  expect_rows: 1
+
+- id: pending_claims
+  domain: healthcare
+  question: How many pending claims?
+  sql: SELECT COUNT(*) FROM healthcare_fact_claims WHERE status = 'Pending'
+  expect: 1378
+  expect_rows: 1
+
+- id: salary_by_department
+  domain: hr
+  question: What is the average salary by department?
+  sql: >
+    SELECT r.department, AVG(e.base_salary)
+    FROM hr_fact_employees e
+    JOIN hr_flight_risk_scores r ON e.employee_id = r.employee_id
+    GROUP BY 1 ORDER BY 1
+  expect: Customer Support
+  expect_rows: 12
+
+- id: employees_by_department
+  domain: hr
+  question: How many employees are in each department?
+  sql: >
+    SELECT r.department, COUNT(*)
+    FROM hr_fact_employees e
+    JOIN hr_flight_risk_scores r ON e.employee_id = r.employee_id
+    GROUP BY 1 ORDER BY 1
+  expect: Customer Support
+  expect_rows: 12
+
+- id: active_by_gender
+  domain: hr
+  question: How many active employees by gender?
+  sql: >
+    SELECT gender, COUNT(*) FROM hr_fact_employees
+    WHERE is_active = 1 GROUP BY 1 ORDER BY 1
+  expect: Female
+  expect_rows: 3
+
+- id: top_tenure_department
+  domain: hr
+  question: Which department has the highest average tenure?
+  sql: >
+    SELECT r.department
+    FROM hr_fact_employees e
+    JOIN hr_flight_risk_scores r ON e.employee_id = r.employee_id
+    GROUP BY 1 ORDER BY AVG(e.tenure_months) DESC LIMIT 1
+  expect: Data & Analytics
+  expect_rows: 1
+
+- id: tenure_by_department
+  domain: hr
+  question: average tenure months by department
+  sql: >
+    SELECT r.department, AVG(e.tenure_months)
+    FROM hr_fact_employees e
+    JOIN hr_flight_risk_scores r ON e.employee_id = r.employee_id
+    GROUP BY 1 ORDER BY 1
+  expect: Customer Support
+  expect_rows: 12
+
+- id: suspicious_transactions
+  domain: aml
+  question: How many transactions were flagged as suspicious?
+  sql: SELECT COUNT(*) FROM aml_fact_transactions WHERE is_suspicious = 1
+  expect: 375
+  expect_rows: 1
+
+- id: risk_by_channel
+  domain: aml
+  question: Average risk score by channel
+  sql: SELECT channel, AVG(risk_score) FROM aml_fact_transactions GROUP BY 1 ORDER BY 1
+  expect: bill_payment
+  expect_rows: 6
+
+- id: amount_by_direction
+  domain: aml
+  question: average amount by direction
+  sql: SELECT direction, AVG(amount_cad) FROM aml_fact_transactions GROUP BY 1 ORDER BY 1
+  expect: inbound
+  expect_rows: 2
+
+- id: transactions_by_channel
+  domain: aml
+  question: Count of transactions by channel
+  sql: SELECT channel, COUNT(*) FROM aml_fact_transactions GROUP BY 1 ORDER BY 1
+  expect: bill_payment
+  expect_rows: 6
+
+- id: cash_share
+  domain: aml
+  question: What percentage of transactions are cash?
+  sql: >
+    SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE is_cash = 1) / NULLIF(COUNT(*), 0), 1)
+    FROM aml_fact_transactions
+  expect: 6.0
+  expect_rows: 1
+
+- id: spend_by_channel
+  domain: marketing
+  question: Total spend by channel
+  sql: SELECT channel, SUM(spend) FROM marketing_fact_spend GROUP BY 1 ORDER BY 1
+  expect: affiliate
+  expect_rows: 7
+
+- id: exceptions_by_type
+  domain: finance
+  question: How many exceptions by exception type?
+  sql: >
+    SELECT exception_type, COUNT(*) FROM finance_reconciliation_exceptions
+    GROUP BY 1 ORDER BY 1
+  expect: Amount mismatch
+  expect_rows: 4
+
+- id: revenue_by_department
+  domain: wholesale
+  question: What is the total revenue by department?
+  sql: >
+    SELECT department, SUM(revenue) FROM wholesale_fact_department_month
+    GROUP BY 1 ORDER BY 1
+  expect: Apparel
+  expect_rows: 10
+
+- id: stores_by_format
+  domain: wholesale
+  question: How many stores by store format?
+  sql: >
+    SELECT store_format, COUNT(*) FROM wholesale_dim_store
+    GROUP BY 1 ORDER BY 1
+  expect: Club Warehouse
+  expect_rows: 7
+  why: >
+    The reference SQL here was WRONG when this file was written: it counted
+    wholesale_fact_segment_month, which is one row per format per month, so
+    "how many stores" came back as 34 store-months per format. The planner
+    found wholesale_dim_store -- one row per store -- and disagreed with the
+    contract, which is how the mistake surfaced. Kept as a reminder that an
+    eval is only as good as the SQL somebody typed into it.
+
+- id: billed_amount_total
+  domain: healthcare
+  question: What is the total billed amount?
+  sql: SELECT SUM(billed_amount) FROM healthcare_ar_yield_predictions
+  expect: 3626202.44
+  expect_rows: 1
+  why: >
+    Kept because of how it failed. billed_amount lives in exactly one of the 71
+    tables and the question names it exactly, but candidate tables used to be
+    ordered by which SOURCE found them rather than by strength of evidence, and
+    the only table that could answer this ranked eleventh -- one past the cut.
+    The question was refused as unanswerable while its answer sat in a column of
+    the same name.
+
+- id: models_by_resource_type
+  domain: dbt
+  question: How many models by resource type?
+  sql: SELECT resource_type, COUNT(*) FROM dbt_models GROUP BY 1 ORDER BY 1
+  expect: analysis
+  expect_rows: 7
+  why: >
+    The entity noun "models" is also a VALUE of resource_type, so the planner
+    filtered to resource_type = 'model', found its axis already pinned, and
+    refused for having no axis. A named axis now outranks a value match on the
+    same column.
+
+- id: top_departments_by_headcount
+  domain: hr
+  question: Top 3 departments by headcount
+  sql: >
+    SELECT r.department, COUNT(*) AS n
+    FROM hr_fact_employees e
+    JOIN hr_flight_risk_scores r ON e.employee_id = r.employee_id
+    GROUP BY 1 ORDER BY n DESC LIMIT 3
+  expect: Human Resources
+  expect_rows: 3
+
+# ---------------------------------------------------------------------------
+# Kept deliberately: questions the planner CANNOT compile. Each must end in a
+# refusal rather than a plausible number. A planner that starts answering these
+# has regressed, and the test asserts the refusal as firmly as any answer.
+#
+# Both are honest misses rather than inherent limits, and the fix for both is a
+# better column description in data_manifest.py -- not a special case in the
+# grammar. They are written down here so the gap is measured instead of
+# remembered.
+# ---------------------------------------------------------------------------
+
+- id: involuntary_terminations
+  domain: hr
+  question: How many involuntary terminations were there?
+  sql: ""
+  expect: null
+  expect_refusal: true
+  why: >
+    term_type = 'Involuntary' is right there and would answer it. But
+    "terminations" binds to nothing -- the column is term_type, and no
+    description in the manifest spells the word out -- so the excused-word cap
+    fires and the planner stops. It is one word of vocabulary away from
+    correct, which is exactly the kind of miss worth keeping visible.
+
+- id: subjects_per_site
+  domain: clinical
+  question: How many subjects per site?
+  sql: ""
+  expect: null
+  expect_refusal: true
+  why: >
+    subject_id and site_id are both columns of clinical_edc_item_data, so this
+    is COUNT(DISTINCT subject_id) GROUP BY site_id -- a distinct count over a
+    non-unique key, which the grammar deliberately does not express. Counting
+    rows instead would answer with the number of data points, not people.
+
+# ---------------------------------------------------------------------------
+# Round two. Every question below was found by STRESS-TESTING the planner
+# against phrasings this file did not contain, and on the first run eight of the
+# sixteen it answered were WRONG -- a 50% error rate on unseen wording, against
+# a contract that was reporting 100%. That gap is the reason these are here: an
+# eval set only measures the questions somebody thought to write down, and the
+# first version of this one was written by the same person who wrote the binder.
+#
+# Each of these had a specific, named failure. They are kept so it stays fixed.
+# ---------------------------------------------------------------------------
+
+- id: denied_claims_for_medicare
+  domain: healthcare
+  question: How many denied claims for Medicare?
+  sql: >
+    SELECT COUNT(*) FROM healthcare_fact_claims c
+    JOIN healthcare_dim_payer p ON c.payer_id = p.payer_id
+    WHERE c.status = 'Denied' AND p.payer_type = 'Medicare'
+  expect: 152
+  expect_rows: 1
+  why: >
+    `Medicare` is a payer_type value in TWO tables: healthcare_dim_payer (8
+    rows) and healthcare_ar_yield_predictions (1,378 rows, and only the open-AR
+    subset, which contains no denied claims at all). Taking whichever binding
+    came first joined to the second and answered 0. Value bindings now prefer
+    the smallest table, which is the derived stand-in for "the attribute's
+    canonical home".
+
+- id: count_stores
+  domain: wholesale
+  question: How many stores do we have?
+  sql: SELECT COUNT(*) FROM wholesale_dim_store
+  expect: 620
+  expect_rows: 1
+  why: >
+    Answered 170 -- the number of store-MONTHS in a fact table with a store
+    flag -- and then 555, after the right table was found but the entity noun
+    `stores` switched on `is_physical_store`. A counted entity now steers the
+    table by GRAIN and is forbidden from setting a boolean.
+
+- id: count_payers
+  domain: healthcare
+  question: How many payers are there?
+  sql: SELECT COUNT(*) FROM healthcare_dim_payer
+  expect: 8
+  expect_rows: 1
+  why: >
+    Refused, because anchoring compared question words to table words RAW and
+    `payers` is not `payer`. The very same word had already been credited as
+    explained by the expanded comparison two lines above.
+
+- id: distinct_customers
+  domain: retail
+  question: How many distinct customers are there?
+  sql: SELECT COUNT(DISTINCT customer_id) FROM retail_dim_customer
+  expect: 120
+  expect_rows: 1
+  why: >
+    Answered 4, from COUNT(DISTINCT new_customers) on a marketing campaign
+    table -- a column that happens to be unique. Three separate bugs: the
+    entity noun was being read as `distinct` rather than `customers`, the
+    COUNT DISTINCT target fell back to whatever key came first, and
+    `distinct_skus` scored as a measure on the word naming the aggregate.
+
+- id: bottom_departments_by_salary
+  domain: hr
+  question: Bottom 3 departments by average salary
+  sql: >
+    SELECT r.department, AVG(e.base_salary) AS s
+    FROM hr_fact_employees e
+    JOIN hr_flight_risk_scores r ON e.employee_id = r.employee_id
+    GROUP BY 1 ORDER BY s ASC LIMIT 3
+  expect: Customer Support
+  expect_rows: 3
+  why: >
+    Answered with `AVG(departments_supplied)` on a supplier table: the measure
+    matched the AXIS word `departments` and scored 0.5, which was enough. When
+    a question names the measure ("by average salary"), the measure must now
+    contain one of THOSE words.
+
+- id: transactions_per_hour
+  domain: aml
+  question: How many transactions per hour of day?
+  sql: SELECT hour_of_day, COUNT(*) FROM aml_fact_transactions GROUP BY 1 ORDER BY 1
+  expect: 0
+  expect_rows: 24
+  why: >
+    Returned one number, the grand total, because `hour_of_day` -- 24 values
+    over 100,299 rows -- was classified a MEASURE by a numeric-categorical cap
+    of 12. The cap is 24 now, with a stricter rows-per-value ratio.
+
+- id: claims_by_channel_count
+  domain: aml
+  question: break down transactions by channel
+  sql: SELECT channel, COUNT(*) FROM aml_fact_transactions GROUP BY 1 ORDER BY 1
+  expect: bill_payment
+  expect_rows: 6
+  why: >
+    Summed `txn_count_7d`, a rolling-window feature column, because the synonym
+    map maps "transactions" to "txn". An entity noun is what you are counting,
+    never what you are summing.
+
+- id: claims_submitted_in_year
+  domain: healthcare
+  question: How many claims were submitted in 2024?
+  sql: >
+    SELECT COUNT(*) FROM healthcare_fact_claims
+    WHERE EXTRACT(YEAR FROM submitted_date) = 2024
+  expect: 0
+  expect_rows: 1
+  why: >
+    Crashed with `Conversion Error: Unimplemented type for cast (INTEGER ->
+    DATE)` -- a year was being emitted as `service_date = 2024`. It is a
+    predicate ON a date. It also picked service_date over submitted_date when
+    the question said "submitted". Zero is the correct answer: this snapshot
+    runs 2025-07-01 to 2026-06-30.
+
+- id: claims_above_threshold
+  domain: healthcare
+  question: How many claims with allowed amount above 5000?
+  sql: SELECT COUNT(*) FROM healthcare_fact_claims WHERE allowed_amount > 5000
+  expect: 607
+  expect_rows: 1
+
+- id: active_employees_in_department
+  domain: hr
+  question: How many active employees in Data & Analytics?
+  sql: >
+    SELECT COUNT(*) FROM hr_fact_employees e
+    JOIN hr_flight_risk_scores r ON e.employee_id = r.employee_id
+    WHERE e.is_active = 1 AND r.department = 'Data & Analytics'
+  expect: 103
+  expect_rows: 1
+  why: >
+    The mirror image of the store case: here the entity is `employees` and
+    `active` is a modifier that MUST set the flag. Reserving the whole entity
+    phrase rather than its head noun would drop `is_active = 1` and answer 137.
+
+- id: top_customers_by_revenue
+  domain: retail
+  question: Top 5 customers by revenue
+  sql: >
+    SELECT customer_name, SUM(revenue) AS r FROM retail_fact_sales
+    GROUP BY 1 ORDER BY r DESC LIMIT 5
+  expect: Canyon Charcuterie 064
+  expect_rows: 5
+  why: >
+    Briefly became MAX(revenue) per customer -- the largest single sale,
+    $3,658, in place of the largest customer, $182,503 -- when MIN/MAX were
+    wired to the superlative. With an axis present the direction is the ORDER
+    BY, not the aggregate.
+
+- id: unique_channels
+  domain: marketing
+  question: How many unique channels?
+  sql: SELECT COUNT(DISTINCT channel_id) FROM marketing_dim_channel
+  expect: 7
+  expect_rows: 1
+
+- id: headcount_by_gender
+  domain: hr
+  question: give me headcount by gender
+  sql: SELECT gender, COUNT(*) FROM hr_fact_employees GROUP BY 1 ORDER BY 1
+  expect: Female
+  expect_rows: 3
+  why: >
+    Refused for a while, as collateral from the rule that turns "list the
+    departments" into a refusal: the sentence opens like a listing request.
+    A named axis makes it an aggregate however politely it starts.
+
+# --- more questions that must end in a refusal ------------------------------
+
+- id: median_salary
+  domain: hr
+  question: what's the median salary?
+  sql: ""
+  expect: null
+  expect_refusal: true
+  why: >
+    Answered 940,000 -- the SUM of a benchmark table's `market_median` column,
+    which is not a median of anything. A named statistic this grammar cannot
+    write is a refusal; silently computing a different one is worse than saying
+    no, because the word the user typed is right there in the question.
+
+- id: list_departments
+  domain: wholesale
+  question: list the departments
+  sql: ""
+  expect: null
+  expect_refusal: true
+  why: >
+    Answered 341, the SUM of `departments_supplied`, and later 56, a COUNT over
+    a three-table join. Neither is a shorter version of the list. This planner
+    writes aggregates and does not do rows, and saying so names the gap.
+
+- id: open_ended_business_question
+  domain: hr
+  question: What should we do about attrition?
+  sql: ""
+  expect: null
+  expect_refusal: true
+  why: >
+    Not a query. The compiler has no opinion, and neither has the model on this
+    repo's terms -- but the compiler is the one that has to refuse rather than
+    find a column called attrition and aggregate it.
