@@ -649,3 +649,44 @@ def test_the_schema_browser_reads_roles_from_the_semantic_layer(rendered):
     assert "_searchable_schema" in source
     assert "layer.tables" in source
     assert hasattr(ui, "column_list")
+
+
+def test_the_global_font_rule_does_not_swallow_the_icon_font(rendered):
+    """The most visible bug this app ever shipped, and it was one CSS line.
+
+    Streamlit draws icons as LIGATURES: a span containing the literal text
+    `keyboard_arrow_right` that the Material Symbols font composes into a
+    glyph. Our reset is `html, body, [class*="st-"] { font-family: … }` with
+    `!important`, every one of those spans carries an `st-emotion-cache-…`
+    class, so the glyph font never applied and the ligature fell back to a font
+    with no such ligature — which simply drew the letters.
+
+    Every expander read "keyboard_arrow_right The accuracy contract…", the
+    sidebar toggle read "keyboard_double_arrow_left", the password field read
+    "visibility". Measured on the deployed app: 15 icon spans, all computing to
+    "IBM Plex Sans", each 166px of text inside a 24px box.
+
+    `unset` does not fix it — font-family is inherited, so it resolves to the
+    parent, which the same selector also matches. The family has to be named.
+    """
+    ui, _panels = rendered
+    css = ui._CSS
+    assert '[data-testid="stIconMaterial"]' in css, (
+        "no exception for Streamlit's icon spans")
+    block = css[css.index('[data-testid="stIconMaterial"]'):]
+    block = block[:block.index("}") + 1]
+    assert "Material Symbols" in block, "the icon font must be named, not unset"
+    assert "unset" not in block, (
+        "unset inherits the overridden font — name the family instead")
+
+
+def test_there_is_a_way_back_outside_the_sidebar(rendered):
+    """The only reset used to be at the bottom of the sidebar, under the schema
+    map, the browser and the API-key box — and Streamlit collapses that sidebar
+    by default on a phone. On the device most people open a shared link with,
+    the example questions vanished on the first click and never came back."""
+    source = _app_source()
+    assert "_transcript_header" in source
+    assert "Start over" in source
+    # and both routes must clear the same state, or they will drift
+    assert source.count("_reset_conversation") >= 3

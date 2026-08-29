@@ -142,6 +142,41 @@ _CSS = """
 }
 
 html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
+
+/* ...except the icons, and this exception is not a nicety - without it the app
+   renders every icon as its own NAME.
+
+   Streamlit draws icons as ligatures: a <span data-testid="stIconMaterial">
+   containing the literal text `keyboard_arrow_right`, which the Material
+   Symbols font composes into one glyph. The selector above matches
+   `[class*="st-"]`, every one of those spans carries an `st-emotion-cache-…`
+   class, and `!important` beat Streamlit's own font-family. So the glyph font
+   never applied and the ligature fell back to IBM Plex, which has no ligature
+   for it and simply drew the letters.
+
+   Every expander read "keyboard_arrow_right The accuracy contract…", the
+   sidebar toggle read "keyboard_double_arrow_left", the password field read
+   "visibility", and the chat avatars read "face" and "smart_toy" - overlapping
+   whatever sat beside them. I twice dismissed this as an artifact of headless
+   Chrome not loading Google Fonts. It was not: it was this line, in the real
+   browser, on the deployed app, from the first version of this file.
+
+   The family is NAMED rather than `unset`. font-family is an inherited
+   property, so `unset` computes to `inherit` — and the parent is also matched
+   by `[class*="st-"]`, so unsetting the override merely inherited the same
+   wrong font. Measured: still "IBM Plex Sans" on all fifteen icons.
+
+   `font-feature-settings:'liga'` is belt and braces: these glyphs ARE
+   ligatures, and anything that disables them puts the letters back. */
+[data-testid="stIconMaterial"],
+[class*="material-symbols"],
+.material-symbols-rounded,
+.material-symbols-outlined{
+  font-family:'Material Symbols Rounded','Material Symbols Outlined',
+              'Material Icons' !important;
+  font-feature-settings:'liga' !important;
+  font-variant-ligatures:normal !important;
+  letter-spacing:normal !important; }
 .stApp{ background:
   radial-gradient(1100px 520px at 78% -12%, rgba(34,211,238,.07), transparent 60%),
   var(--ayd-ground); }
@@ -353,6 +388,15 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .ayd-check::before{ content:'✓'; color:var(--ayd-machine); margin-right:.35rem; }
 .ayd-check[data-pass="0"]{ color:var(--ayd-alert); }
 .ayd-check[data-pass="0"]::before{ content:'✕'; color:var(--ayd-alert); }
+
+/* Sidebar expander labels. Table names here run to 34 characters
+   (`wholesale_labor_department_month`) inside a 300px rail, and the default
+   break put "healthcare_ar_yield_predictio / ns" on two lines mid-word. A
+   smaller mono face fits more of the name before it has to break at all. */
+[data-testid="stSidebar"] [data-testid="stExpander"] summary p,
+[data-testid="stSidebar"] details summary p{
+  font-family:var(--ayd-mono) !important; font-size:.7rem;
+  overflow-wrap:anywhere; line-height:1.35; }
 
 /* One column of a table, with the role engine/semantics.py inferred for it.
 

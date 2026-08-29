@@ -767,7 +767,7 @@ def _searchable_schema():
     return rows
 
 
-def _schema_browser(selected: set[str] | None = None) -> None:
+def _schema_browser(ranked: list[str] | None = None) -> None:
     """A tool where eleven paragraphs of prose used to be.
 
     The sidebar used to carry a domain card per domain — 11 blocks of text
@@ -804,11 +804,15 @@ def _schema_browser(selected: set[str] | None = None) -> None:
         # the retriever had already worked out which ten were relevant. The
         # sidebar should answer "what is this answer standing on", and it has
         # the answer already.
-        chosen = selected or set()
-        matches = [r for r in schema if r["table"] in chosen] or schema
-        cap = (f"{len(matches)} tables retrieved for this question"
-               if chosen else f"{len(schema)} tables — search to narrow")
-        limit = 6 if chosen else 4
+        #
+        # In RETRIEVAL ORDER, best first. Sorting these by name put the table
+        # the answer came from below the fold.
+        order = {name: i for i, name in enumerate(ranked or [])}
+        by_name = {r["table"]: r for r in schema}
+        matches = [by_name[n] for n in (ranked or []) if n in by_name] or schema
+        cap = (f"{len(matches)} tables retrieved for this question, best first"
+               if order else f"{len(schema)} tables — search to narrow")
+        limit = 6 if order else 4
     st.caption(cap)
     for row in matches[:limit]:
         # The table name alone. Appending "· N rows" pushed the label onto two
@@ -832,7 +836,21 @@ def _render_sidebar(active_question: str | None) -> None:
     """
     grouped = _catalog_by_domain()
     bundle = _retrieval_bundle(active_question) if active_question else None
-    selected = {hit.table for hit in bundle["hits"]} if bundle else set()
+    # ORDERED, not a set. The browser lists these in the order given, and a set
+    # forced it back to alphabetical — so for "how many denied claims are
+    # there?" the sidebar opened on aml_cases and aml_dim_entity while
+    # healthcare_fact_claims, the table that actually produced the answer, sat
+    # under "…and 4 more". The retriever already ranked them; throwing that
+    # ranking away and re-sorting by name is how the most relevant table ends up
+    # last.
+    # Only when a question was actually ASKED. On the landing page
+    # `active_question` falls back to whatever the accuracy-contract expander
+    # has selected — a golden question sitting collapsed further down the page —
+    # and the sidebar then announced "10 tables retrieved for this question"
+    # about a question the reader had not asked and could not see.
+    asked = bool(st.session_state.get("transcript"))
+    ranked = [hit.table for hit in bundle["hits"]] if (bundle and asked) else []
+    selected = set(ranked)
 
     with st.sidebar:
         ui.schema_map(
@@ -842,13 +860,12 @@ def _render_sidebar(active_question: str | None) -> None:
             destination=("sent to the model" if LIVE_MODE
                          else "handed to the compiler"),
         )
-        _schema_browser(selected)
+        _schema_browser(ranked)
         st.divider()
         _render_key_control()
         st.divider()
         if st.button("Start a new conversation"):
-            st.session_state.turns = []
-            st.session_state.transcript = []
+            _reset_conversation()
             st.rerun()
 
 
@@ -1356,11 +1373,20 @@ def _refusal_help(entry) -> None:
         st.markdown("**Closest things this warehouse actually has**")
         st.markdown("\n".join(
             f"- `{name}` — {role}" for name, role in near))
-    st.markdown(
-        "You can also **write the SQL yourself** — open any answered question "
-        "above and use its editor, or ask one of the questions on the landing "
-        "page and edit from there."
-    )
+    # Only when there IS an answered turn to open. On a first-question refusal
+    # this told the reader to use an editor on "any answered question above",
+    # and there were none — advice that cannot be followed is worse than none.
+    answered = any(not e.get("refused") for e in st.session_state.get("transcript", []))
+    if answered:
+        st.markdown(
+            "You can also **write the SQL yourself** — open any answered "
+            "question above and use its editor."
+        )
+    else:
+        st.markdown(
+            "Ask one of the example questions and every answer comes with an "
+            "editor, so you can start from working SQL and change it."
+        )
 
 
 def _result_block(entry, index: int) -> None:
@@ -1546,6 +1572,38 @@ def _show_layer_summary() -> None:
     )
 
 
+def _reset_conversation() -> None:
+    st.session_state.turns = []
+    st.session_state.transcript = []
+    # A ?q= link put the first question there. Without clearing the guard the
+    # deep link would fire again on the very next run and re-ask the question
+    # the reader just cleared.
+    st.session_state["_link_used"] = True
+    try:
+        st.query_params.clear()
+    except Exception:
+        pass
+
+
+def _transcript_header() -> None:
+    """One line above the answers: how many, and how to get back.
+
+    The only route back to the example questions used to be "Start a new
+    conversation", at the BOTTOM of the sidebar, under the schema map, the
+    schema browser and the API-key box. Streamlit collapses that sidebar by
+    default on a phone, so on the device most people open a shared link with,
+    there was no way back at all — the examples vanished on the first click and
+    never returned.
+    """
+    count = len(st.session_state.transcript)
+    left, right = st.columns([3, 1])
+    left.caption(f"{count} question{'' if count == 1 else 's'} this session")
+    if right.button("Start over", key="reset_top", use_container_width=True,
+                    help="Clear these answers and show the example questions again"):
+        _reset_conversation()
+        st.rerun()
+
+
 KEYLESS_NOTICE = (
     "**No API key is configured, and the chat box below still works.** This app "
     "carries two engines. With a key, a language model writes the SQL. Without "
@@ -1625,6 +1683,9 @@ def render_keyless(connection) -> None:
                 if column.button(example, use_container_width=True):
                     clicked = example
         _show_layer_summary()
+
+    if st.session_state.transcript:
+        _transcript_header()
 
     for index, entry in enumerate(st.session_state.transcript):
         if entry.get("engine") == "manual":
