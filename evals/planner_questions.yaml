@@ -476,3 +476,64 @@
     Not a query. The compiler has no opinion, and neither has the model on this
     repo's terms -- but the compiler is the one that has to refuse rather than
     find a column called attrition and aggregate it.
+
+# ---------------------------------------------------------------------------
+# Round three. Found by probing question SHAPES rather than wordings —
+# negation, follow-ups, ratios, multi-measure asks. The negation entries are
+# the most important rows in this file: before them the compiler answered the
+# exact COMPLEMENT of the question, in numbers that looked entirely plausible.
+# ---------------------------------------------------------------------------
+
+- id: claims_not_denied
+  domain: healthcare
+  question: how many claims are not denied?
+  sql: SELECT COUNT(*) FROM healthcare_fact_claims WHERE status <> 'Denied'
+  expect: 11124
+  expect_rows: 1
+  why: >
+    Answered 876 — the DENIED count — because the grammar had no notion of
+    negation at all and simply bound status = 'Denied'. Negation now inverts
+    exactly one unambiguous filter and refuses anything it cannot scope.
+
+- id: employees_not_active
+  domain: hr
+  question: how many employees are not active?
+  sql: SELECT COUNT(*) FROM hr_fact_employees WHERE is_active <> 1
+  expect: 417
+  expect_rows: 1
+  why: >
+    The same bug on a flag: answered 1,483, the ACTIVE count, where the truth
+    is 417.
+
+- id: bare_follow_up
+  domain: marketing
+  question: and by region?
+  sql: ""
+  expect: null
+  expect_refusal: true
+  why: >
+    This compiler is stateless, so a follow-up has no previous turn to attach
+    to. It used to be answered from marketing_dim_user — a table nobody had
+    mentioned — because `region` happened to match there.
+
+- id: ratio_of_two_measures
+  domain: healthcare
+  question: what is the ratio of paid amount to allowed amount?
+  sql: ""
+  expect: null
+  expect_refusal: true
+  why: >
+    `ratio` read as a share word, so this became "what share of rows have
+    status = 'Paid'" and answered 81.2% — a real number about a different
+    question. A quotient of two measures is outside this grammar.
+
+- id: two_measures_asked
+  domain: wholesale
+  question: total revenue and total margin by department
+  sql: ""
+  expect: null
+  expect_refusal: true
+  why: >
+    Answered with revenue alone and said nothing about margin. A partial
+    answer presented as a whole one is the quiet version of being wrong, and
+    the grammar emits exactly one aggregate.

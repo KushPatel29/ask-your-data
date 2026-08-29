@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-654%20%C2%B7%20653%20run%20without%20an%20API%20key-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-672%20%C2%B7%20671%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
@@ -154,7 +154,7 @@ The planner is graded on two contracts, and the gap between them is the finding:
 
 | | questions | match | **differs** | refused | SQL errors |
 |---|---:|---:|---:|---:|---:|
-| `evals/planner_questions.yaml` — ordinary ad-hoc questions | 41 | **36** | **0** | 5 | 0 |
+| `evals/planner_questions.yaml` — ordinary ad-hoc questions | 46 | **38** | **0** | 8 | 0 |
 | `evals/golden_questions.yaml` — written to need a model | 39 | 5 | 1 | 33 | 0 |
 
 `differs` is the column that matters. A refusal costs you an answer; a
@@ -183,10 +183,43 @@ wording, under a contract reporting 100%. Not crashes — plausible numbers:
 | How many claims submitted in 2024? | crash | 0 | emitted `service_date = 2024` against a DATE |
 
 Every one traced to a rule that was too generous, and each is now a named
-regression test and a case in the contract — which is **41 questions**, five of
-which the planner must refuse. `git log` has the fixes one root cause at a time.
-That is the honest version of this section: the first number was real and the
-eval behind it was not, and the only reason I know is that I went looking.
+regression test and a case in the contract. `git log` has the fixes one root
+cause at a time. That is the honest version of this section: the first number
+was real and the eval behind it was not, and the only reason I know is that I
+went looking.
+
+### Then I went looking again, at shapes instead of wordings
+
+The second sweep varied the *phrasing*. A third varied the **shape** of the
+question — negation, follow-ups, ratios, asking for two things at once — and
+found four more, one of them the worst defect this compiler has had:
+
+| Question | It said | Truth |
+|---|---:|---:|
+| how many claims are **not** denied? | 876 | **11,124** |
+| how many employees are **not** active? | 1,483 | **417** |
+
+The grammar had no notion of negation, so it bound `status = 'Denied'` and
+returned the exact **complement** of the question — in a number that looks
+entirely reasonable, which is what makes it the worst failure available here.
+Negation now inverts exactly one unambiguous filter and refuses anything it
+cannot scope, because guessing *which* filter a "not" attaches to is how you
+answer the opposite of what was asked.
+
+The other three were quieter and the same shape of mistake — answering a
+question adjacent to the one asked:
+
+- *"and by region?"* was answered from `marketing_dim_user`, a table nobody had
+  mentioned, because `region` matched there. This compiler is **stateless**;
+  a follow-up has no previous turn to attach to, and now says so.
+- *"the ratio of paid amount to allowed amount"* became *"what share of rows
+  have `status = 'Paid'`"* and answered **81.2%** — a real number about a
+  different question. `ratio` was being read as a share word.
+- *"total revenue and total margin by department"* answered with revenue alone
+  and said nothing about margin. A partial answer presented as a whole one is
+  the quiet version of being wrong.
+
+The contract is **46 questions** now, eight of which must be refused.
 
 The confidence gate has its own version of that story. The first working build
 scored **8 right and 26 wrong** on the golden set, because the gate blended
@@ -197,14 +230,14 @@ to zero. Reproducible with `python scripts/run_planner_eval.py --sweep`:
 
 ```
   gate   match   differs   refused
-  0.40      45        16        19
-  0.50      45        15        20
-  0.60      43         5        32
-  0.70      41         1        38     <- shipped
-  0.80      40         0        40
+  0.40      47        15        23
+  0.50      47        14        24
+  0.60      45         5        35
+  0.70      43         1        41     <- shipped
+  0.80      42         0        43
 ```
 
-Loosening to 0.40 buys four more right answers and sixteen wrong ones.
+Loosening to 0.40 buys four more right answers and fifteen wrong ones.
 Tightening to 0.80 does reach zero disagreements — and costs a correct answer to
 do it, because *"who is the top wholesale customer by revenue?"* starts refusing
 over the word `wholesale`, which this warehouse also uses as a domain name.
@@ -330,7 +363,7 @@ defend in an interview:
   comparing one scored twelve correct breakdowns as wrong.
 
 ```
-654 tests — 653 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
+672 tests — 671 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
 1 live model test skips without a key.
 ```
 

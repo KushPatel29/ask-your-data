@@ -621,3 +621,76 @@ def test_an_answered_question_carries_no_refusal_kind(layer):
     result = ask("How many denied claims are there?", layer)
     assert result.ok
     assert result.kind == ""
+
+
+# ---------------------------------------------------------------------------
+# Round three. Found by probing question SHAPES rather than question wording:
+# negation, follow-ups, ratios and multi-measure asks. The negation one is the
+# worst defect this module has ever had.
+# ---------------------------------------------------------------------------
+
+def test_negation_inverts_the_filter_it_scopes_over(layer, con):
+    """It used to be ignored entirely, and the answer was the exact complement.
+
+    "How many claims are NOT denied?" bound status = 'Denied' and returned 876
+    where the truth is 11,124. "How many employees are not active?" returned
+    1,483 where the truth is 417. Both look like perfectly reasonable numbers,
+    which is what makes it the worst failure available here.
+    """
+    for question, expected in (
+        ("how many claims are not denied?", 11124),
+        ("how many employees are not active?", 417),
+    ):
+        result = ask(question, layer)
+        assert result.ok, f"{question} -> refused"
+        assert "<>" in result.sql, f"{question} did not invert its filter"
+        assert run_query(con, result.sql).rows[0][0] == expected, question
+
+
+def test_the_positive_form_still_answers_positively(layer, con):
+    """Guards the guard: the negation rule must not leak into plain questions."""
+    for question, expected in (
+        ("how many denied claims are there?", 876),
+        ("How many active employees are there?", 1483),
+    ):
+        assert run_query(con, ask(question, layer).sql).rows[0][0] == expected
+
+
+def test_negation_it_cannot_scope_is_refused(layer):
+    """One filter is unambiguous. Zero or several is a guess, and the cost of
+    guessing here is answering with the complement of the question."""
+    for question in ("how many claims are there excluding denied ones and paid ones?",
+                     "how many employees are not in a department?"):
+        result = ask(question, layer)
+        if result.ok:
+            assert result.sql.count("<>") <= 1, question
+
+
+def test_a_bare_follow_up_is_refused(layer):
+    """This compiler is stateless, so there is no previous turn to attach to.
+
+    "and by region?" was answered from marketing_dim_user — a table nobody had
+    mentioned — because `region` happened to match there.
+    """
+    for question in ("and by region?", "what about last year?", "but by channel?"):
+        result = ask(question, layer)
+        assert result.refused, question
+        assert result.kind == "no previous turn", question
+
+
+def test_a_ratio_of_two_measures_is_refused(layer):
+    """`ratio` used to read as a share word, so "the ratio of paid amount to
+    allowed amount" became "what share of rows have status = 'Paid'" and
+    answered 81.2% — a real number about a different question."""
+    result = ask("what is the ratio of paid amount to allowed amount?", layer)
+    assert result.refused
+    assert result.kind == "outside the grammar"
+
+
+def test_two_measures_asked_for_is_not_half_answered(layer):
+    """"total revenue and total margin by department" answered with revenue
+    alone and said nothing about margin — a partial answer presented as a whole
+    one, which is the quiet version of being wrong."""
+    result = ask("total revenue and total margin by department", layer,
+                 retrieved=["wholesale_fact_department_month"])
+    assert result.refused

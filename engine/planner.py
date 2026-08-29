@@ -102,6 +102,38 @@ DISTINCT_PHRASES = ("distinct", "unique", "different")
 # answered 940,000 -- the sum of a benchmark table's median column, which is not
 # a median of anything. Silently answering a different statistic is worse than
 # saying no, because the word the user typed is right there in the question.
+# Words that invert a filter. The grammar had no notion of them at all, so
+# "how many claims are NOT denied?" bound `status = 'Denied'` and answered 876
+# where the truth is 11,124 — the exact complement, in a number that looks
+# entirely reasonable. "How many employees are not active?" answered 1,483
+# where the truth is 417. There is no worse failure available to this module
+# than confidently returning the opposite, so negation is now read, and read
+# conservatively: it flips exactly one unambiguous filter and refuses anything
+# it cannot scope.
+NEGATION_PHRASES = ("not", "n't", "never", "excluding", "except", "other than",
+                    "apart from", "besides", "without", "aside from", "rather than",
+                    "isn't", "aren't", "wasn't", "weren't", "don't", "doesn't",
+                    "didn't", "non")
+
+# "the ratio of X to Y", "X per employee" — a quotient of two MEASURES, which
+# this grammar cannot write. It used to read `ratio` as a share word, so "what
+# is the ratio of paid amount to allowed amount?" became "what share of rows
+# have status = 'Paid'" and answered 81.2% — a real number about a different
+# question.
+RATIO_OF_RE = re.compile(r"\bratio\s+of\b.*?\bto\b", re.I | re.S)
+
+# A question that opens with a conjunction is a follow-up, and this compiler is
+# stateless by construction — there is no previous turn for it to attach to.
+# "and by region?" was answered from `marketing_dim_user`, a table nobody had
+# mentioned, because `region` matched there.
+# "revenue AND margin", "spend, cost". Used only to NOTICE that a question
+# asked for more than one measure — never to split it, because the grammar has
+# nowhere to put the second one.
+_CONJUNCTION_RE = re.compile(r"\band\b|,", re.I)
+
+FOLLOWUP_RE = re.compile(r"^\s*(?:and|or|but|also|what about|how about|"
+                         r"then what about|now)\b", re.I)
+
 UNSUPPORTED_PHRASES = ("median", "percentile", "quartile", "stdev", "std dev",
                        "standard deviation", "variance", "correlation", "mode",
                        "year over year", "yoy", "month over month", "mom",
@@ -481,6 +513,21 @@ def is_listing_request(question: str) -> bool:
     # aggregate however the sentence begins. Without this the listing rule
     # refused a question the planner answers correctly.
     return not axis_and_measure_hints(question)[0]
+
+
+def negation_words(question: str) -> list[str]:
+    """The negation cues present in a question, if any."""
+    low = f" {question.lower()} "
+    found = []
+    for phrase in NEGATION_PHRASES:
+        if re.search(rf"(?<![a-z]){re.escape(phrase)}(?![a-z])", low):
+            found.append(phrase)
+    return found
+
+
+def is_followup(question: str) -> bool:
+    """Does this question lean on a previous one that does not exist here?"""
+    return bool(FOLLOWUP_RE.match(question))
 
 
 def unsupported_aggregate(question: str) -> str:
@@ -1234,6 +1281,7 @@ def _bind_candidate(question: str, layer: Layer, table: str, *,
                     hints: list[str], value_hits: list[tuple[str, list]],
                     words: set[str], accountable: set[str],
                     measure_hints: list[str] | None = None,
+                    negated: bool = False,
                     rank: int | None = None) -> Plan | None:
     """Build the one best plan for a single candidate table, or None.
 
@@ -1362,6 +1410,20 @@ def _bind_candidate(question: str, layer: Layer, table: str, *,
         chosen = MAX if order == "desc" else MIN
     if not chosen:
         chosen = SUM if (measure is not None and measure.additive and m_score > 0) else COUNT
+    # Two measures named, one delivered. "total revenue and total margin by
+    # department" answered with revenue alone and said nothing about margin —
+    # a partial answer presented as a whole one, which is the quiet version of
+    # being wrong. The grammar emits a single aggregate; when the question names
+    # a second measure on the same table through different words, that is a
+    # question this cannot answer rather than one it can half-answer.
+    if measure is not None and m_score > 0 and _CONJUNCTION_RE.search(question):
+        used = set(measure.words)
+        rest = {w for w in words if not (_expand(w) & used)}
+        second, second_score = _pick_measure(layer, table, rest, [], "")
+        if (second is not None and second_score > 0
+                and second.name != measure.name):
+            return None
+
     if chosen in (SUM, AVG, MIN, MAX) and (measure is None or m_score <= 0):
         # No silent downgrade to COUNT. "How much of the open AR do we expect to
         # collect" asked for a sum of dollars; answering with the number of rows
@@ -1438,6 +1500,21 @@ def _bind_candidate(question: str, layer: Layer, table: str, *,
     if dimension is not None and not (hints or expects_category(question)):
         return None
 
+    # Negation, scoped narrowly on purpose. One filter is unambiguous: the
+    # question said "not X" and there is exactly one X to invert. Zero filters
+    # means the negation attaches to something this grammar did not model, and
+    # two or more means we would be guessing WHICH one it negates — both are
+    # refusals, because the cost of guessing here is answering with the exact
+    # complement of what was asked.
+    if negated:
+        if len(filters) != 1 or share_filter is not None:
+            return None
+        only = filters[0]
+        if only.op != "=":
+            return None
+        filters = [Filter(table=only.table, column=only.column, op="<>",
+                          literal=only.literal, evidence=f"not {only.evidence}")]
+
     plan = Plan(base=table, aggregate=chosen, joins=joins, measure=measure,
                 group_by=dimension, filters=filters, share_filter=share_filter,
                 order=plan_order, limit=plan_limit)
@@ -1472,6 +1549,9 @@ def _finish(plan: Plan, *, question: str, layer: Layer, table: str, words: set[s
                       if w in set(dimension.words) or (_expand(w) & set(dimension.words))}
     if plan_order:
         explained |= {w for w in words if w in _SUPERLATIVE_WORDS}
+    # A negation cue is explained by the filter it inverted, or the question
+    # would be marked down for a word the plan genuinely acted on.
+    explained |= {w for w in words if w in _NEGATION_WORDS}
     if aggregate:
         explained |= {w for w in words if w in _AGGREGATE_WORDS}
     explained &= words
@@ -1547,6 +1627,7 @@ _AGGREGATE_WORDS = {word for phrase in
                     for word in phrase.split()}
 
 _SUPERLATIVE_WORDS = set(MAX_PHRASES) | set(MIN_PHRASES)
+_NEGATION_WORDS = {w for phrase in NEGATION_PHRASES for w in phrase.split()}
 _DISTINCT_WORDS = {w for phrase in DISTINCT_PHRASES for w in phrase.split()}
 
 
@@ -1562,6 +1643,19 @@ def plan_question(question: str, layer: Layer, *,
         return PlanResult(question=question, refused=True, kind="empty question",
                           reason="there is nothing in that question to bind to a table.")
 
+    if is_followup(question):
+        return PlanResult(
+            question=question, refused=True, kind="no previous turn",
+            reason=("that reads as a follow-up, and this compiler is stateless — "
+                    "it has no previous question to attach it to. Ask it as a "
+                    "whole question and it will compile."))
+    if RATIO_OF_RE.search(question):
+        return PlanResult(
+            question=question, refused=True, kind="outside the grammar",
+            reason=("a ratio of two measures is not something this grammar "
+                    "writes — it can count, sum, average, take a share of rows "
+                    "and rank, and dividing one column by another is none of "
+                    "those."))
     if is_listing_request(question):
         return PlanResult(
             question=question, refused=True, kind="outside the grammar",
@@ -1580,6 +1674,7 @@ def plan_question(question: str, layer: Layer, *,
     aggregate, _agg_words = detect_aggregate(question)
     order = detect_order(question)
     limit = detect_limit(question)
+    negated = bool(negation_words(question))
     hints, measure_hints = axis_and_measure_hints(question)
     value_hits = match_values(question, layer, exclude=set(hints))
     candidates = _candidate_tables(question, layer, retrieved or [], value_hits)
@@ -1640,7 +1735,8 @@ def plan_question(question: str, layer: Layer, *,
         plan = _bind_candidate(question, layer, table, aggregate=aggregate, order=order,
                                limit=limit, hints=hints, value_hits=value_hits,
                                words=words, accountable=accountable,
-                               measure_hints=measure_hints, rank=ranks.get(table))
+                               measure_hints=measure_hints, negated=negated,
+                               rank=ranks.get(table))
         if plan is None:
             continue
         if nearest is None or plan.coverage > nearest.coverage:
