@@ -387,3 +387,59 @@ def test_the_grounding_panel_claims_no_tokens_when_none_were_spent(rendered):
     ui.st.take()
     ui.grounding(hits, total_tables=71, tokens_used=3241, tokens_full=12741)
     assert "tokens of schema in the prompt" in ui.st.take()
+
+
+# --------------------------------------------------------------------------
+# Startup robustness. These are source-level checks, in the same spirit as
+# tests/test_demo_mode.py's "the app defers the model import" — the app module
+# runs Streamlit at import and cannot be imported in a test process.
+# --------------------------------------------------------------------------
+
+def _app_source() -> str:
+    from pathlib import Path
+
+    return (Path(__file__).resolve().parent.parent
+            / "app" / "streamlit_app.py").read_text(encoding="utf-8")
+
+
+def test_the_semantic_layer_cannot_take_the_app_down():
+    """`get_layer` runs at import on a public deployment.
+
+    An exception there is not a degraded feature, it is a blank page where the
+    app used to be. The compiler cannot work without the layer, but the accuracy
+    contract can — so the failure has to be caught and named, exactly as
+    `warm_retrieval` already does for the schema index.
+    """
+    import ast
+
+    tree = ast.parse(_app_source())
+    layer_fn = next(node for node in ast.walk(tree)
+                    if isinstance(node, ast.FunctionDef) and node.name == "get_layer")
+    assert any(isinstance(n, ast.Try) for n in ast.walk(layer_fn)), (
+        "get_layer must not be able to raise at import")
+    assert any(isinstance(n, ast.Return) and isinstance(n.value, ast.Constant)
+               and n.value.value is None for n in ast.walk(layer_fn)), (
+        "get_layer must return None on failure so the caller can degrade")
+
+
+def test_the_keyless_page_checks_the_planner_is_available():
+    """A None layer must reach a branch that says so, not an AttributeError."""
+    source = _app_source()
+    assert "PLANNER_READY" in source
+    assert "if not PLANNER_READY:" in source
+
+
+def test_a_pasted_key_is_never_cached_across_sessions():
+    """@st.cache_resource is per-container, and a key is per-visitor.
+
+    Caching the Assistant on the connection alone would hand the second visitor
+    in a container the first one's client, and therefore the first one's bill.
+    """
+    import ast
+
+    tree = ast.parse(_app_source())
+    live = next(node for node in ast.walk(tree)
+                if isinstance(node, ast.FunctionDef) and node.name == "_live_assistant")
+    decorators = {ast.unparse(d) for d in live.decorator_list}
+    assert not any("cache" in d for d in decorators), decorators
+    assert "session_state" in ast.unparse(live)

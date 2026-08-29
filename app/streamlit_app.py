@@ -161,8 +161,18 @@ def get_layer(_con):
     pass per table -- measured at 2.4 s over these 71 tables, which is why it
     sits behind the same kind of cache and spinner as the schema index rather
     than inside the first question's render.
+
+    Returns None rather than raising, for the same reason `warm_retrieval` does.
+    This runs at import on a public deployment, so an exception here is not a
+    degraded feature -- it is a blank page where the app used to be. The
+    compiler cannot work without the layer, but the accuracy contract can, and
+    an app that says "the compiler is unavailable, here are 39 questions whose
+    SQL is committed" is a working app. One that stack-traces is not.
     """
-    return Layer(_con)
+    try:
+        return Layer(_con)
+    except Exception:
+        return None
 
 
 @st.cache_resource
@@ -218,6 +228,7 @@ def _live_assistant(_con):
 con = get_connection()
 RETRIEVAL_READY = warm_retrieval(con)
 layer = get_layer(con)
+PLANNER_READY = layer is not None
 verifier = get_verifier(con)
 assistant = _live_assistant(con) if LIVE_MODE else None
 st.session_state.setdefault("turns", [])      # engine context (Turn objects)
@@ -1148,6 +1159,20 @@ def render_keyless(connection) -> None:
     # in the layout as literal text ("function"), overlapping the first line of
     # the notice. A banner whose job is to explain the engine should not open
     # with a stray word, and the icon was carrying no information anyway.
+    if not PLANNER_READY:
+        # Profiling the warehouse failed. Say so plainly and fall back to the
+        # contract browser, which needs nothing but DuckDB.
+        st.warning(
+            "The compiler could not profile the warehouse on this container, so "
+            "the chat box is unavailable. The accuracy contract below still "
+            "runs: every question there executes committed reference SQL live "
+            "against DuckDB.",
+            icon=":material/warning:",
+        )
+        contract_question = render_demo_mode(connection)
+        _render_sidebar(contract_question)
+        return
+
     st.info(KEYLESS_NOTICE)
 
     link = _link_question()
