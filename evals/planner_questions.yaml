@@ -537,3 +537,164 @@
     Answered with revenue alone and said nothing about margin. A partial
     answer presented as a whole one is the quiet version of being wrong, and
     the grammar emits exactly one aggregate.
+
+# --------------------------------------------------------------------------
+# ROUND FOUR. The first three rounds varied the WORDING, then the SHAPE. This
+# one varied the CONSTRAINT — ranges, zero, sets, two-sided negation, shares of
+# a measure rather than of rows — and found twelve more silent wrong answers.
+#
+# Every one of them returned a plausible business number. Not one crashed. The
+# worst class is a DROPPED filter: the predicate goes missing and the query
+# answers the unconstrained question, so "claims with allowed amount between
+# 1000 and 2000" came back 12,000 — the whole table — where the answer is
+# 1,697. Nothing on screen said a constraint had been lost.
+# --------------------------------------------------------------------------
+
+- id: claims_in_amount_range
+  domain: healthcare
+  question: How many claims with allowed amount between 1000 and 2000?
+  sql: SELECT COUNT(*) FROM healthcare_fact_claims WHERE allowed_amount BETWEEN 1000 AND 2000
+  expect: 1697
+  expect_rows: 1
+  why: >
+    The grammar had no BETWEEN. COMPARE_RE matched nothing, no predicate was
+    emitted, and the query returned the whole table's count — 12,000. A range
+    that is silently dropped is indistinguishable, in the output, from a
+    question that never had one.
+
+- id: employees_in_salary_range
+  domain: hr
+  question: How many employees with base salary between 50000 and 60000?
+  sql: SELECT COUNT(*) FROM hr_fact_employees WHERE base_salary BETWEEN 50000 AND 60000
+  expect: 247
+  expect_rows: 1
+  why: >
+    The same defect on a second table: answered 1,900, the entire headcount.
+    Kept as well as the claims case because one instance of a dropped filter
+    reads as a one-off and two read as the class of bug it is.
+
+- id: claims_with_zero_paid
+  domain: healthcare
+  question: How many claims with paid amount of zero?
+  sql: SELECT COUNT(*) FROM healthcare_fact_claims WHERE paid_amount = 0
+  expect: 876
+  expect_rows: 1
+  why: >
+    Two bugs at once, and they compounded. `zero` was not a comparison the
+    grammar could spell, and `paid` — half of the column name `paid_amount` —
+    bound as a VALUE of `status`. The result was a question about unpaid claims
+    answered over only the paid ones: 9,746, then 0.
+
+- id: suppliers_with_no_stockouts
+  domain: wholesale
+  question: How many suppliers with zero stockout lines?
+  sql: SELECT COUNT(*) FROM wholesale_dim_supplier WHERE stockout_lines = 0
+  expect: 0
+  expect_rows: 1
+  why: >
+    Answered 46 — every supplier — because the zero predicate was dropped. The
+    correct answer being zero is the point: a question whose true answer is
+    "none" is exactly the one a dropped filter turns into "all".
+
+- id: open_queries_count
+  domain: clinical
+  question: How many queries are open?
+  sql: SELECT COUNT(*) FROM clinical_query_log WHERE status = 'open'
+  expect: 16
+  expect_rows: 1
+  why: >
+    `clinical_query_log` has "query" in its own table name AND a severity value
+    spelled "query", so the plan added severity = 'query' on top of the status
+    filter and answered 9. A word that names the table is not a value in it.
+
+- id: share_of_a_measure
+  domain: wholesale
+  question: What percent of revenue is Electronics?
+  sql: >
+    SELECT ROUND(100.0 * SUM(revenue) FILTER (WHERE department = 'Electronics')
+      / NULLIF(SUM(revenue), 0), 1)
+    FROM wholesale_fact_department_month
+  expect: 23.4
+  expect_rows: 1
+  why: >
+    A share of a MEASURE was computed as a share of ROWS: 10.0%, which is
+    one department out of ten in a month-by-department fact, where Electronics
+    is 23.4% of the money. The numerator is chosen by what the question names
+    after "of" — never by whether some measure happened to score, which is what
+    turned "what percentage of transactions are cash" into a share of a
+    rolling-window count.
+
+- id: revenue_for_two_departments
+  domain: wholesale
+  question: total revenue for Electronics and Grocery
+  sql: SELECT SUM(revenue) FROM wholesale_fact_department_month WHERE department IN ('Electronics', 'Grocery')
+  expect: 65113503.5
+  expect_rows: 1
+  why: >
+    The second value was skipped as a duplicate predicate on a column already
+    filtered, so the answer covered Electronics alone — 41,280,624 of
+    65,113,503. Half a question, presented as all of it.
+
+- id: top_five_written_as_a_word
+  domain: wholesale
+  question: top five departments by revenue
+  sql: >
+    SELECT department, SUM(revenue) AS r FROM wholesale_fact_department_month
+    GROUP BY 1 ORDER BY r DESC LIMIT 5
+  expect: Electronics
+  expect_rows: 5
+  why: >
+    "five" is not a digit, so the limit never parsed and the query fell through
+    to the "which X has the most Y" default of LIMIT 1. One row is not a
+    rougher answer to a question asking for five.
+
+- id: department_that_does_not_exist
+  domain: hr
+  question: How many employees in the Legal department?
+  sql: ""
+  expect: null
+  expect_refusal: true
+  why: >
+    There is no Legal department in this warehouse. The plan bound the word
+    `department` as a VALUE of `hr_flight_risk_scores.top_reason` — which
+    really does contain the literal string "department" — and answered 56,
+    a real count of an unrelated population, for a department that does not
+    exist. Refusing is the only honest outcome.
+
+- id: neither_nor
+  domain: healthcare
+  question: How many claims are neither denied nor paid?
+  sql: ""
+  expect: null
+  expect_refusal: true
+  why: >
+    A two-sided negation. The grammar inverts exactly one filter it can scope,
+    so it read the first half only and answered 876 — the count of denied
+    claims — for a question that excludes them.
+
+- id: average_order_value
+  domain: dbt
+  question: what is the average order value?
+  sql: ""
+  expect: null
+  expect_refusal: true
+  why: >
+    `overall value` was a SUM phrase, so `value` joined the aggregate
+    vocabulary and excused itself. The plan bound AVG(orders) on the word
+    `order` and reported 110 — the mean of a DAILY ORDER COUNT — as an average
+    order value. This warehouse has no order-value column; the answer is a
+    refusal.
+
+- id: store_level_revenue_that_is_not_there
+  domain: wholesale
+  question: top 5 stores by revenue
+  sql: ""
+  expect: null
+  expect_refusal: true
+  why: >
+    Grouped by `store_format` and returned three warehouse CATEGORIES for a
+    question about stores. The axis shared the noun but not the level, which is
+    a coarser question answered in confident numbers. Note the asymmetry kept
+    deliberately: "which store has the highest revenue?" now compiles, because
+    a store-grained revenue column does exist to rank — the refusal here is
+    about the top-5 shape, not about the word "store".

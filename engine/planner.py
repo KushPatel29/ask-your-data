@@ -87,7 +87,7 @@ from engine.semantics import (
 # rows in the AR table -- with full confidence.
 COUNT_PHRASES = ("how many", "number of", "count of", "how many of")
 SUM_PHRASES = ("total", "sum of", "sum", "combined", "altogether", "how much",
-               "overall value", "aggregate")
+               "aggregate")
 AVG_PHRASES = ("average", "avg", "mean", "typical", "on average", "per average")
 MAX_PHRASES = ("highest", "largest", "biggest", "most", "maximum", "max", "top",
                "greatest", "best", "peak", "longest", "leading")
@@ -177,7 +177,59 @@ AXIS_MARKERS = ("by", "for each", "each", "across", "grouped by", "broken down b
 # "which department has the most ...", "what payer type has the lowest ..."
 WHICH_RE = re.compile(r"\b(which|what|who)\b", re.I)
 
-TOP_N_RE = re.compile(r"\b(?:top|bottom|first|last)\s+(\d{1,3})\b", re.I)
+# English writes small numbers as words at least as often as digits, and "top
+# five departments by revenue" compiled to LIMIT 1 — the fallback for "which X
+# has the most Y" — so a question asking for five rows got one. One row is not
+# a rougher answer to that question; it is the answer to a different one.
+WORD_NUMBERS = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7,
+    "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "fifteen": 15,
+    "twenty": 20, "fifty": 50,
+}
+TOP_N_RE = re.compile(
+    r"\b(?:top|bottom|first|last)\s+(\d{1,3}|" + "|".join(WORD_NUMBERS) + r")\b", re.I)
+
+# "between 1000 and 2000" is the most common filter shape this grammar could
+# not read, and it did not fail loudly: COMPARE_RE found no match, no predicate
+# was emitted, and the query returned the WHOLE TABLE — 12,000 claims where the
+# answer is 1,697, and 1,900 employees where it is 247. A dropped range is
+# indistinguishable, in the output, from a question that never had one.
+BETWEEN_RE = re.compile(
+    r"\bbetween\s+\$?([0-9][0-9,_]*(?:\.[0-9]+)?)\s+and\s+"
+    r"\$?([0-9][0-9,_]*(?:\.[0-9]+)?)\b", re.I)
+
+# Zero is a comparison the grammar could not spell. "How many claims with paid
+# amount of zero?" bound `status = 'Paid'` off the word `paid` and answered
+# 9,746; "how many suppliers with zero stockout lines?" dropped the predicate
+# and answered the supplier count. Both word orders are read: the measure
+# before the zero, and the measure after it.
+MEASURE_IS_ZERO_RE = re.compile(
+    r"\b(?:of|is|are|was|were|equals?|equal to|at)\s+(?:exactly\s+)?(?:zero|nil)\b", re.I)
+ZERO_OF_RE = re.compile(
+    r"\b(?:with|having|have|has|had)\s+(?:exactly\s+)?(?:zero|no)\s+"
+    r"([a-z][a-z ]{2,40}?)(?=\s*(?:$|[?,.]|\band\b|\bor\b|\bin\b|\bfor\b|\bby\b))", re.I)
+
+# "neither denied nor paid" is a two-sided negation. The grammar inverts exactly
+# ONE unambiguous filter, so it read the first half only and answered 876 — the
+# count of denied claims — for a question that excludes them. A negation this
+# grammar cannot scope is a refusal, for the same reason every other one is.
+NEITHER_RE = re.compile(r"\bneither\b[\s\S]{0,80}?\bnor\b", re.I)
+
+# "what percent OF REVENUE is Electronics" shares out a MEASURE; "what
+# percentage of transactions are cash" shares out ROWS. The two produce
+# different numbers from the same table and only one answers each question, so
+# the numerator is chosen by what the question named after "of" — not by
+# whether some measure happened to score.
+SHARE_OF_RE = re.compile(
+    r"\b(?:percent|percentage|share|proportion|fraction)\s+of\s+(?:the\s+|all\s+|total\s+)*"
+    r"([a-z][a-z_ ]{2,40}?)(?=\s*(?:$|[?,.]|\bis\b|\bare\b|\bwas\b|\bwere\b|\bin\b|"
+    r"\bby\b|\bfor\b|\bhave\b|\bhas\b|\bthat\b|\bwhich\b))", re.I)
+
+
+def share_subject(question: str) -> set[str]:
+    """The words naming what a share is a share OF, if the question said."""
+    match = SHARE_OF_RE.search(question)
+    return set(tokenise(match.group(1))) if match else set()
 COMPARE_RE = re.compile(
     r"\b(over|above|more than|greater than|at least|under|below|less than|"
     r"fewer than|at most|exactly|equal to)\s+\$?([0-9][0-9,_]*(?:\.[0-9]+)?)\b", re.I)
@@ -239,6 +291,15 @@ STOP = {
 # schema introspection discovers a convention that lives in a policy document.
 # That question is why a metric layer exists, and why the model is still worth
 # paying for.
+# Words that mark a column as an ATTRIBUTE OF the noun beside them rather than
+# the noun itself. `store_format`, `payer_type`, `risk_band`, `tenure_band` are
+# all groupings one level coarser than the entity they name, and grouping by
+# one when the question named the entity answers a coarser question in
+# confident numbers. Only used to break a tie the question did not: see
+# _pick_dimension.
+_ATTRIBUTE_WORDS = {"format", "type", "category", "band", "group", "class",
+                    "segment", "tier", "level", "kind", "bucket"}
+
 MIN_COVERAGE = 0.70
 
 # How many candidate tables get a plan built for them. Binding one table is a
@@ -293,6 +354,11 @@ class Filter:
     op: str
     literal: str
     evidence: str
+    # Set only for `IN`, and only so the negation rule can see that inverting
+    # this predicate would mean inverting a SET. `literal` already carries the
+    # rendered "(a, b)" — this is the same information in a form the grammar
+    # can reason about rather than re-parse.
+    literals: tuple = ()
     # An optional SQL expression to compare instead of the bare column. Exists
     # for exactly one case today and it was a crash: "how many claims were
     # submitted in 2024?" emitted `service_date = 2024`, and DuckDB answered
@@ -553,10 +619,16 @@ def detect_order(question: str) -> str:
     return ""
 
 
+def as_int(token: str) -> int:
+    """A count written as digits or as a word."""
+    text = str(token).strip().lower()
+    return int(text) if text.isdigit() else WORD_NUMBERS[text]
+
+
 def detect_limit(question: str) -> int | None:
     match = TOP_N_RE.search(question)
     if match:
-        return max(1, min(int(match.group(1)), 100))
+        return max(1, min(as_int(match.group(1)), 100))
     return None
 
 
@@ -790,6 +862,45 @@ def flag_filters(question: str, layer: Layer, table: str) -> list[Filter]:
         literal = "TRUE" if base == "BOOLEAN" else "1"
         out.append(Filter(table=table, column=col.name, op="=", literal=literal,
                           evidence=" ".join(stem)))
+    return out
+
+
+def column_fragments(question: str, layer: Layer, tables) -> set[str]:
+    """Words the question spent naming a COLUMN, spelled as two words.
+
+    "How many claims with paid amount of zero?" says `paid amount`, and this
+    warehouse writes that as `paid_amount`. Read one word at a time, `paid` is
+    also a value of `healthcare_fact_claims.status`, so the plan filtered
+    status = 'Paid' AND paid_amount = 0 and answered 0 — a question about
+    unpaid claims, narrowed to the paid ones, in a number that reads like a
+    real finding.
+
+    Scoped to the tables the filter is actually being built over, and that
+    scope is the whole difference between a rule and a wrecking ball. Checked
+    against every table in the warehouse instead, "the overall claim DENIAL
+    RATE" matched a `denial_rate` column somewhere else entirely, excused both
+    words, and the share filter on `status = 'Denied'` never bound — turning a
+    question the compiler answers into a refusal, by way of a column no part of
+    the query was going to touch.
+    """
+    names: set[str] = set()
+    for name in tables:
+        table = layer.tables.get(name)
+        if table is None:
+            continue
+        for col in table.columns:
+            if len(col.words) >= 2:
+                names.add("_".join(col.words))
+    if not names:
+        return set()
+    tokens = tokenise(question)
+    out: set[str] = set()
+    for first, second in zip(tokens, tokens[1:], strict=False):
+        for a in _expand(first):
+            for b in _expand(second):
+                if f"{a}_{b}" in names:
+                    out.add(first)
+                    out.add(second)
     return out
 
 
@@ -1038,6 +1149,9 @@ def _pick_dimension(layer: Layer, table: str, words: set[str], hints: list[str],
     best: Column | None = None
     best_score = 0.0
     best_path: list[JoinEdge] = []
+    asked: set[str] = set()
+    for word in set(words) | set(hints):
+        asked |= _expand(word)
 
     def consider(col: Column, path: list[JoinEdge], penalty: float) -> None:
         nonlocal best, best_score, best_path
@@ -1046,6 +1160,26 @@ def _pick_dimension(layer: Layer, table: str, words: set[str], hints: list[str],
         # A grouping column with a thousand values is a listing, not a summary.
         if col.distinct > 200:
             return
+        # `store_format` is a property OF a store, not a store. Asked for "top
+        # 5 stores by revenue" it grouped by format and returned three
+        # warehouse categories — a coherent query, a confident number, and not
+        # the question. The rule is narrow on purpose: the penalty applies only
+        # when the question never said the attribute word, so "which store
+        # FORMAT runs the thinnest margin" still picks it without contest.
+        attribute = set(col.words) & _ATTRIBUTE_WORDS
+        if attribute and not (attribute & asked):
+            penalty += 0.35
+        # The same argument one step further. A boolean is the coarsest axis
+        # there is — two groups — and `is_physical_store` shares the word
+        # `store` with the question, so "which store has the highest revenue?"
+        # grouped by whether a store is physical and answered `True`. A flag
+        # may be the axis only when the question said the word that
+        # DISTINGUISHES it (`physical`), not merely the noun it hangs off.
+        if col.role == FLAG:
+            distinguishing = {w for w in col.words
+                              if w not in ("is", "has", "was", "did")} - asked
+            if distinguishing:
+                penalty += 1.0
         score = _score_column(col, words, hints) - penalty
         if score > best_score:
             best, best_score, best_path = col, score, path
@@ -1151,7 +1285,46 @@ def _build_filters(layer: Layer, base: str, joins: list[JoinEdge],
                     break
         if chosen is None:
             continue
-        if any(f.column == chosen.column and f.table == chosen.table for f in filters):
+        # A word that NAMES something in this schema is not a value of it.
+        #
+        # Two shapes, both of which returned a confident number for a question
+        # nobody asked. `hr_flight_risk_scores` has a column literally called
+        # `department` AND holds the string "department" among its top_reason
+        # codes, so "how many employees in the Legal department?" filtered
+        # top_reason = 'department' and answered 56 — for a department this
+        # warehouse does not contain, where the honest answer is a refusal.
+        # And `clinical_query_log` has "query" in its own table name, so "how
+        # many queries are open?" added severity = 'query' on top of the status
+        # filter and answered 9 instead of 16.
+        #
+        # The existing exclusion covers words the question used as an AXIS.
+        # These are the same mistake one step over: a word can name a column or
+        # a table without being an axis, and it is still not a value.
+        name_words = (set(split_identifier(base))
+                      | set(split_identifier(chosen.table))
+                      | {c.name for c in layer.tables[chosen.table].columns})
+        if phrase in name_words:
+            continue
+        # …and a word the question spent naming a COLUMN of one of these
+        # tables is not a value of another one. See column_fragments.
+        if set(tokenise(phrase)) & column_fragments(
+                question, layer, {base, chosen.table}):
+            continue
+        existing = next((f for f in filters
+                         if f.column == chosen.column and f.table == chosen.table), None)
+        if existing is not None:
+            # A second value on the SAME column is a set, not a duplicate.
+            # "total revenue for Electronics and Grocery" bound Electronics,
+            # skipped Grocery as already-covered, and answered with Electronics
+            # alone — half a question, presented as all of it.
+            if existing.op in ("=", "IN") and existing.literal != chosen.literal:
+                members = (existing.literals or (existing.literal,)) + (chosen.literal,)
+                filters[filters.index(existing)] = Filter(
+                    table=existing.table, column=existing.column, op="IN",
+                    literal="(" + ", ".join(members) + ")",
+                    literals=members,
+                    evidence=f"{existing.evidence}, {phrase}")
+                explained.update(tokenise(phrase))
             continue
         for edge in path:
             if edge not in extra:
@@ -1162,11 +1335,44 @@ def _build_filters(layer: Layer, base: str, joins: list[JoinEdge],
                               literal=chosen.literal, evidence=phrase))
         explained.update(tokenise(phrase))
 
+    words = content_words(question)
+    span = BETWEEN_RE.search(question)
+    if span:
+        low = span.group(1).replace(",", "").replace("_", "")
+        high = span.group(2).replace(",", "").replace("_", "")
+        target, score = _pick_measure(layer, base, words, [], "")
+        if target is not None and score > 0:
+            # Two predicates rather than SQL's BETWEEN, so each carries its own
+            # evidence into the binding trace: the panel's job is to say which
+            # word bought which clause, and one combined clause bought by four
+            # words explains less than two clauses bought by two each.
+            filters.append(Filter(table=base, column=target.name, op=">=",
+                                  literal=low, evidence=span.group(0)))
+            filters.append(Filter(table=base, column=target.name, op="<=",
+                                  literal=high, evidence=span.group(0)))
+            explained.update(tokenise(span.group(0)))
+
+    zero_of = ZERO_OF_RE.search(question)
+    zero_is = MEASURE_IS_ZERO_RE.search(question)
+    if (zero_of or zero_is) and not span:
+        # "with zero X" names the measure after the word; "X of zero" names it
+        # before. In the first case the named words are the only evidence
+        # allowed, so an unrelated measure cannot volunteer for the predicate.
+        named = set(tokenise(zero_of.group(1))) if zero_of else set()
+        target, score = _pick_measure(
+            layer, base, words if not named else named, [], "",
+            required=sorted(named) or None)
+        if target is not None and score > 0:
+            evidence = (zero_of or zero_is).group(0)
+            filters.append(Filter(table=base, column=target.name, op="=",
+                                  literal="0", evidence=evidence))
+            explained.update(tokenise(evidence))
+            explained.update(target.words)
+
     match = COMPARE_RE.search(question)
     if match:
         op = COMPARE_OPS[match.group(1).lower()]
         number = match.group(2).replace(",", "").replace("_", "")
-        words = content_words(question)
         target, score = _pick_measure(layer, base, words, [], "")
         if target is not None and score > 0:
             filters.append(Filter(table=base, column=target.name, op=op,
@@ -1208,6 +1414,14 @@ def _build_filters(layer: Layer, base: str, joins: list[JoinEdge],
 def _agg_expr(plan: Plan) -> str:
     if plan.aggregate == SHARE and plan.share_filter is not None:
         clause = plan.share_filter.sql()
+        if plan.measure is not None:
+            # The question named the quantity being shared out, so the share is
+            # of that quantity and not of the row count. See the note in
+            # _bind_candidate: these two produce different numbers and only one
+            # of them answers "what percent of revenue".
+            column = plan.measure.qualified
+            return (f"ROUND(100.0 * SUM({column}) FILTER (WHERE {clause}) "
+                    f"/ NULLIF(SUM({column}), 0), 1)")
         return (f"ROUND(100.0 * COUNT(*) FILTER (WHERE {clause}) "
                 f"/ NULLIF(COUNT(*), 0), 1)")
     if plan.aggregate == COUNT:
@@ -1349,6 +1563,16 @@ def _bind_candidate(question: str, layer: Layer, table: str, *,
         hint_forms = {f for hint in hints for f in _expand(hint)}
         if not (set(dimension.words) & hint_forms):
             dimension, d_score, dim_path = None, 0.0, []
+    if dimension is not None:
+        # The axis shares the question's noun but not its LEVEL. "Which store
+        # has the highest revenue?" grouped by `store_format` and answered
+        # `Supercenter` — a format, not a store, at a grain the question never
+        # asked for. Dropping the axis here sends the plan into the
+        # expects_category refusal below, which is the honest outcome: this
+        # warehouse has no revenue per store.
+        attribute = set(dimension.words) & _ATTRIBUTE_WORDS
+        if attribute and not (attribute & {f for w in words for f in _expand(w)}):
+            dimension, d_score, dim_path = None, 0.0, []
     for edge in dim_path:
         if edge not in joins:
             joins.append(edge)
@@ -1374,6 +1598,32 @@ def _bind_candidate(question: str, layer: Layer, table: str, *,
         share_filter = local[0] if local else None
         if share_filter is not None:
             filters = [f for f in filters if f is not share_filter]
+            # A share OF A MEASURE is not a share of rows, and answering one
+            # with the other is a wrong number that looks entirely reasonable.
+            # "What percent of revenue is Electronics?" counted the ROWS whose
+            # department is Electronics — one twelfth of a month-by-department
+            # fact — and answered 10.0%, where Electronics is 23.4% of the
+            # money.
+            #
+            # The switch is made by what the question named after "of", never
+            # by whether a measure scored. "What percentage of transactions are
+            # cash?" also has a measure in scope, and shares out ROWS; letting
+            # a scored measure decide turned that into a share of transaction
+            # AMOUNT and moved a contract answer.
+            subject = {f for w in share_subject(question) for f in _expand(w)}
+            # …and the subject must not be the ROWS. "What percentage of
+            # TRANSACTIONS are cash" names the population, and the synonym map
+            # happily binds `transactions` to `txn_count_7d` — a rolling-window
+            # feature — so a row share became a share of a windowed count and
+            # moved a contract answer from 24.8 to 7.7. A subject that is one
+            # of the table's own name-words is the table, not a measure of it.
+            own = {f for w in split_identifier(table) for f in _expand(w)}
+            if subject & own:
+                subject = set()
+            named = bool(subject and measure is not None
+                         and (set(measure.words) & subject))
+            if not (named and m_score > 0 and measure.additive):
+                measure, m_score = None, 0.0
         elif measure is not None and not measure.additive and m_score > 0:
             # The schema already carries the rate as a column and the question
             # named it ("what is the fill rate" -> `fill_rate_pct`). Averaging a
@@ -1552,11 +1802,72 @@ def _finish(plan: Plan, *, question: str, layer: Layer, table: str, words: set[s
     # A negation cue is explained by the filter it inverted, or the question
     # would be marked down for a word the plan genuinely acted on.
     explained |= {w for w in words if w in _NEGATION_WORDS}
+    # Words that set the SCOPE rather than the arithmetic. "The overall claim
+    # denial rate" says do not group — a real instruction the plan follows by
+    # not grouping — so holding the plan accountable for `overall` as if it
+    # were an unbound noun is charging it for obeying.
+    #
+    # `overall` used to be excused as one half of the SUM phrase "overall
+    # value", which also excused `value` on its own and is how AVG(orders)
+    # came back as an average order value. Scope words are their own idea.
+    explained |= {w for w in words if w in _SCOPE_WORDS}
+    # A filter's evidence is the VALUE as the warehouse spells it; the question
+    # spelled it its own way. `status = 'Denied'` is bought by the word
+    # `denial` in "what is the overall claim denial rate", and matching the two
+    # literally left `denial` unexplained — marking the plan down for a word it
+    # had already acted on, and refusing a question this compiler answers.
+    # match_values binds them through stems, so accounting has to as well.
+    filter_stems = {s for f in filters for w in tokenise(f.evidence) for s in stems(w)}
+    if share_filter is not None:
+        filter_stems |= {s for w in tokenise(share_filter.evidence) for s in stems(w)}
+    if filter_stems:
+        explained |= {w for w in words if stems(w) & filter_stems}
     if aggregate:
-        explained |= {w for w in words if w in _AGGREGATE_WORDS}
+        explained |= {w for w in words if w in aggregate_words_in(question)}
     explained &= words
     plan.explained = explained
     plan.unexplained = words - explained
+
+    # A NUMBER the question said and the plan did not use is a dropped
+    # constraint, and a dropped constraint does not produce a rougher answer —
+    # it produces the answer to the UNCONSTRAINED question, in figures that
+    # look completely ordinary. "How many claims with allowed amount between
+    # 1000 and 2000?" returned 12,000: the whole table.
+    #
+    # This is a backstop behind the grammar, not a substitute for it. BETWEEN,
+    # the comparisons, the year predicate and top-N all consume their own
+    # numerals; what reaches here is a numeric constraint nothing modelled, and
+    # the only safe thing to do with one is refuse.
+    #
+    # Consumption is read off the EVIDENCE rather than off `explained`, because
+    # `explained` is intersected with content_words and content_words drops any
+    # token of one character — so "top 3 departments" would have looked like a
+    # dropped constraint and refused a question the plan handled perfectly.
+    consumed = set(explained) | {w for f in filters for w in tokenise(f.evidence)}
+    if share_filter is not None:
+        consumed |= set(tokenise(share_filter.evidence))
+    if plan.limit:
+        consumed |= {w for w in tokenise(question)
+                     if w.isdigit() or w in WORD_NUMBERS}
+    if {w for w in tokenise(question) if w.isdigit()} - consumed:
+        return None
+
+    # The same argument for words rather than digits: an unbindable word sitting
+    # directly on a measure the plan DID bind is modifying that measure, not
+    # decorating the sentence. "What is the average order value?" excused
+    # `value` as a word this warehouse has nowhere, bound AVG(orders) on
+    # `order`, and reported 110 — the mean of a daily order COUNT — as an
+    # average order value. Excusing a word is for words the question did not
+    # need; it is not for the second half of the measure's own name.
+    if measure is not None and m_score > 0:
+        tokens = tokenise(question)
+        measure_forms = {f for w in measure.words for f in _expand(w)}
+        for before, after in zip(tokens, tokens[1:], strict=False):
+            if not (_expand(before) & measure_forms):
+                continue
+            if after in STOP or after in explained:
+                continue
+            return None
 
     # A named axis is an instruction, not a hint. "Average risk score by
     # channel" against a table with no channel column used to drop the GROUP BY
@@ -1576,6 +1887,15 @@ def _finish(plan: Plan, *, question: str, layer: Layer, table: str, words: set[s
         axis = plan.group_by or plan.label
         hint_forms = {f for hint in hints for f in _expand(hint)}
         if axis is None or not (set(axis.words) & hint_forms):
+            return None
+        # "Which store has the highest revenue?" grouped by `store_format` and
+        # answered `Supercenter` — a store FORMAT, for a question about a
+        # store. The axis shares the noun, so the check above passes; what it
+        # does not share is the level. When the question names the entity and
+        # the only axis available is an attribute OF it, the honest answer is
+        # that this warehouse has no revenue at that grain.
+        attribute = set(axis.words) & _ATTRIBUTE_WORDS
+        if attribute and not (attribute & {f for w in words for f in _expand(w)}):
             return None
 
     # ---- and whether the table itself was ever earned -----------------------
@@ -1621,10 +1941,33 @@ def _finish(plan: Plan, *, question: str, layer: Layer, table: str, words: set[s
     return plan
 
 
-_AGGREGATE_WORDS = {word for phrase in
-                    COUNT_PHRASES + SUM_PHRASES + AVG_PHRASES + SHARE_PHRASES
-                    + DISTINCT_PHRASES
+_ALL_AGGREGATE_PHRASES = (COUNT_PHRASES + SUM_PHRASES + AVG_PHRASES
+                          + SHARE_PHRASES + DISTINCT_PHRASES)
+_AGGREGATE_WORDS = {word for phrase in _ALL_AGGREGATE_PHRASES
                     for word in phrase.split()}
+# The same set, split by whether the phrase stands alone.
+#
+# Flattening every phrase into words meant a word could excuse ITSELF out of a
+# phrase it was never in. `overall value` is a way of saying SUM, so `value`
+# joined the aggregate vocabulary — and then "what is the average order value?"
+# treated `value` as an aggregate word, explained it for free, and answered
+# with AVG of a daily order COUNT: 110, reported as an average order value.
+# A multi-word phrase only excuses its words when the question really said it.
+_AGGREGATE_SINGLE = {p for p in _ALL_AGGREGATE_PHRASES if " " not in p}
+_AGGREGATE_MULTI = tuple(p for p in _ALL_AGGREGATE_PHRASES if " " in p)
+
+
+def aggregate_words_in(question: str) -> set[str]:
+    """Aggregate vocabulary this particular question actually used."""
+    low = " " + " ".join(tokenise(question)) + " "
+    out = set(_AGGREGATE_SINGLE)
+    for phrase in _AGGREGATE_MULTI:
+        if f" {phrase} " in low:
+            out |= set(phrase.split())
+    return out
+
+# Scope, not arithmetic: these say "across everything, do not break it down".
+_SCOPE_WORDS = {"overall", "altogether", "entire", "whole", "across", "globally"}
 
 _SUPERLATIVE_WORDS = set(MAX_PHRASES) | set(MIN_PHRASES)
 _NEGATION_WORDS = {w for phrase in NEGATION_PHRASES for w in phrase.split()}
@@ -1649,6 +1992,14 @@ def plan_question(question: str, layer: Layer, *,
             reason=("that reads as a follow-up, and this compiler is stateless — "
                     "it has no previous question to attach it to. Ask it as a "
                     "whole question and it will compile."))
+    if NEITHER_RE.search(question):
+        return PlanResult(
+            question=question, refused=True, kind="outside the grammar",
+            reason=("\"neither … nor\" excludes two things at once, and this "
+                    "grammar inverts exactly one filter it can scope "
+                    "unambiguously. Reading half of it would answer with the "
+                    "count of the first thing — which is the opposite of what "
+                    "you asked."))
     if RATIO_OF_RE.search(question):
         return PlanResult(
             question=question, refused=True, kind="outside the grammar",
