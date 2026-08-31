@@ -771,3 +771,102 @@ def test_the_session_ceiling_admits_what_it_is():
     assert "MAX_QUESTIONS_PER_SESSION" in source
     assert "not a security control" in source
     assert "spend cap" in source
+
+
+# --------------------------------------------------------------------------
+# The chart. It is the most prominent element of a turn, which is exactly why
+# it has to be a restatement of the result and never an interpretation of it.
+# --------------------------------------------------------------------------
+
+def test_the_chart_uses_the_machine_accent_and_no_other(rendered):
+    _ui, panels = rendered
+    body = panels["result_chart"]
+    assert "ayd-verified" not in body, "a chart is not a verified value"
+    assert 'class="bar' in body
+
+
+def test_the_chart_prints_the_value_so_a_length_is_never_estimated(rendered):
+    """A bar you have to measure against an axis to read is a picture of a
+    number. The number goes at the end of the bar."""
+    _ui, panels = rendered
+    assert 'class="val"' in panels["result_chart"]
+    assert "41.3M" in panels["result_chart"]
+
+
+def test_the_chart_says_when_it_is_showing_less_than_the_grid(rendered):
+    """Silent truncation reads as "this is all of it"."""
+    _ui, panels = rendered
+    assert "showing 5 of 10 rows" in panels["result_chart"]
+
+
+def test_the_chart_carries_a_text_alternative(rendered):
+    """An SVG with no accessible name is a decorative rectangle to a screen
+    reader, and this one carries the finding."""
+    _ui, panels = rendered
+    assert 'role="img"' in panels["result_chart"]
+    assert 'aria-label=' in panels["result_chart"]
+
+
+def test_a_time_series_is_drawn_as_a_line_not_a_ranking(rendered):
+    """Drawing a series over time as sorted bars hides the one thing it is
+    for. The axis type decides, because that is a fact about the data."""
+    _ui, panels = rendered
+    assert 'class="line"' in panels["result_chart_line"]
+    assert 'class="bar' not in panels["result_chart_line"]
+
+
+def test_a_single_row_gets_no_chart():
+    """ui.answer already says the number in a sentence, and one bar at 100% of
+    itself is a rectangle rather than a comparison."""
+    import audit_ui as _audit
+
+    ui = _audit.load_ui()
+    ui.st.take()
+    ui.result_chart([("Electronics", 41280624.23)], label="department",
+                    measure="sum revenue")
+    assert ui.st.take().strip() == ""
+
+
+def test_negative_values_draw_nothing_rather_than_draw_wrong():
+    """A bar for "less than nothing" is a different chart — a baseline in the
+    middle. Until it exists, the grid is the honest answer."""
+    import audit_ui as _audit
+
+    ui = _audit.load_ui()
+    ui.st.take()
+    ui.result_chart([("a", 5.0), ("b", -3.0)], label="x", measure="y")
+    assert ui.st.take().strip() == ""
+
+
+def test_the_chart_only_fires_on_a_result_that_is_a_shape():
+    """Source-level, because the decision lives in the app and the rule is the
+    feature: one label column, one numeric column, more than one row."""
+    import ast
+
+    tree = ast.parse(_app_source())
+    fn = next(node for node in ast.walk(tree)
+              if isinstance(node, ast.FunctionDef) and node.name == "_chart_shape")
+    body = ast.unparse(fn)
+    assert "len(frame.columns) != 2" in body
+    assert "len(frame) < 2" in body
+
+
+def test_the_chart_never_reorders_a_query_that_named_its_own_order():
+    """A query with an ORDER BY is drawn exactly as it came back: re-sorting a
+    top-N would draw the answer to a query nobody ran, and re-sorting a time
+    series would scramble the axis.
+
+    A GROUP BY with NO ORDER BY is the opposite case — DuckDB returns those
+    groups in any order it likes, and this repo has been bitten once already by
+    reading meaning into that. Sorting there is not an interpretation; it is
+    the only defensible reading of a result the query left unordered.
+    """
+    import ast
+
+    tree = ast.parse(_app_source())
+    fn = next(node for node in ast.walk(tree)
+              if isinstance(node, ast.FunctionDef) and node.name == "_result_chart")
+    body = ast.unparse(fn)
+    assert "order by" in body, "the ORDER BY of the query has to be consulted"
+    assert "sort_values" in body
+    assert "kind != 'line'" in body or 'kind != "line"' in body

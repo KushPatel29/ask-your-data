@@ -289,6 +289,13 @@ def render_all(ui, fx) -> dict[str, str]:
         plan_ms=4.0, refused=True))
     grab("answer", lambda: ui.answer("1,428", verified=True,
                                      verified_note="Asserted in evals/golden_questions.yaml."))
+    grab("result_chart", lambda: ui.result_chart(
+        [(HOSTILE, 41280624.23), ("Grocery", 23832879.27), ("Home & Kitchen", 23005902.9),
+         ("Apparel", 12004311.5), ("Toys", 8052077.9)],
+        label=HOSTILE, measure="sum revenue", truncated_from=10))
+    grab("result_chart_line", lambda: ui.result_chart(
+        [("2025-01", 10.0), ("2025-02", 14.5), (HOSTILE, 9.25)],
+        label="month", measure=HOSTILE, kind="line"))
     grab("operations", lambda: ui.operations(
         {"turns": 12, "answered": 9, "refused": 2, "blocked": 1, "failed": 0,
          "refusal_rate": 2 / 12, "engines": {"plan": 11, "manual": 1},
@@ -314,10 +321,14 @@ def check_markup(panels: dict[str, str]) -> list[str]:
     problems = []
     for name, body in panels.items():
         stack: list[str] = []
-        found = [(m.group(2).lower(), bool(m.group(1)))
-                 for m in re.finditer(r"<(/?)([a-zA-Z][\w-]*)", body)]
-        for tag, closing in found:
-            if tag in VOID:
+        # The third group captures a self-closing `/>`. SVG needs it: `<rect
+        # …/>` and `<circle …/>` are complete elements, and counting them as
+        # openings reported every chart as unbalanced. Matching the whole tag
+        # rather than just its name is what makes that visible.
+        found = [(m.group(2).lower(), bool(m.group(1)), m.group(3) == "/")
+                 for m in re.finditer(r"<(/?)([a-zA-Z][\w-]*)[^<>]*?(/?)>", body)]
+        for tag, closing, self_closing in found:
+            if tag in VOID or self_closing:
                 continue
             if closing:
                 if not stack or stack[-1] != tag:

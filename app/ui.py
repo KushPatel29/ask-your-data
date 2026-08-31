@@ -444,6 +444,43 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
   border-bottom:1px solid transparent; font-family:var(--ayd-mono) !important;
   font-size:.62rem; color:var(--ayd-muted); line-height:1.5; }
 
+/* ---- the result, drawn -------------------------------------------------- */
+/* Ten departments and their revenue is a SHAPE, and the app was printing it as
+   ten rows of digits and asking the reader to do the comparison in their head.
+   The grid stays — it is the auditable artifact and the thing the CSV matches —
+   but the chart goes above it, because "which is biggest and by how much" is
+   the question a breakdown was asked in order to answer.
+
+   Hand-drawn SVG rather than a plotting library, and not for the dependency:
+   every other readout in this file is drawn from the same tokens, and a Vega
+   chart would arrive with its own palette, its own type stack and its own idea
+   of a gridline. One accent, tabular figures, the value printed at the end of
+   the bar so the length never has to be estimated. */
+.ayd-chart{ border:1px solid var(--ayd-line); border-radius:3px;
+  background:var(--ayd-panel); padding:.7rem .85rem .5rem; margin:.2rem 0 .6rem; }
+.ayd-chart-head{ display:flex; justify-content:space-between; gap:1rem;
+  font-family:var(--ayd-mono) !important; font-size:.6rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ayd-muted); margin-bottom:.5rem; }
+.ayd-chart svg{ display:block; width:100%; height:auto; overflow:visible; }
+.ayd-chart .bar{ fill:var(--ayd-machine); opacity:.72; }
+.ayd-chart .bar-top{ opacity:1; }
+.ayd-chart .track{ fill:var(--ayd-panel-2); }
+.ayd-chart .cat{ fill:var(--ayd-ink); font-family:var(--ayd-mono); font-size:10px; }
+.ayd-chart .val{ fill:var(--ayd-muted); font-family:var(--ayd-mono); font-size:10px;
+  font-variant-numeric:tabular-nums; text-anchor:end; }
+.ayd-chart .line{ fill:none; stroke:var(--ayd-machine); stroke-width:1.5; }
+.ayd-chart .dot{ fill:var(--ayd-machine); }
+.ayd-chart .axis{ stroke:var(--ayd-line); stroke-width:1; }
+.ayd-chart-foot{ font-family:var(--ayd-mono) !important; font-size:.6rem;
+  color:var(--ayd-muted); margin-top:.35rem; }
+/* SVG text scales with the viewBox, so a chart squeezed to a phone shrinks its
+   own 10px labels to about 6px. Below 560 the chart keeps a legible width and
+   scrolls inside its own box instead — the page itself never scrolls
+   sideways, which is the rule the rest of this file follows. */
+@media (max-width:560px){
+  .ayd-chart{ overflow-x:auto; }
+  .ayd-chart svg{ min-width:460px; } }
+
 /* ---- operations ledger ------------------------------------------------- */
 /* Observability OF A REQUEST is what the pipeline strip has always shown.
    Observability OF A SERVICE is a different thing and needs something durable
@@ -1137,6 +1174,114 @@ def layer_summary(cells: list[tuple[str, str, str]], *, footnote: str = "") -> N
             if footnote else "")
     st.markdown(f'<div class="ayd-layer ayd-hud">{body}{foot}</div>',
                 unsafe_allow_html=True)
+
+
+def _fmt_compact(value: float) -> str:
+    """A number short enough to sit at the end of a bar without moving it."""
+    number = float(value)
+    for limit, suffix in ((1e12, "T"), (1e9, "B"), (1e6, "M"), (1e3, "k")):
+        if abs(number) >= limit:
+            scaled = number / limit
+            return f"{scaled:,.1f}{suffix}" if abs(scaled) < 100 else f"{scaled:,.0f}{suffix}"
+    if number == int(number):
+        return f"{int(number):,}"
+    return f"{number:,.2f}"
+
+
+def result_chart(pairs: list[tuple[str, float]], *, label: str, measure: str,
+                 kind: str = "bar", truncated_from: int = 0) -> None:
+    """The answer as a shape, above the answer as a grid.
+
+    "Total revenue by department" returns ten rows, and ten rows of digits ask
+    the reader to do the comparison the question was asked in order to avoid.
+    The grid stays — it is the auditable artifact, and it is what the CSV
+    matches — but the ranking goes on top, because the shape IS the finding.
+
+    Drawn here rather than delegated to a plotting library, and not to save a
+    dependency. Every readout in this file is built from the same tokens, and a
+    Vega or Plotly chart arrives with its own palette, its own type stack and
+    its own idea of a gridline — three quiet contradictions of the design
+    system, on the most prominent element of the turn. One accent, tabular
+    figures, and the value printed at the end of every bar so a length never
+    has to be estimated to be read.
+
+    `pairs` is already ordered by the caller: the query's own ORDER BY is the
+    ranking the reader asked for, and re-sorting here would draw a different
+    query's answer.
+    """
+    if len(pairs) < 2:
+        return
+    magnitudes = [abs(float(v)) for _, v in pairs]
+    widest = max(magnitudes) or 1.0
+    # A chart of negatives, or of a mix, is a different chart — a baseline in
+    # the middle, and a bar that means "less than nothing" rather than "less".
+    # Rather than draw the bar chart wrong, this draws nothing and leaves the
+    # grid, which is honest about a shape this component does not do yet.
+    if any(float(v) < 0 for _, v in pairs):
+        return
+
+    row_h, gap, pad_l, pad_r = 20, 4, 148, 62
+    height = len(pairs) * (row_h + gap)
+    width = 620
+    track = width - pad_l - pad_r
+
+    def clip(text: str, limit: int = 22) -> str:
+        text = " ".join(str(text).split())
+        return text if len(text) <= limit else text[: limit - 1] + "…"
+
+    body = []
+    if kind == "line":
+        # A series over time reads as a line; a ranking reads as bars. The
+        # caller decides which, from the column's DuckDB type, because a date
+        # axis is a fact about the data and not a preference.
+        plot_h = max(90, min(190, height))
+        step = track / max(len(pairs) - 1, 1)
+        points = " ".join(
+            f"{pad_l + i * step:.1f},"
+            f"{plot_h - (abs(float(v)) / widest) * (plot_h - 16) - 8:.1f}"
+            for i, (_, v) in enumerate(pairs))
+        body.append(f'<polyline class="line" points="{points}"/>')
+        for i, (name, value) in enumerate(pairs):
+            x = pad_l + i * step
+            y = plot_h - (abs(float(value)) / widest) * (plot_h - 16) - 8
+            body.append(f'<circle class="dot" cx="{x:.1f}" cy="{y:.1f}" r="2"/>')
+            if i in (0, len(pairs) - 1):
+                anchor = "start" if i == 0 else "end"
+                body.append(
+                    f'<text class="cat" x="{x:.1f}" y="{plot_h + 12}" '
+                    f'text-anchor="{anchor}">{html.escape(clip(name, 16))}</text>')
+        body.append(f'<line class="axis" x1="{pad_l}" y1="{plot_h}" '
+                    f'x2="{width - pad_r}" y2="{plot_h}"/>')
+        view_h = plot_h + 18
+    else:
+        for i, (name, value) in enumerate(pairs):
+            y = i * (row_h + gap)
+            length = max(1.0, track * abs(float(value)) / widest)
+            top = " bar-top" if i == 0 else ""
+            body.append(
+                f'<text class="cat" x="0" y="{y + 13}">{html.escape(clip(name))}</text>'
+                f'<rect class="track" x="{pad_l}" y="{y + 3}" width="{track}" '
+                f'height="{row_h - 6}" rx="1"/>'
+                f'<rect class="bar{top}" x="{pad_l}" y="{y + 3}" width="{length:.1f}" '
+                f'height="{row_h - 6}" rx="1"/>'
+                f'<text class="val" x="{width}" y="{y + 13}">'
+                f'{html.escape(_fmt_compact(value))}</text>')
+        view_h = height
+
+    foot = ""
+    if truncated_from:
+        foot = (f'<div class="ayd-chart-foot">showing {len(pairs)} of '
+                f'{truncated_from:,} rows — the grid below has the rest</div>')
+    st.markdown(
+        f'<div class="ayd-chart ayd-hud">'
+        f'<div class="ayd-chart-head"><span>{html.escape(label)}</span>'
+        f'<span>{html.escape(measure)}</span></div>'
+        f'<svg viewBox="0 0 {width} {view_h}" role="img" '
+        f'aria-label="{html.escape(measure)} by {html.escape(label)}, '
+        f'{len(pairs)} values, highest {html.escape(clip(str(pairs[0][0])))}">'
+        f'{"".join(body)}</svg>{foot}</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def operations(summary: dict, *, limits: list[str] | None = None) -> None:

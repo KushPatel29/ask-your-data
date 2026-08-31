@@ -1489,6 +1489,64 @@ def _refusal_help(entry) -> None:
         )
 
 
+CHART_MAX_BARS = 20
+
+
+def _chart_shape(frame):
+    """Whether this result IS a shape, and which one — or None.
+
+    Deliberately conservative, and the conservatism is the design. A chart is
+    the most prominent thing on a turn, so it has to be a restatement of the
+    result rather than an interpretation of it: one label column, one numeric
+    column, more than one row. Anything else — two measures, three dimensions,
+    a single scalar — is a grid, and the grid was never the problem.
+
+    A single row gets nothing. `ui.answer` above already says the number in a
+    sentence, and one bar at 100% of itself is a rectangle, not a comparison.
+    """
+    if frame is None or frame.empty or len(frame.columns) != 2 or len(frame) < 2:
+        return None
+    label_col, value_col = frame.columns[0], frame.columns[1]
+    values = pd.to_numeric(frame[value_col], errors="coerce")
+    if values.isna().any():
+        return None
+    if pd.api.types.is_numeric_dtype(frame[label_col]):
+        return None
+    # A date axis is a fact about the column, not a preference: a series over
+    # time reads as a line and a ranking reads as bars, and drawing a time
+    # series as a sorted bar chart hides the one thing it is for.
+    kind = "line" if pd.api.types.is_datetime64_any_dtype(frame[label_col]) else "bar"
+    return label_col, value_col, kind
+
+
+def _result_chart(entry) -> None:
+    shape = _chart_shape(entry["rows"])
+    if shape is None:
+        return
+    frame = entry["rows"]
+    label_col, value_col, kind = shape
+    # The query's own ORDER BY is the ranking the reader asked for, so a query
+    # that HAS one is drawn exactly as it came back: re-sorting a top-N would
+    # draw the answer to a query nobody ran, and re-sorting a time series would
+    # scramble the axis outright.
+    #
+    # A GROUP BY with no ORDER BY has no order at all — DuckDB returns those
+    # groups however it likes, and this repo has already been bitten once by
+    # treating that arbitrary order as meaningful. Drawing it unsorted puts
+    # Grocery above Electronics for no reason a reader can see. Sorting is
+    # therefore not an interpretation here; it is the only defensible reading
+    # of a result set the query left unordered.
+    ordered = "order by" in " ".join(entry.get("sql", "").lower().split())
+    if not ordered and kind != "line":
+        frame = frame.sort_values(value_col, ascending=False)
+    head = frame.head(CHART_MAX_BARS)
+    pairs = [(str(a), float(b)) for a, b in zip(head[label_col], head[value_col],
+                                                strict=False)]
+    ui.result_chart(pairs, label=_humanise(str(label_col)),
+                    measure=_humanise(str(value_col)), kind=kind,
+                    truncated_from=len(frame) if len(frame) > CHART_MAX_BARS else 0)
+
+
 def _result_block(entry, index: int) -> None:
     """The rows, how to take them away, and how to change the query.
 
@@ -1497,9 +1555,14 @@ def _result_block(entry, index: int) -> None:
     done rather than a place you watch work being done.
     """
     if entry["rows"] is None:
-        if entry["error"]:
+        if entry.get("timed_out"):
+            # A different fact from a broken query, and it leads somewhere
+            # different: narrow the question rather than fix a word.
+            st.warning(entry["error"], icon=":material/timer_off:")
+        elif entry["error"]:
             st.error(f"Query error: {entry['error']}")
         return
+    _result_chart(entry)
     st.dataframe(entry["rows"], use_container_width=True, hide_index=True,
                  column_config=_numeric_format(entry["rows"]))
     left, right = st.columns([1, 3])
@@ -1790,7 +1853,18 @@ def render_keyless(connection) -> None:
         _render_sidebar(contract_question)
         return
 
-    st.info(KEYLESS_NOTICE)
+    # The notice explains which engine is answering and why there is no key. It
+    # is the right thing to lead with on arrival and the wrong thing to keep
+    # leading with: measured at 1280, it is 140px of prose sitting between the
+    # masthead and the answer on every turn after the first, and the answer was
+    # already 973px down the page. Once a question has been asked the reader
+    # has both read it and seen the engine named on the pipeline strip, so it
+    # folds into an expander and stops being in the way.
+    if st.session_state.transcript:
+        with st.expander("Two engines, and no API key on this deployment"):
+            st.info(KEYLESS_NOTICE)
+    else:
+        st.info(KEYLESS_NOTICE)
 
     link = _link_question()
     clicked = None
