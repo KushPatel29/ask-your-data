@@ -78,8 +78,28 @@ def _seal(con) -> None:
     for setting in (
         "SET autoinstall_known_extensions=false",
         "SET autoload_known_extensions=false",
+        # Resource ceilings. The filesystem settings above stop the query
+        # LEAVING the database; these stop it eating the container from
+        # inside. `SELECT COUNT(*) FROM aml_fact_transactions a,
+        # aml_fact_transactions b WHERE a.amount_cad > b.amount_cad` is a
+        # single SELECT with no forbidden verb — 10,059,889,401 pairs, and it
+        # was still running after 20 seconds with memory climbing. The wall
+        # clock lives in engine/query.py (DuckDB has no statement_timeout);
+        # this is the memory half, so a hash join that would have swallowed
+        # the container fails as a query instead of as an outage.
+        #
+        # 1.5GB is deliberately above the ~290MB the app measures at rest and
+        # below what a small container can survive losing. `threads=4` bounds
+        # how much CPU one visitor's question can take from the others, since
+        # Streamlit serves every session from this one process.
+        "SET memory_limit='1500MB'",
+        "SET threads=4",
+        # A parser bound rather than a runtime one: deeply nested expressions
+        # are a cheap way to burn stack before execution ever starts.
+        "SET max_expression_depth=500",
         "SET enable_external_access=false",  # must be last: one-way, and the
-                                             # two above cannot be set after it
+                                             # settings above cannot be set
+                                             # after it
     ):
         con.execute(setting)
 
