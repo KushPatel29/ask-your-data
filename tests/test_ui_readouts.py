@@ -411,6 +411,16 @@ def test_no_golden_question_is_ever_shown_its_own_pair():
         assert all(ex._normalise(p.question) != key for p in picks), case["id"]
 
 
+def test_exemplar_selection_recovers_from_a_dead_collection():
+    from engine import exemplars as ex
+
+    ex.build_index()
+    ex._client.delete_collection(ex._COLLECTION)
+    picks = ex.select_exemplars("What is the overall claim denial rate?")
+    assert picks
+    assert ex._collection is not None
+
+
 def test_the_verifier_is_silent_on_every_committed_query(con):
     """Demo mode runs the verifier on reference SQL, so a check that fired there
     would be a false positive in front of every visitor without an API key."""

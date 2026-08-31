@@ -22,6 +22,10 @@ from dataclasses import dataclass
 STT_MODEL = os.environ.get("ASK_STT_MODEL", "gpt-transcribe")
 TTS_MODEL = os.environ.get("ASK_TTS_MODEL", "gpt-4o-mini-tts")
 DEFAULT_VOICE = os.environ.get("ASK_TTS_VOICE", "cedar")
+ENV_BASE_URL = "ASK_VOICE_BASE_URL"
+LOCAL_STT_MODEL = "Systran/faster-whisper-small"
+LOCAL_TTS_MODEL = "speaches-ai/Kokoro-82M-v1.0-ONNX"
+LOCAL_DEFAULT_VOICE = "af_heart"
 
 # OpenAI accepts larger files, but a spoken analytics question should not need
 # anything close to that ceiling. A local bound keeps one browser session from
@@ -85,6 +89,28 @@ def server_api_key(environ: dict[str, str] | None = None) -> str:
     return str(env.get("OPENAI_API_KEY", "") or "").strip()
 
 
+def base_url(environ: dict[str, str] | None = None) -> str:
+    """An optional self-hosted OpenAI-compatible speech endpoint."""
+    env = os.environ if environ is None else environ
+    return str(env.get(ENV_BASE_URL, "") or "").strip().rstrip("/")
+
+
+def local_endpoint_configured(environ: dict[str, str] | None = None) -> bool:
+    return bool(base_url(environ))
+
+
+def configured_stt_model(environ: dict[str, str] | None = None) -> str:
+    env = os.environ if environ is None else environ
+    fallback = LOCAL_STT_MODEL if local_endpoint_configured(env) else "gpt-transcribe"
+    return str(env.get("ASK_STT_MODEL", fallback) or fallback)
+
+
+def configured_tts_model(environ: dict[str, str] | None = None) -> str:
+    env = os.environ if environ is None else environ
+    fallback = LOCAL_TTS_MODEL if local_endpoint_configured(env) else "gpt-4o-mini-tts"
+    return str(env.get("ASK_TTS_MODEL", fallback) or fallback)
+
+
 def _filename(name: str, mime_type: str) -> str:
     """Give the SDK a supported extension without trusting an uploaded path."""
     suffix = SUPPORTED_AUDIO_TYPES.get((mime_type or "").lower(), ".wav")
@@ -109,14 +135,17 @@ class OpenAIVoice:
 
     def __init__(
         self,
-        api_key: str,
+        api_key: str = "",
         *,
+        base_url: str = "",
         client=None,
-        stt_model: str = STT_MODEL,
-        tts_model: str = TTS_MODEL,
+        stt_model: str | None = None,
+        tts_model: str | None = None,
     ) -> None:
-        if not str(api_key or "").strip() and client is None:
-            raise VoiceUnavailable("Add an OpenAI API key to enable voice.")
+        endpoint = str(base_url or "").strip().rstrip("/")
+        self.local = bool(endpoint)
+        if not str(api_key or "").strip() and not self.local and client is None:
+            raise VoiceUnavailable("Configure a local speech endpoint or add an OpenAI API key.")
         if client is None:
             try:
                 from openai import OpenAI
@@ -124,10 +153,22 @@ class OpenAIVoice:
                 raise VoiceUnavailable(
                     "Voice needs the optional OpenAI SDK. Install the project requirements."
                 ) from exc
-            client = OpenAI(api_key=api_key)
+            # Speaches needs no credential, but OpenAI's SDK rejects an empty
+            # key before making a local request. This sentinel is sent only to
+            # the explicitly configured self-hosted endpoint.
+            client = OpenAI(
+                api_key=str(api_key or "local-speech"),
+                base_url=endpoint or None,
+                timeout=120.0,
+            )
         self.client = client
-        self.stt_model = stt_model
-        self.tts_model = tts_model
+        self.base_url = endpoint
+        self.stt_model = stt_model or (
+            os.environ.get("ASK_STT_MODEL", LOCAL_STT_MODEL) if self.local else STT_MODEL
+        )
+        self.tts_model = tts_model or (
+            os.environ.get("ASK_TTS_MODEL", LOCAL_TTS_MODEL) if self.local else TTS_MODEL
+        )
 
     def transcribe(
         self,
@@ -159,20 +200,20 @@ class OpenAIVoice:
         context = {"keywords": list(DOMAIN_KEYWORDS)}
         if language:
             context["languages"] = [language]
-        # gpt-transcribe accepts richer context in the request body. Keeping it
-        # in extra_body also leaves the SDK version independent of those fields.
-        if self.stt_model.startswith("gpt-transcribe"):
+        # OpenAI's GPT transcription models accept richer context. Speaches'
+        # faster-whisper route follows the ordinary OpenAI fields and rejects
+        # provider-specific extra_body values, so local calls use `language`.
+        if not self.local and self.stt_model.startswith("gpt-transcribe"):
             kwargs["extra_body"] = context
         elif language:
-            # Older transcription models use one language hint.
             kwargs["language"] = language
 
         try:
             response = self.client.audio.transcriptions.create(**kwargs)
         except Exception as exc:  # noqa: BLE001 - provider errors must be contained
             raise VoiceUnavailable(
-                "Transcription failed. Check the OpenAI key, account access, "
-                "and recording, then try again."
+                "Transcription failed. Check the configured speech service, "
+                "model availability, and recording, then try again."
             ) from exc
         text = str(getattr(response, "text", "") or "").strip()
         if not text:
@@ -186,16 +227,20 @@ class OpenAIVoice:
         if not narration:
             raise VoiceUnavailable("There is no answer text to read aloud.")
         try:
-            response = self.client.audio.speech.create(
-                model=self.tts_model,
-                voice=voice,
-                input=narration,
-                instructions=(
+            request = {
+                "model": self.tts_model,
+                "voice": voice,
+                "input": narration,
+                "response_format": "mp3",
+            }
+            if not self.local:
+                request["instructions"] = (
                     "Speak like a calm senior data analyst briefing an executive. "
                     "Be clear and measured. Articulate numbers, percentages, "
                     "and acronyms precisely."
-                ),
-                response_format="mp3",
+                )
+            response = self.client.audio.speech.create(
+                **request,
             )
             if hasattr(response, "read"):
                 audio = response.read()
@@ -203,7 +248,8 @@ class OpenAIVoice:
                 audio = getattr(response, "content", b"")
         except Exception as exc:  # noqa: BLE001 - provider errors must be contained
             raise VoiceUnavailable(
-                "Speech generation failed. Check the OpenAI key and account access, then try again."
+                "Speech generation failed. Check the configured speech service and model, "
+                "then try again."
             ) from exc
         audio = bytes(audio or b"")
         if not audio:

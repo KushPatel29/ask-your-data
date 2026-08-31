@@ -15,12 +15,13 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+RUN groupadd --system app && useradd --system --gid app --create-home app
+COPY --chown=app:app . .
 
 # Measured, not guessed: baseline 18 MB, + DuckDB warehouse 185 MB, + the Chroma
-# schema index 275 MB. Streamlit's own overhead sits on top of that, which fits a
-# 512 MB instance but not with room to spare - so the index is built lazily on
-# the first question rather than at import, and nothing pre-warms it.
+# schema index 275 MB. Streamlit's own overhead sits on top of that. Retrieval
+# is warmed once at startup so the first visitor does not pay model load time;
+# production sizing must leave headroom above the measured working set.
 #
 # The suite is NOT run here. Building the warehouse once per test module and then
 # adding the embedding model is what pushed the old image past 512 MB; that work
@@ -31,6 +32,11 @@ ENV PORT=10000 \
     STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
 EXPOSE 10000
+
+USER app
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('PORT','10000')+'/_stcore/health', timeout=3)"
 
 # Shell form so $PORT expands - Render assigns the port and the service is marked
 # unhealthy if nothing binds it.

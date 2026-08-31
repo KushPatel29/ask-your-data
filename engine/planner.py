@@ -63,6 +63,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from engine.limits import MAX_QUESTION_CHARS
 from engine.semantics import (
     DATE,
     DIMENSION,
@@ -1980,6 +1981,15 @@ def plan_question(question: str, layer: Layer, *,
     """Compile a question, or refuse and say what could not be bound."""
     import time
 
+    question = str(question or "").strip()
+    if len(question) > MAX_QUESTION_CHARS:
+        return PlanResult(
+            question=question[:MAX_QUESTION_CHARS],
+            refused=True,
+            kind="question too long",
+            reason=(f"that question exceeds the {MAX_QUESTION_CHARS}-character limit; "
+                    "shorten it and ask again."),
+        )
     started = time.perf_counter()
     words = content_words(question)
     if not words:

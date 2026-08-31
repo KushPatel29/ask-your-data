@@ -1,0 +1,91 @@
+{
+  "name": "Ask Your Data - Operational Events",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ask-your-data-events",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "0cfeccf8-64bf-4ccd-9e64-6356449b61b4",
+      "name": "Operational webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "ask-your-data-events"
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst event = $json.body ?? {};\nconst headers = $json.headers ?? {};\nconst secret = $env.ASK_N8N_WEBHOOK_SECRET ?? '';\nif (!secret) throw new Error('ASK_N8N_WEBHOOK_SECRET is not configured');\nconst stable = (value) => {\n  if (Array.isArray(value)) return '[' + value.map(stable).join(',') + ']';\n  if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map((key) => JSON.stringify(key) + ':' + stable(value[key])).join(',') + '}';\n  return JSON.stringify(value);\n};\nconst expected = 'sha256=' + crypto.createHmac('sha256', secret).update(stable(event)).digest('hex');\nconst supplied = String(headers['x-ask-signature'] ?? '');\nconst valid = supplied.length === expected.length && crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));\nif (!valid) throw new Error('Invalid operational-event signature');\nconst latency = Number(event.elapsed_ms ?? 0);\nconst attention = ['error', 'timeout'].includes(event.outcome) || event.guard_ok === false || latency >= 10000;\nconst severity = ['error', 'timeout'].includes(event.outcome) ? 'critical' : attention ? 'warning' : 'info';\nreturn [{ json: { ...event, requires_attention: attention, severity } }];"
+      },
+      "id": "a202d3da-bbdd-4bb9-98de-ef19b7adb83b",
+      "name": "Verify and classify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2bd4e7f4-5bfd-4774-a0dc-dbd8fdf0750e",
+              "leftValue": "={{ $json.requires_attention }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d1911187-9c13-4fda-b3c0-f80f9bc387ca",
+      "name": "Needs attention?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [740, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(({ json }) => ({ json: { alert: { title: `Ask Your Data ${json.outcome}`, severity: json.severity, event_id: json.event_id, engine: json.engine, elapsed_ms: json.elapsed_ms, attempts: json.attempts, ts: json.ts }, privacy: 'No question, SQL, result values, reason, or correction text is present.' } }));"
+      },
+      "id": "eb03d82e-cce1-4b18-a0ba-3068926f7c6a",
+      "name": "Build alert envelope",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [980, 220]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Operational webhook": {
+      "main": [[{"node": "Verify and classify", "type": "main", "index": 0}]]
+    },
+    "Verify and classify": {
+      "main": [[{"node": "Needs attention?", "type": "main", "index": 0}]]
+    },
+    "Needs attention?": {
+      "main": [[{"node": "Build alert envelope", "type": "main", "index": 0}], []]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "ec2b6134-7d7b-43b3-b50a-134726297adb",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

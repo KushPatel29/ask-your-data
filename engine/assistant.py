@@ -34,6 +34,7 @@ from dataclasses import dataclass, field
 # client lives in engine/providers.py alongside every other backend, so swapping
 # the model never touches the reasoning loop.
 from engine.exemplars import exemplar_block
+from engine.limits import MAX_QUESTION_CHARS
 from engine.providers import AnthropicProvider, ProviderUnavailable, build_provider
 from engine.query import QueryResult, run_query
 from engine.retrieval import schema_catalog_for
@@ -137,6 +138,12 @@ class AskResult:
     # and dropped on the floor, which is the worst of both worlds: the cost of
     # checking without the benefit of saying anything.
     findings: list = field(default_factory=list)
+    # Exact warehouse relations present in the schema block sent to the model.
+    # The UI and audit trail must not reconstruct this from question text: a
+    # follow-up includes prior-turn relations that standalone retrieval does not.
+    tables: list = field(default_factory=list)
+    retrieval_context: str = ""
+    schema_tokens: int = 0
 
     @property
     def ok(self):
@@ -251,10 +258,35 @@ class Assistant:
         return blocks
 
     def ask(self, question: str, history: list = None) -> AskResult:
+        question = str(question or "").strip()
+        if not question:
+            return AskResult(question, refused=True, reason="question is empty")
+        if len(question) > MAX_QUESTION_CHARS:
+            return AskResult(
+                question[:MAX_QUESTION_CHARS], refused=True,
+                reason=(f"question exceeds the {MAX_QUESTION_CHARS}-character limit; "
+                        "shorten it and ask again"),
+            )
         history = history or []
         messages = _history_messages(history)
         messages.append({"role": "user", "content": question})
+        retrieval_context = _retrieval_context(question, history)
         system = self._system_for(question, history)
+        schema_text = "\n".join(
+            str(block.get("text", "")) for block in system
+            if str(block.get("text", "")).startswith("SCHEMA")
+        )
+        known = set(self.known_tables)
+        prompt_tables = [
+            name for name in re.findall(r"(?m)^-\s+([a-z][a-z0-9_]*)\s*:", schema_text)
+            if name in known
+        ]
+
+        def done(result: AskResult) -> AskResult:
+            result.tables = list(prompt_tables)
+            result.retrieval_context = retrieval_context
+            result.schema_tokens = max(1, len(schema_text) // 4)
+            return result
 
         usage, corrections = {}, []
         sql, explanation, result = "", "", None
@@ -270,16 +302,42 @@ class Assistant:
                 usage[key] = usage.get(key, 0) + value
             tool_use = resp.tool_call
             if tool_use is None:
-                return AskResult(question, refused=True, attempts=attempt,
-                                 corrections=corrections, usage=usage,
-                                 reason="model did not produce a query")
+                return done(AskResult(question, refused=True, attempts=attempt,
+                                      corrections=corrections, usage=usage,
+                                      reason="model did not produce a query"))
             if tool_use.name == "cannot_answer":
-                return AskResult(question, refused=True, attempts=attempt,
-                                 corrections=corrections, usage=usage,
-                                 reason=tool_use.input.get("reason", "out of scope"))
+                payload = tool_use.input if isinstance(tool_use.input, dict) else {}
+                return done(AskResult(
+                    question, refused=True, attempts=attempt,
+                    corrections=corrections, usage=usage,
+                    reason=str(payload.get("reason", "out of scope")),
+                ))
 
-            sql = tool_use.input["sql"]
-            explanation = tool_use.input.get("explanation", "")
+            if tool_use.name != "answer_with_sql" or not isinstance(tool_use.input, dict):
+                note = "model returned an invalid tool payload"
+                if attempt < MAX_ATTEMPTS:
+                    corrections.append(note)
+                    messages.append({"role": "user", "content": (
+                        "Return answer_with_sql with non-empty string fields named sql and "
+                        "explanation, or call cannot_answer.")})
+                    continue
+                return done(AskResult(question, refused=True, attempts=attempt,
+                                      corrections=corrections, usage=usage, reason=note))
+
+            raw_sql = tool_use.input.get("sql")
+            if not isinstance(raw_sql, str) or not raw_sql.strip():
+                note = "model returned answer_with_sql without non-empty SQL"
+                if attempt < MAX_ATTEMPTS:
+                    corrections.append(note)
+                    messages.append({"role": "user", "content": (
+                        "The sql argument was missing or empty. Return a valid single SELECT "
+                        "query, or call cannot_answer.")})
+                    continue
+                return done(AskResult(question, refused=True, attempts=attempt,
+                                      corrections=corrections, usage=usage, reason=note))
+
+            sql = raw_sql.strip()
+            explanation = str(tool_use.input.get("explanation", ""))
 
             # Structural checks BEFORE execution. The retry loop already handles
             # SQL that crashes; this handles SQL that RUNS AND IS WRONG, which
@@ -300,10 +358,10 @@ class Assistant:
                 # confident sentence about it - the exact failure this layer
                 # exists to prevent, and worse than an error because nothing
                 # about the output would look wrong. Refuse instead.
-                return AskResult(question, sql=sql, explanation=explanation,
-                                 refused=True, reason=note, attempts=attempt,
-                                 corrections=corrections, usage=usage,
-                                 findings=findings)
+                return done(AskResult(question, sql=sql, explanation=explanation,
+                                      refused=True, reason=note, attempts=attempt,
+                                      corrections=corrections, usage=usage,
+                                      findings=findings))
 
             result = run_query(self.con, sql)
             if result.ok:
@@ -312,10 +370,10 @@ class Assistant:
                 # advisory - they travel with the answer rather than blocking it.
                 findings = findings + self.verifier.check_result(sql, result, question)
                 answer = self._summarize(question, result, usage)
-                return AskResult(question, sql=sql, explanation=explanation,
-                                 answer=answer, result=result, usage=usage,
-                                 attempts=attempt, corrections=corrections,
-                                 findings=findings)
+                return done(AskResult(question, sql=sql, explanation=explanation,
+                                      answer=answer, result=result, usage=usage,
+                                      attempts=attempt, corrections=corrections,
+                                      findings=findings))
 
             # Self-correction: hand the real error back and ask for a fix.
             corrections.append(result.error)
@@ -327,8 +385,8 @@ class Assistant:
             )})
 
         # Out of attempts — return the last failure honestly.
-        return AskResult(question, sql=sql, explanation=explanation, result=result,
-                         attempts=MAX_ATTEMPTS, corrections=corrections, usage=usage)
+        return done(AskResult(question, sql=sql, explanation=explanation, result=result,
+                              attempts=MAX_ATTEMPTS, corrections=corrections, usage=usage))
 
     def _summarize(self, question: str, result: QueryResult, usage: dict) -> str:
         """Turn the result table into one or two plain-English sentences, grounded

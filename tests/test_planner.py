@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import pytest
 
+from engine.limits import MAX_QUESTION_CHARS
 from engine.planner import (
     AXIS_MARKERS,
     COUNT,
@@ -51,6 +52,11 @@ def ask(question, layer, **kw):
     testing the wrong module.
     """
     return plan_question(question, layer, **kw)
+
+
+def test_question_size_is_bounded_at_the_planner_boundary(layer):
+    result = ask("claims " * MAX_QUESTION_CHARS, layer)
+    assert result.refused and result.kind == "question too long"
 
 
 # ---------------------------------------------------------------------------

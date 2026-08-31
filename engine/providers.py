@@ -331,7 +331,9 @@ class AnthropicProvider:
 
         block = next((b for b in msg.content if b.type == "tool_use"), None)
         text = "".join(getattr(b, "text", "") for b in msg.content if b.type == "text")
-        call = ToolCall(block.name, dict(block.input)) if block else None
+        raw_input = getattr(block, "input", None) if block else None
+        payload = dict(raw_input) if isinstance(raw_input, dict) else {}
+        call = ToolCall(block.name, payload) if block else None
         return ProviderResponse(tool_call=call, usage=usage, text=text)
 
     def complete(self, *, system, messages, max_tokens) -> ProviderResponse:
@@ -586,7 +588,9 @@ class OpenAICompatProvider:
                 for m in messages
             ],
         }
-        body = self._post("/chat/completions", payload)
+        # Same OpenAI-compatible route as create_tool_call(). The missing /v1
+        # made local SQL generation succeed and the answer-summary call fail.
+        body = self._post("/v1/chat/completions", payload)
         text, _calls = self._text_and_calls(body)
         return ProviderResponse(tool_call=None, usage=self._usage(body), text=text or "")
 

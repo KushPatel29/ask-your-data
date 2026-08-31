@@ -1,0 +1,59 @@
+services:
+  ask-your-data:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      PORT: "8501"
+      ASK_VOICE_BASE_URL: http://speaches:8000/v1
+      ASK_STT_MODEL: Systran/faster-whisper-small
+      ASK_TTS_MODEL: speaches-ai/Kokoro-82M-v1.0-ONNX
+      ASK_TTS_VOICE: af_heart
+      ASK_N8N_WEBHOOK_URL: http://n8n:5678/webhook/ask-your-data-events
+      ASK_N8N_WEBHOOK_SECRET: ${ASK_N8N_WEBHOOK_SECRET:-change-this-local-secret}
+    depends_on:
+      speaches:
+        condition: service_healthy
+      n8n:
+        condition: service_started
+    restart: unless-stopped
+
+  speaches:
+    image: ghcr.io/speaches-ai/speaches:0.8.3-cpu
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - speaches-models:/home/ubuntu/.cache/huggingface/hub
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 10
+    restart: unless-stopped
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:2.32.7
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: http
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-this-local-encryption-key}
+      ASK_N8N_WEBHOOK_SECRET: ${ASK_N8N_WEBHOOK_SECRET:-change-this-local-secret}
+      NODE_FUNCTION_ALLOW_BUILTIN: crypto
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      GENERIC_TIMEZONE: ${TZ:-Asia/Kolkata}
+      TZ: ${TZ:-Asia/Kolkata}
+    volumes:
+      - n8n-data:/home/node/.n8n
+    restart: unless-stopped
+
+volumes:
+  speaches-models:
+  n8n-data:

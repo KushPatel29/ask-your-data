@@ -91,9 +91,15 @@ from engine import (  # noqa: E402
     voice,
 )
 from engine import metrics as metric_layer
+from engine.limits import MAX_QUESTION_CHARS  # noqa: E402
 from engine.query import MAX_ROWS, run_query  # noqa: E402
 from engine.semantics import Layer  # noqa: E402
-from engine.sql_guard import FORBIDDEN, FORBIDDEN_FUNCTIONS, validate_sql  # noqa: E402
+from engine.sql_guard import (  # noqa: E402
+    FORBIDDEN,
+    FORBIDDEN_FUNCTIONS,
+    MAX_SQL_CHARS,
+    validate_sql,
+)
 from engine.verify import Verifier  # noqa: E402
 from engine.warehouse import build_warehouse, schema_catalog, table_names  # noqa: E402
 
@@ -282,13 +288,16 @@ def _voice_api_key() -> str:
 
 
 def _voice_client():
-    """One voice client per browser key, never shared across visitors."""
+    """One voice client per browser endpoint/key, never shared across visitors."""
     key = _voice_api_key()
-    if not key:
+    endpoint = voice.base_url()
+    if not key and not endpoint:
         return None
-    fingerprint = hashlib.sha256(key.encode("utf-8")).hexdigest()
+    fingerprint = hashlib.sha256(f"{endpoint}\0{key}".encode("utf-8")).hexdigest()
     if st.session_state.get("_voice_key_fingerprint") != fingerprint:
-        st.session_state["_voice_client"] = voice.OpenAIVoice(api_key=key)
+        st.session_state["_voice_client"] = voice.OpenAIVoice(
+            api_key=key, base_url=endpoint,
+        )
         st.session_state["_voice_key_fingerprint"] = fingerprint
     return st.session_state["_voice_client"]
 
@@ -365,9 +374,13 @@ def _status_rail() -> None:
         # boundary that is set before any question is asked. The count comes
         # from the roster below, which a test holds against engine/verify.py.
         ("verifier", f"structural<br><em>{len(VERIFY_CHECKS)} rules · deterministic</em>"),
-        ("voice", ("stt → review → tts<br><em>OpenAI · in-memory</em>"
-                   if _voice_api_key() else
-                   "optional<br><em>bring an OpenAI key</em>")),
+        ("voice", (
+            "stt → review → tts<br><em>faster-whisper · Kokoro · local</em>"
+            if voice.local_endpoint_configured() else
+            "stt → review → tts<br><em>OpenAI · cloud</em>"
+            if _voice_api_key() else
+            "optional<br><em>configure local voice or cloud key</em>"
+        )),
         ("row cap", f"{MAX_ROWS:,} <em>/ query</em>"),
     ])
 
@@ -443,6 +456,38 @@ def _retrieval_bundle(question: str):
     }
 
 
+def _model_retrieval_bundle(entry: dict):
+    """Build the readout from the exact context and table set the model saw.
+
+    Prior-turn tables can be mandatory additions to a follow-up prompt. Those
+    are appended with a neutral score so membership is visible without
+    inventing a retrieval rank.
+    """
+    bundle = _retrieval_bundle(entry.get("retrieval_context") or entry["question"])
+    if not bundle or not entry.get("tables"):
+        return bundle
+    wanted = set(entry["tables"])
+    hits = [hit for hit in bundle["hits"] if hit.table in wanted]
+    seen = {hit.table for hit in hits}
+    if seen != wanted:
+        corpus = {row["id"]: row for row in retrieval.build_corpus(con)}
+        for name in entry["tables"]:
+            if name in seen or name not in corpus:
+                continue
+            meta = corpus[name]["metadata"]
+            hits.append(retrieval.RetrievedTable(
+                table=name,
+                domain=str(meta["domain"]),
+                description=str(meta["description"]),
+                score=0.0,
+            ))
+    return {
+        **bundle,
+        "hits": hits,
+        "tokens_used": int(entry.get("schema_tokens") or bundle["tokens_used"]),
+    }
+
+
 def _show_grounding(bundle, *, tokens: bool = True) -> None:
     """Which tables the retriever selected for this question, why, and what it saved.
 
@@ -495,6 +540,7 @@ def _guard_readout(sql: str) -> None:
     # The query was not empty. The panel named the wrong boundary, and it named
     # it on the one path where naming the right one matters most.
     order = [
+        (f"at most {MAX_SQL_CHARS:,} characters", "query exceeds"),
         ("single statement", "only a single statement"),
         ("starts SELECT / WITH", "must start with SELECT or WITH"),
         (f"none of {len(FORBIDDEN)} forbidden verbs", "forbidden keyword"),
@@ -955,6 +1001,16 @@ def _render_sidebar(active_question: str | None) -> None:
             st.rerun()
 
 
+def _clear_model_key() -> None:
+    """Widget callback: runs before Streamlit recreates the keyed input."""
+    st.session_state["byok"] = ""
+    st.session_state["byok_input"] = ""
+    st.session_state.pop("_assistant", None)
+    st.session_state.pop("_assistant_key", None)
+    st.session_state.turns = []
+    st.session_state.transcript = []
+
+
 def _render_key_control() -> None:
     """Bring your own key.
 
@@ -977,20 +1033,15 @@ def _render_key_control() -> None:
     st.caption(
         "Optional. With a key the model writes the SQL instead of the compiler, "
         "and the same guard, verifier and executor run on what it writes. "
-        "Held in this browser session only — never stored, never logged."
+        "Held in this browser's Streamlit session in server memory, sent to "
+        "Anthropic for model calls, and never written or logged by this app."
     )
     typed = st.text_input(
         "Anthropic API key", type="password", key="byok_input",
         placeholder="sk-ant-...", label_visibility="collapsed",
     )
     if st.session_state.get("byok"):
-        if st.button("Switch back to the keyless compiler"):
-            st.session_state["byok"] = ""
-            st.session_state.pop("_assistant", None)
-            st.session_state.pop("_assistant_key", None)
-            st.session_state.turns = []
-            st.session_state.transcript = []
-            st.rerun()
+        st.button("Switch back to the keyless compiler", on_click=_clear_model_key)
         return
     if typed and typed != st.session_state.get("byok"):
         st.session_state["byok"] = typed
@@ -1020,6 +1071,20 @@ VOICE_OPTIONS = {
     "Onyx · grounded": "onyx",
     "Nova · clear": "nova",
 }
+LOCAL_VOICE_OPTIONS = {
+    "Heart · warm": "af_heart",
+    "Bella · expressive": "af_bella",
+    "Sky · clear": "af_sky",
+    "Adam · grounded": "am_adam",
+}
+
+
+def _voice_options() -> dict[str, str]:
+    return LOCAL_VOICE_OPTIONS if voice.local_endpoint_configured() else VOICE_OPTIONS
+
+
+def _voice_ready() -> bool:
+    return bool(voice.local_endpoint_configured() or _voice_api_key())
 
 
 def _clear_voice_key() -> None:
@@ -1032,35 +1097,46 @@ def _clear_voice_key() -> None:
 def _render_voice_control() -> None:
     """Voice provider settings, deliberately separate from the SQL model key."""
     st.markdown("**Voice input & playback**")
-    server_key = voice.server_api_key()
-    if server_key:
-        st.caption("OpenAI voice models are configured by the server environment.")
-    else:
+    if voice.local_endpoint_configured():
         st.caption(
-            "Optional. Your recording is sent to OpenAI for transcription; "
-            "answer audio is generated only when you press Listen. The key and "
-            "audio stay in this browser session and process memory."
+            "Free self-hosted voice is enabled: faster-whisper transcribes and "
+            "Kokoro generates speech. Audio and answer text go only to the "
+            "configured local Speaches service. No paid API key is required."
         )
-        typed = st.text_input(
-            "OpenAI API key", type="password", key="voice_key_input",
-            placeholder="sk-...", label_visibility="collapsed",
-        )
-        if typed and typed != st.session_state.get("voice_byok"):
-            st.session_state["voice_byok"] = typed
-            st.session_state.pop("_voice_client", None)
-            st.session_state.pop("_voice_key_fingerprint", None)
-            st.rerun()
-        if st.session_state.get("voice_byok"):
-            st.button("Disable voice", on_click=_clear_voice_key)
+        st.caption(f"Endpoint `{voice.base_url()}`")
+    else:
+        server_key = voice.server_api_key()
+        if server_key:
+            st.caption(
+                "OpenAI voice is configured by the server. Recordings are sent to "
+                "OpenAI for transcription; answer text is sent only when Listen is pressed."
+            )
+        else:
+            st.caption(
+                "Optional cloud fallback. Your recording and API key are sent to OpenAI "
+                "for transcription; answer text is sent when you press Listen. This app "
+                "does not write the key, recording, or generated audio to disk."
+            )
+            typed = st.text_input(
+                "OpenAI API key", type="password", key="voice_key_input",
+                placeholder="sk-...", label_visibility="collapsed",
+            )
+            if typed and typed != st.session_state.get("voice_byok"):
+                st.session_state["voice_byok"] = typed
+                st.session_state.pop("_voice_client", None)
+                st.session_state.pop("_voice_key_fingerprint", None)
+                st.rerun()
+            if st.session_state.get("voice_byok"):
+                st.button("Disable voice", on_click=_clear_voice_key)
 
-    if not _voice_api_key():
+    if not _voice_ready():
         return
     st.selectbox("Transcription language", tuple(VOICE_LANGUAGES),
                  key="voice_language", index=0)
-    st.selectbox("Answer voice", tuple(VOICE_OPTIONS),
+    st.selectbox("Answer voice", tuple(_voice_options()),
                  key="voice_name", index=0)
     st.caption(
-        f"STT `{voice.STT_MODEL}` · TTS `{voice.TTS_MODEL}` · "
+        f"STT `{voice.configured_stt_model()}` · TTS `{voice.configured_tts_model()}` · "
         "playback is AI-generated speech."
     )
 
@@ -1070,16 +1146,24 @@ def _voice_language() -> str:
 
 
 def _voice_name() -> str:
-    return VOICE_OPTIONS.get(st.session_state.get("voice_name", "Cedar · composed"),
-                             voice.DEFAULT_VOICE)
+    options = _voice_options()
+    default = next(iter(options.values()))
+    return options.get(st.session_state.get("voice_name", ""), default)
 
 
 def _voice_question() -> str:
     """Record, transcribe, and confirm one question; never auto-run a transcript."""
-    ready = bool(_voice_api_key())
-    ui.voice_dock(ready=ready, stt_model=voice.STT_MODEL, tts_model=voice.TTS_MODEL)
+    ready = _voice_ready()
+    ui.voice_dock(
+        ready=ready,
+        stt_model=voice.configured_stt_model(),
+        tts_model=voice.configured_tts_model(),
+    )
     if not ready:
-        st.caption("Add an OpenAI API key under Voice input & playback in the sidebar to record.")
+        st.caption(
+            "Configure the free local speech service or add an OpenAI key under "
+            "Voice input & playback to record."
+        )
         return ""
 
     if st.session_state.pop("_voice_reset_pending", False):
@@ -1110,7 +1194,7 @@ def _voice_question() -> str:
                         mime_type=getattr(recording, "type", "audio/wav"),
                         language=_voice_language(),
                     )
-                    st.session_state["voice_draft"] = transcript.text[:400]
+                    st.session_state["voice_draft"] = transcript.text[:MAX_QUESTION_CHARS]
                     st.session_state["voice_meta"] = (
                         f"{transcript.model} · {transcript.bytes_received / 1024:,.0f} KB"
                     )
@@ -1128,12 +1212,14 @@ def _voice_question() -> str:
         return ""
 
     with st.form("voice_confirm"):
-        st.text_input("Review the transcript", key="voice_draft", max_chars=400)
+        st.text_input(
+            "Review the transcript", key="voice_draft", max_chars=MAX_QUESTION_CHARS,
+        )
         st.caption(st.session_state.get("voice_meta", "") +
                    " · Nothing reaches the query engine until you confirm.")
         submitted = st.form_submit_button("Ask this question", use_container_width=True)
     if submitted:
-        question = str(st.session_state.get("voice_draft", "")).strip()[:400]
+        question = str(st.session_state.get("voice_draft", "")).strip()[:MAX_QUESTION_CHARS]
         if question:
             st.session_state["_voice_reset_pending"] = True
             return question
@@ -1142,11 +1228,11 @@ def _voice_question() -> str:
 
 def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn") -> None:
     """Generate speech on demand and keep it only for this browser session."""
-    if not answer or not _voice_api_key():
+    if not answer or not _voice_ready():
         return
     selected = _voice_name()
     identity = hashlib.sha256(
-        f"{voice.TTS_MODEL}\0{selected}\0{answer}".encode("utf-8")
+        f"{voice.configured_tts_model()}\0{selected}\0{answer}".encode("utf-8")
     ).hexdigest()[:16]
     audio_key = f"voice_audio_{identity}"
     error_key = f"voice_audio_error_{identity}"
@@ -1158,6 +1244,13 @@ def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn") ->
                 try:
                     speech = _voice_client().synthesize(answer, voice=selected)
                     st.session_state[audio_key] = speech.audio
+                    cached = [
+                        key for key in st.session_state
+                        if key.startswith("voice_audio_")
+                        and not key.startswith("voice_audio_error_")
+                    ]
+                    for old_key in cached[:-3]:
+                        st.session_state.pop(old_key, None)
                     st.session_state.pop(error_key, None)
                 except voice.VoiceUnavailable as exc:
                     st.session_state[error_key] = str(exc)
@@ -1166,7 +1259,7 @@ def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn") ->
     if st.session_state.get(audio_key):
         st.audio(st.session_state[audio_key], format="audio/mpeg")
         st.caption(
-            f"AI-generated voice · {selected} · {voice.TTS_MODEL}. "
+            f"AI-generated voice · {selected} · {voice.configured_tts_model()}. "
             "Generated on demand and kept in session memory only."
         )
 
@@ -1201,7 +1294,9 @@ def _audit_turn(entry: dict, *, engine: str, coverage=None, metric: str = "") ->
             outcome=outcome,
             refusal_kind=entry.get("refusal_kind", ""),
             reason=entry.get("reason", ""),
-            tables=[h.table for h in (entry.get("bundle") or {}).get("hits", [])][:10],
+            tables=list(entry.get("tables") or [
+                h.table for h in (entry.get("bundle") or {}).get("hits", [])
+            ])[:20],
             row_count=0 if entry.get("rows") is None else int(len(entry["rows"])),
             truncated=bool(entry.get("truncated")),
             attempts=int(entry.get("attempts", 1) or 1),
@@ -1214,7 +1309,7 @@ def _audit_turn(entry: dict, *, engine: str, coverage=None, metric: str = "") ->
             coverage=coverage,
             tokens_in=int(usage.get("input_tokens", 0) or 0),
             tokens_out=int(usage.get("output_tokens", 0) or 0),
-            elapsed_ms=sum(timings.values()),
+            elapsed_ms=float(entry.get("elapsed_ms") or sum(timings.values())),
             timings=timings,
         )
     except Exception:  # noqa: BLE001 - an observer must never break the observed
@@ -1280,6 +1375,30 @@ def _metric_turn(question: str, metric, match_ms: float) -> dict:
 
 def _keyless_turn(question: str) -> dict:
     """Prefer an explicitly named certified metric; otherwise compile the schema."""
+    question = str(question or "").strip()
+    if len(question) > MAX_QUESTION_CHARS:
+        entry = {
+            "question": question[:MAX_QUESTION_CHARS],
+            "engine": "planner",
+            "refused": True,
+            "reason": (f"question exceeds the {MAX_QUESTION_CHARS}-character limit; "
+                       "shorten it and ask again"),
+            "refusal_kind": "question too long",
+            "answer": "",
+            "sql": "",
+            "attempts": 1,
+            "corrections": [],
+            "findings": [],
+            "ran": False,
+            "rows": None,
+            "truncated": False,
+            "error": "",
+            "usage": {},
+            "bundle": None,
+            "trace": {},
+        }
+        _audit_turn(entry, engine="plan")
+        return entry
     started = time.perf_counter()
     metric = metric_layer.match_metric(question, metric_registry)
     match_ms = 1000 * (time.perf_counter() - started)
@@ -1456,6 +1575,7 @@ def _sql_editor(entry, index: int) -> None:
             draft = st.text_area(
                 "SQL", value=entry["sql"], height=170,
                 key=f"sqlbox_{index}", label_visibility="collapsed",
+                max_chars=MAX_SQL_CHARS,
             )
             submitted = st.form_submit_button("Run it", type="primary")
         if submitted:
@@ -2080,7 +2200,7 @@ def _operations_panel() -> None:
             "sample or a placeholder, and the limits of the trail are listed "
             "with it rather than left for a reader to discover."
         )
-        ui.operations(audit.summarise(), limits=audit.describe_limits())
+        ui.operations(audit.summarise(actor=_actor()), limits=audit.describe_limits())
 
 
 def _reset_conversation() -> None:
@@ -2221,7 +2341,8 @@ def render_keyless(connection) -> None:
             render_plan_entry(entry, index)
 
     voice_question = _voice_question()
-    question = (st.chat_input("Ask a question about the data...")
+    question = (st.chat_input(
+                    "Ask a question about the data...", max_chars=MAX_QUESTION_CHARS)
                 or voice_question or clicked or link)
     if question and _session_budget_exhausted():
         # The ceiling is per browser session and a new tab clears it. That is
@@ -2282,10 +2403,25 @@ if not st.session_state.transcript:
 
 
 def render_entry(entry, index: int):
-    bundle = _retrieval_bundle(entry["question"])
+    bundle = _model_retrieval_bundle(entry)
     st.chat_message("user").write(entry["question"])
     with st.chat_message("assistant"):
         findings = entry.get("findings") or []
+        if entry.get("provider_error"):
+            ui.pipeline(
+                retrieved=bool(bundle), generated="fail", verified=False,
+                guarded=False, executed=False,
+                timings={"retrieve": bundle["ms"]} if bundle else None,
+            )
+            _show_grounding(bundle)
+            st.error(
+                "The language-model provider was unavailable, so no SQL was generated "
+                "and nothing ran. Check the configured endpoint, credentials, quota, "
+                "and model availability, then retry."
+            )
+            if entry.get("elapsed_ms"):
+                ui.note(f"Provider failed after {entry['elapsed_ms']:,.0f} ms.")
+            return
         if entry["refused"]:
             # TWO different refusals arrive here and they were being narrated as
             # one. engine.assistant returns refused=True either because the
@@ -2446,7 +2582,9 @@ for index, entry in enumerate(st.session_state.transcript):
     render_entry(entry, index)
 
 voice_question = _voice_question()
-question = st.chat_input("Ask a question about the data...") or voice_question or clicked
+question = (st.chat_input(
+    "Ask a question about the data...", max_chars=MAX_QUESTION_CHARS,
+) or voice_question or clicked)
 
 if question and _session_budget_exhausted():
     st.warning(
@@ -2463,11 +2601,32 @@ if question:
             started = time.perf_counter()
             try:
                 result = assistant.ask(question, history=st.session_state.turns)
-            except AssistantUnavailable as e:
-                st.error(f"The language model is unavailable: {e}\n\n"
-                         "Set `ANTHROPIC_API_KEY` (and check your credit balance), "
-                         "then ask again.")
-                st.stop()
+            except AssistantUnavailable:
+                elapsed_ms = 1000 * (time.perf_counter() - started)
+                entry = {
+                    "question": question,
+                    "refused": False,
+                    "reason": "language-model provider unavailable",
+                    "answer": "",
+                    "sql": "",
+                    "attempts": 1,
+                    "corrections": [],
+                    "findings": [],
+                    "ran": False,
+                    "rows": None,
+                    "truncated": False,
+                    "error": "language-model provider unavailable",
+                    "provider_error": True,
+                    "usage": {},
+                    "elapsed_ms": elapsed_ms,
+                    "tables": [],
+                    "retrieval_context": question,
+                    "schema_tokens": 0,
+                }
+                _audit_turn(entry, engine="model")
+                _count_question()
+                st.session_state.transcript.append(entry)
+                st.rerun()
             elapsed_ms = 1000 * (time.perf_counter() - started)
 
     entry = {
@@ -2494,6 +2653,9 @@ if question:
         "error": result.result.error if (result.result and not result.result.ok) else "",
         "usage": result.usage,
         "elapsed_ms": elapsed_ms,
+        "tables": result.tables,
+        "retrieval_context": result.retrieval_context,
+        "schema_tokens": result.schema_tokens,
     }
     _audit_turn(entry, engine="model")
     _count_question()

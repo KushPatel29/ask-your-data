@@ -1,5 +1,9 @@
 # Enterprise readiness
 
+> **New review:** The current 31 August 2026 assessment, including free local
+> voice, n8n operations, newly fixed defects, and the remaining enterprise
+> release gates, is in [`ENTERPRISE_READINESS_2026.md`](ENTERPRISE_READINESS_2026.md).
+
 > **Current status (remediation addendum).** This document is the original
 > point-in-time adversarial assessment; the detailed reproductions below are
 > intentionally preserved as evidence and are not a list of still-open bugs.

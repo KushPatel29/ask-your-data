@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-791%20%C2%B7%20790%20run%20without%20an%20API%20key-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-804%20%C2%B7%20803%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
@@ -13,9 +13,10 @@
 type your own question. No API key required, and none is configured on the
 deployment: without one, the SQL is written by a **deterministic compiler**
 (`engine/planner.py`) that binds your words to the warehouse's own columns,
-values and join graph. Bring your own keys in the sidebar to let a language model
-write SQL and to ask or hear answers with OpenAI speech models. Same guard, same
-verifier, same executor whether the question was typed or spoken.
+values and join graph. Bring your own key in the sidebar to let a language model
+write SQL. Voice can run entirely locally with faster-whisper and Kokoro through
+Speaches, or use OpenAI as an optional cloud fallback. Same guard, same verifier,
+same executor whether the question was typed or spoken.
 
 *(First load builds the schema index, which downloads a 79 MB embedding model
 once per container, and profiles the warehouse for the compiler — the spinners
@@ -321,11 +322,11 @@ flowchart LR
 6. **Answer** — the result rows are summarized into one or two sentences,
    grounded strictly in what came back.
 7. **Voice, around the boundary** — a completed microphone recording is
-   transcribed with `gpt-transcribe`, then shown in an editable confirmation
-   field. Answers are synthesized with `gpt-4o-mini-tts` only after the visitor
-   presses **Listen**. Recordings, transcripts, keys, and generated audio are
-   held in session/process memory; voice is optional and the UI clearly labels
-   playback as AI-generated.
+   transcribed, then shown in an editable confirmation field. The free local
+   path uses faster-whisper for STT and Kokoro for TTS through the
+   OpenAI-compatible Speaches server; OpenAI remains an optional cloud fallback.
+   Speech is generated only after **Listen** is pressed. The UI states which
+   service receives audio or answer text and labels playback as AI-generated.
 
 ## The model is untrusted input
 
@@ -381,7 +382,7 @@ defend in an interview:
   comparing one scored twelve correct breakdowns as wrong.
 
 ```
-674 tests — 673 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
+804 tests — 803 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
 1 live model test skips without a key.
 ```
 
@@ -390,7 +391,7 @@ graded by `scripts/run_live_eval.py`, which asks the assistant every golden and
 adversarial question, runs the SQL **it** writes, and scores the results. It
 needs an API key, so it runs on demand rather than in CI.
 
-## Small things that make it production, not demo
+## Production-minded controls in the prototype
 
 - **Every answer reports its token spend.** The schema cost is controlled before
   the model call: the measured retriever sends about 2,253 schema tokens at its
@@ -405,10 +406,10 @@ needs an API key, so it runs on demand rather than in CI.
   for a compiled query would be the one lie this app cannot afford, so the two
   cells occupy the same position and exactly one of them can be true.
 - **Bring your own key.** The deployment holds no key — a key on a public URL is
-  an unmetered spend surface — but the sidebar accepts one. It lives in the
-  browser session only: never written to disk, never logged, gone when the tab
-  closes. That is what makes the model path reachable for anyone who wants to
-  see both engines answer the same question.
+  an unmetered spend surface — but the sidebar accepts one. It lives in that
+  browser's Streamlit session in server memory: never written by the app, never
+  logged, sent to Anthropic for model calls, and gone when the session expires.
+  That makes the model path reachable without pretending BYOK is browser-local.
 - **Questions are deep-linkable.** `?q=your+question` asks it on load, which is
   how a result gets shared and how the screenshot above is reproducible rather
   than something I typed once.
@@ -478,8 +479,8 @@ python -m app.cli --plan "what is the average salary by department?"
 # 3. The chat UI. The box works with or without a key; the sidebar takes one.
 streamlit run app/streamlit_app.py
 
-# Optional voice input + answer playback. You can also paste this key into the
-# sidebar for the current browser session only.
+# Optional cloud voice fallback. You can also paste this key into the sidebar
+# for the current Streamlit session only.
 export OPENAI_API_KEY=sk-...              # PowerShell: $env:OPENAI_API_KEY="sk-..."
 # Optional overrides: ASK_STT_MODEL, ASK_TTS_MODEL, ASK_TTS_VOICE
 
@@ -500,6 +501,32 @@ python -m engine.semantics
 Defaults to `claude-opus-5`; set `ASK_YOUR_DATA_MODEL` to swap models. The
 compiler has no model to swap.
 
+### Free local voice and optional n8n operations
+
+The included Compose stack runs the app with a pinned CPU Speaches image and a
+self-hosted n8n instance:
+
+```bash
+# Replace both defaults outside throwaway local development.
+export ASK_N8N_WEBHOOK_SECRET="$(openssl rand -hex 32)"
+export N8N_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+
+docker compose -f compose.local.yml up --build
+```
+
+Open the app at `http://localhost:8501`, Speaches at `http://localhost:8000`,
+and n8n at `http://localhost:5678`. On first use, Speaches downloads the selected
+models into its persistent volume. Import
+`automations/n8n/ask-your-data-ops.json` in n8n and activate it. Operational
+events are HMAC-signed and intentionally exclude question text, SQL, result
+values, refusal reasons, and retry feedback; n8n failure never blocks a query.
+
+n8n is useful here for routing failures or latency alerts to an enterprise
+destination, but it is not on the synchronous analytics path. It is
+**fair-code/source-available under n8n's Sustainable Use License, not OSI open
+source**. Speaches is MIT-licensed; its local STT and TTS engines are
+faster-whisper and Kokoro.
+
 ## Repo layout
 
 ```
@@ -516,7 +543,8 @@ engine/
   exemplars.py      the few-shot bank, selected by RRF over solved questions
   providers.py      the model seam: Anthropic, or any OpenAI-compatible endpoint
   metrics.py        exact matching + contracts for policy-owned definitions
-  voice.py          bounded OpenAI STT/TTS; no alternate query execution path
+  voice.py          bounded Speaches/OpenAI STT/TTS; no alternate query path
+  automation.py     bounded, privacy-minimized n8n operational event queue
   assistant.py      NL -> SQL -> self-correction -> grounded answer + telemetry
 app/
   cli.py            terminal Q&A — compiler by default, model with a key
@@ -529,7 +557,9 @@ evals/
 tests/              guard, warehouse, semantics, planner, golden SQL, fake-client harness
 metrics.yaml        certified definitions, owners, expected values, schema-only contrasts
 scripts/            vendor_data.py, run_planner_eval.py, run_live_eval.py, run_retrieval_eval.py
-Dockerfile          the whole offline suite runs in a container (CI builds it)
+automations/n8n/     importable HMAC-verified operations workflow
+compose.local.yml   app + free local voice + optional workflow automation
+Dockerfile          non-root app image with a health check (CI also builds it)
 ```
 
 ## Retrieving the schema, and checking it was worth it

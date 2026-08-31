@@ -13,6 +13,11 @@ own exhaustive test suite and runs before the executor ever sees the SQL.
 
 import re
 
+# Parser work happens before the statement watchdog can interrupt execution.
+# Bound the text at the trust boundary so a pasted multi-megabyte SELECT cannot
+# turn validation itself into the denial of service the query clock prevents.
+MAX_SQL_CHARS = 20_000
+
 # Anything that writes data, changes schema, touches the filesystem, or loads an
 # extension. DuckDB-specific verbs (ATTACH, COPY, INSTALL, LOAD, PRAGMA, EXPORT)
 # are included alongside the standard DML/DDL set.
@@ -121,6 +126,8 @@ def validate_sql(sql: str):
     read-only statement that is safe to execute."""
     if not sql or not sql.strip():
         return False, "empty query"
+    if len(sql) > MAX_SQL_CHARS:
+        return False, f"query exceeds the {MAX_SQL_CHARS:,}-character safety limit"
 
     cleaned = _strip_literals(sql).strip().rstrip(";").strip()
 

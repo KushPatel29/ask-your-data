@@ -78,6 +78,7 @@ def test_a_broken_sink_never_takes_the_answer_down_with_it(monkeypatch, tmp_path
     assert rec.question.startswith("how many claims")
     # and the record still reached the ring, so the panel still shows the turn
     assert len(audit.recent()) == 1
+    assert audit.summarise()["sink_error"]
 
 
 def test_payloads_are_bounded_because_the_editor_accepts_anything():
@@ -109,6 +110,14 @@ def test_the_summary_reports_only_what_really_happened():
     assert s["engines"] == {"plan": 3, "manual": 1}
     assert s["refusal_kinds"] == {"outside the grammar": 1}
     assert s["stage_p50_ms"]["plan"] in (4.0, 6.0)
+
+
+def test_session_summary_does_not_mix_other_browser_actors():
+    _one(actor="session-a", question="a")
+    _one(actor="session-b", question="b")
+    _one(actor="session-a", question="c")
+    summary = audit.summarise(actor="session-a")
+    assert summary["turns"] == 2
 
 
 def test_percentiles_are_nearest_rank_so_every_number_really_happened():

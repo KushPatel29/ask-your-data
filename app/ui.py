@@ -143,6 +143,22 @@ _CSS = """
 
 html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 
+/* Primary interactive surfaces meet the 44px mobile touch recommendation.
+   Streamlit's password reveal and sidebar controls otherwise render as tiny
+   icon-only targets even when the surrounding input is comfortably sized. */
+.stButton > button,
+.stFormSubmitButton > button,
+[data-testid="stTextInput"] input,
+[data-testid="stChatInput"] textarea,
+[data-testid="stTextInput"] button,
+[data-testid="stSidebarCollapseButton"] button{
+  min-height:44px !important;
+}
+[data-testid="stTextInput"] button,
+[data-testid="stSidebarCollapseButton"] button{
+  min-width:44px !important;
+}
+
 /* ...except the icons, and this exception is not a nicety - without it the app
    renders every icon as its own NAME.
 
@@ -1422,6 +1438,16 @@ def operations(summary: dict, *, limits: list[str] | None = None) -> None:
     sink = summary.get("sink") or ""
     lines.append(f"sink: {sink}" if sink else
                  "sink: in-memory ring only — set ASK_YOUR_DATA_AUDIT to a path to persist")
+    if summary.get("sink_error"):
+        lines.append(f"audit sink error: {summary['sink_error']}")
+    automation = summary.get("automation") or {}
+    if automation.get("configured"):
+        lines.append(
+            "n8n operations: "
+            f"{int(automation.get('delivered', 0))} delivered, "
+            f"{int(automation.get('failed', 0))} failed, "
+            f"{int(automation.get('dropped', 0))} dropped"
+        )
     body = "".join(f"<li>{html.escape(line)}</li>" for line in lines)
     for note_line in (limits or []):
         body += f"<li>{html.escape(note_line)}</li>"

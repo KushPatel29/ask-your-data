@@ -3,7 +3,7 @@ else: every mutation verb is rejected, and legitimate analytical SQL is allowed.
 
 import pytest
 
-from engine.sql_guard import FORBIDDEN, validate_sql
+from engine.sql_guard import FORBIDDEN, MAX_SQL_CHARS, validate_sql
 
 ALLOWED = [
     "SELECT 1",
@@ -63,3 +63,8 @@ def test_dollar_quote_cannot_hide_a_second_statement():
     # the ; sits OUTSIDE the dollar-quoted string — must still be caught
     ok, _ = validate_sql("SELECT $$harmless$$ AS s; DROP TABLE t")
     assert not ok, "statement after a dollar-quoted literal slipped through"
+
+
+def test_parser_input_is_bounded_before_scanning():
+    ok, reason = validate_sql("SELECT '" + ("x" * MAX_SQL_CHARS) + "'")
+    assert not ok and "safety limit" in reason

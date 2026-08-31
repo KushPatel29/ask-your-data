@@ -44,7 +44,9 @@ from __future__ import annotations
 import os
 import re
 import sys
+import threading
 from dataclasses import dataclass
+from functools import wraps
 from hashlib import sha256
 from pathlib import Path
 
@@ -97,6 +99,25 @@ _COLLECTION = "schema_objects"
 _client = None
 _collection = None
 _collection_source = None
+_index_lock = threading.RLock()
+
+
+def _serialised(fn):
+    """Chroma collection creation is process-global; make that fact safe."""
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        with _index_lock:
+            return fn(*args, **kwargs)
+    return wrapped
+
+
+def _forget_index() -> None:
+    """Drop a dead handle so the next request can rebuild instead of failing forever."""
+    global _client, _collection, _collection_source
+    with _index_lock:
+        _client = None
+        _collection = None
+        _collection_source = None
 
 
 @dataclass(frozen=True)
@@ -175,6 +196,7 @@ def _persist_dir() -> str | None:
     return raw or None
 
 
+@_serialised
 def build_index(con=None, *, rebuild: bool = False):
     """Create (or reuse) the Chroma collection holding the schema documents.
 
@@ -417,6 +439,12 @@ def schema_catalog_for(
         # all-MiniLM download failing or timing out on first use. Either way the
         # assistant should still work, just with the bigger prompt it used
         # before this module existed.
+        # A collection can become invalid after startup (persistent-directory
+        # replacement, Chroma failure, deleted collection). Keeping that dead
+        # module-global handle made every later request pay the full-catalogue
+        # fallback until the process restarted. Fail this turn open, then allow
+        # the next turn to rebuild.
+        _forget_index()
         return schema_catalog(con)
 
     # A follow-up such as "and by region?" has almost no standalone retrieval

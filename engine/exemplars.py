@@ -35,17 +35,19 @@ it is enforced twice, on every call:
 `tests/test_exemplars.py` asserts that no golden question can retrieve itself.
 
 FAILURE IS SILENT AND CHEAP
-If Chroma is unavailable (the same failure modes retrieval.py documents — no
-chromadb, or the MiniLM download timing out on a free tier), this returns no
-exemplars. That is exactly the prompt the assistant sent before this module
-existed. An optimisation may cost tokens when it fails; it must not cost
-answers.
+A dead collection is rebuilt once. If Chroma is genuinely unavailable (the
+same failure modes retrieval.py documents — no chromadb, or the MiniLM download
+timing out on a free tier), this returns no exemplars. That is exactly the
+prompt the assistant sent before this module existed. An optimisation may cost
+tokens when it fails; it must not cost answers.
 """
 
 from __future__ import annotations
 
 import re
+import threading
 from dataclasses import dataclass
+from functools import wraps
 from hashlib import sha256
 from pathlib import Path
 
@@ -78,6 +80,21 @@ _COLLECTION = "golden_exemplars"
 _client = None
 _collection = None
 _cases: list[dict] | None = None
+_index_lock = threading.RLock()
+
+
+def _serialised(fn):
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        with _index_lock:
+            return fn(*args, **kwargs)
+    return wrapped
+
+
+def _forget_index() -> None:
+    global _collection
+    with _index_lock:
+        _collection = None
 
 
 @dataclass(frozen=True)
@@ -154,6 +171,7 @@ def _fingerprint(cases: list[dict]) -> str:
     return sha256(payload.encode("utf-8")).hexdigest()
 
 
+@_serialised
 def build_index(*, rebuild: bool = False):
     """Create (or reuse) the Chroma collection holding the golden questions.
 
@@ -277,15 +295,19 @@ def select_exemplars(
         # to fuse), otherwise just enough to survive the leave-one-out drops.
         pool = len(cases) if retrieved_tables else min(
             len(cases), k + len(excluded) + 2)
-        if query_embedding is not None:
-            result = collection.query(query_embeddings=query_embedding,
-                                      n_results=max(1, pool))
-        else:
-            result = collection.query(query_texts=[question], n_results=max(1, pool))
+        query_args = ({"query_embeddings": query_embedding}
+                      if query_embedding is not None else {"query_texts": [question]})
+        result = collection.query(**query_args, n_results=max(1, pool))
     except Exception:
-        # Chroma unavailable. No exemplars is the pre-existing prompt, which
-        # still works; a stack trace in a Streamlit demo does not.
-        return []
+        # A collection can be deleted or invalidated after startup. Retry once
+        # with a fresh handle; only a genuine Chroma/model failure should
+        # degrade to the pre-exemplar prompt.
+        _forget_index()
+        try:
+            collection = build_index(rebuild=True)
+            result = collection.query(**query_args, n_results=max(1, pool))
+        except Exception:
+            return []
 
     ids = [i for i in (result.get("ids") or [[]])[0] if i in cases]
     dists = (result.get("distances") or [[]])[0]

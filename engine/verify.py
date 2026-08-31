@@ -459,11 +459,13 @@ class Verifier:
             # Unparseable SQL is the executor's problem, not this module's.
             return []
         binding, tables = _relations(ast)
+        self_join_findings = self._self_join_fanout(ast)
         if len(tables) < 2:
-            return []
+            return self_join_findings
         findings = self._cross_domain(ast, binding, tables)
         findings += self._cartesian(ast)
         findings += self._fanout(ast, binding, tables)
+        findings += self_join_findings
         # `cross_domain_reference` exists to say "two domains appear here but are
         # not combined". Once `_cartesian` has proved they ARE combined, the note
         # contradicts the error sitting beside it, so it is dropped.
@@ -652,6 +654,83 @@ class Verifier:
                         f"{source} row is repeated once per matching {other} row and the "
                         f"aggregate is inflated. Aggregate {source} in a subquery before "
                         f"joining, or aggregate the column that lives on {other}."))
+        return findings
+
+    def _self_join_fanout(self, ast) -> list[Finding]:
+        """Catch row-sensitive aggregates multiplied by a non-unique self join.
+
+        The ordinary relation map intentionally collapses aliases onto base
+        tables. That is correct for cross-domain checks, but it made `employee e
+        JOIN employee m` look like one relation and bypass every fan-out check.
+        This check retains aliases only for the SELECT node in which they live.
+        """
+        ctes = _cte_names(ast)
+        findings, seen = [], set()
+        for node in _select_nodes(ast):
+            relations = _local_relations(node, ctes)
+            alias_to_table = {alias: table for alias, table in relations}
+            if len(alias_to_table) < 2:
+                continue
+
+            sources: dict[str, set[str]] = {}
+            for function in _walk(node.get("select_list") or []):
+                if function.get("class") != "FUNCTION":
+                    continue
+                name = str(function.get("function_name") or "").lower()
+                if name not in ADDITIVE_AGGREGATES or function.get("distinct"):
+                    continue
+                for child in _walk(function.get("children") or []):
+                    if child.get("class") != "COLUMN_REF":
+                        continue
+                    names = child.get("column_names") or []
+                    if len(names) < 2:
+                        continue
+                    alias = str(names[-2]).lower()
+                    column = str(names[-1]).lower()
+                    if alias in alias_to_table:
+                        sources.setdefault(alias, set()).add(f"{name}({column})")
+
+            if not sources:
+                continue
+            composite: dict[tuple[str, str], list[tuple[str, str]]] = {}
+            for join in _walk(node.get("from_table") or {}):
+                if join.get("type") != "JOIN" or not isinstance(join.get("condition"), dict):
+                    continue
+                for left_names, right_names in _equalities(join["condition"]):
+                    if len(left_names) < 2 or len(right_names) < 2:
+                        continue
+                    left_alias, right_alias = (
+                        str(left_names[-2]).lower(), str(right_names[-2]).lower()
+                    )
+                    if left_alias == right_alias:
+                        continue
+                    if (alias_to_table.get(left_alias)
+                            != alias_to_table.get(right_alias)):
+                        continue
+                    composite.setdefault((left_alias, right_alias), []).append((
+                        str(left_names[-1]).lower(), str(right_names[-1]).lower(),
+                    ))
+
+            for (left_alias, right_alias), pairs in composite.items():
+                table = alias_to_table[left_alias]
+                for source_alias, other_alias, other_key in (
+                    (left_alias, right_alias, [pair[1] for pair in pairs]),
+                    (right_alias, left_alias, [pair[0] for pair in pairs]),
+                ):
+                    key = (source_alias, other_alias, tuple(other_key))
+                    if source_alias not in sources or key in seen:
+                        continue
+                    if self._is_unique(table, other_key):
+                        continue
+                    seen.add(key)
+                    aggregates = ", ".join(sorted(sources[source_alias]))
+                    findings.append(Finding(
+                        "join_fanout", ERROR,
+                        f"{aggregates} reads alias {source_alias} of {table}, but the "
+                        f"self-join key ({', '.join(other_key)}) is not unique on alias "
+                        f"{other_alias}. Each source row can be repeated before the "
+                        f"aggregate runs. Remove the self join, join to a unique key, or "
+                        f"aggregate {source_alias} before joining."))
         return findings
 
     # ---- post-execution -------------------------------------------------

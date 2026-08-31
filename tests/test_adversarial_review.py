@@ -166,12 +166,6 @@ SILENT_WRONG = [
      "GROUP BY 1 ORDER BY s ASC LIMIT 1",
      "SELECT payer_id, SUM(paid_amount) AS s FROM healthcare_fact_claims "
      "GROUP BY 1 ORDER BY s DESC LIMIT 1"),
-    # Both _cartesian (verify.py:544) and _fanout (verify.py:621) skip a table
-    # joined to itself, so self-join fan-out is invisible by construction.
-    ("self_join_fanout",
-     "SELECT ROUND(AVG(e.base_salary)) AS avg_salary FROM hr_fact_employees e "
-     "JOIN hr_fact_employees m ON e.department_id = m.department_id WHERE e.is_active = 1",
-     "SELECT ROUND(AVG(base_salary)) AS avg_salary FROM hr_fact_employees WHERE is_active = 1"),
 ]
 
 
@@ -192,6 +186,15 @@ def test_silent_wrong_space_is_documented_not_covered(con, label, wrong, right):
     assert findings == [], (
         f"{label} is now caught - move it out of the silent-wrong list: "
         f"{[str(f) for f in findings]}")
+
+
+def test_self_join_fanout_is_blocked(con):
+    sql = (
+        "SELECT ROUND(AVG(e.base_salary)) AS avg_salary FROM hr_fact_employees e "
+        "JOIN hr_fact_employees m ON e.department_id = m.department_id WHERE e.is_active = 1"
+    )
+    findings = Verifier(con).check_sql(sql)
+    assert any(f.check == "join_fanout" and f.blocking for f in findings)
 
 
 def test_fanout_warning_blocks_or_corrects(con):
@@ -217,15 +220,8 @@ def test_production_retrieval_uses_the_strategy_that_was_measured(con):
         "the default strategy omits a table the measured configuration retrieves")
 
 
-def test_retrieval_failure_degrades_silently_and_permanently(con):
-    """Track 3: what the user sees when Chroma cannot serve the index.
-
-    Answer: nothing. schema_catalog_for swallows every exception
-    (retrieval.py:415) and returns the full catalogue, and because the dead
-    collection stays in the module-level `_collection` global, the fallback is
-    permanent for the life of the process - a ~5x prompt-token increase per
-    turn with no log line, no flag on AskResult and no UI notice.
-    """
+def test_retrieval_failure_falls_back_once_then_rebuilds(con):
+    """A dead Chroma handle may cost one full-catalogue turn, not the process."""
     from engine import retrieval
 
     saved = (retrieval._client, retrieval._collection, retrieval._collection_source)
@@ -235,10 +231,13 @@ def test_retrieval_failure_degrades_silently_and_permanently(con):
         after = [retrieval.schema_catalog_for("What is the overall claim denial rate?", con)
                  for _ in range(3)]
         full = schema_catalog(con)
-        assert all(block == full for block in after), "expected the full-catalogue fallback"
+        assert after[0] == full, "the failing turn should safely use the full catalogue"
+        assert all(block != full for block in after[1:]), (
+            "later turns should rebuild instead of retaining a dead collection"
+        )
         assert len(full) > 3 * len(narrow), "fallback should be dramatically larger"
         assert retrieval._collection is not None, (
-            "the dead collection is never cleared, which is why this never recovers")
+            "a healthy collection should be restored after the fallback")
     finally:
         retrieval._client, retrieval._collection, retrieval._collection_source = saved
         retrieval.build_index(con, rebuild=True)

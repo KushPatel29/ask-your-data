@@ -125,6 +125,23 @@ def test_refusal_passes_through(con):
     assert len(client.calls) == 1  # a refusal must not trigger retries
 
 
+def test_invalid_tool_payload_is_corrected_then_refused_without_crashing(con):
+    invalid = SimpleNamespace(type="tool_use", name="answer_with_sql", input={})
+    client = FakeClient([msg(invalid) for _ in range(MAX_ATTEMPTS)])
+
+    res = assistant(con, client).ask("how many claims?")
+
+    assert res.refused and "without non-empty SQL" in res.reason
+    assert res.attempts == MAX_ATTEMPTS
+    assert len(client.calls) == MAX_ATTEMPTS
+
+
+def test_non_mapping_refusal_payload_is_contained(con):
+    invalid = SimpleNamespace(type="tool_use", name="cannot_answer", input=None)
+    res = assistant(con, FakeClient([msg(invalid)])).ask("what is the weather?")
+    assert res.refused and res.reason == "out of scope"
+
+
 def test_history_is_replayed_for_follow_ups(con):
     client = FakeClient([
         msg(tool_use("answer_with_sql", sql=GOOD_SQL, explanation="")),
@@ -176,6 +193,21 @@ def test_retrieved_schema_is_sent_as_a_separate_system_block(con):
         "only the final block carries the breakpoint; an earlier one would cache "
         "a shorter prefix and strand the rest"
     )
+
+
+def test_result_carries_the_exact_prompt_tables_and_context(con):
+    client = FakeClient([
+        msg(tool_use("answer_with_sql", sql=GOOD_SQL, explanation="")),
+        msg(text("12,000.")),
+    ])
+
+    def claims_only(_question, _con, **_kwargs):
+        return "- healthcare_fact_claims: claim facts\n    columns: claim_id VARCHAR"
+
+    res = assistant(con, client, claims_only).ask("how many claims?")
+    assert res.tables == ["healthcare_fact_claims"]
+    assert res.retrieval_context == "how many claims?"
+    assert res.schema_tokens > 0
 
 
 def test_usage_is_aggregated_across_calls(con):

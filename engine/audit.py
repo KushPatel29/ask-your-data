@@ -62,6 +62,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from engine import automation
+
 # One turn's record, clipped. These are not arbitrary: the SQL bound is above
 # the longest statement the planner or the golden set produces (measured: 412
 # characters), and the question bound is above the longest question in either
@@ -86,6 +88,7 @@ _KEY_RE = re.compile(r"\b(sk-[A-Za-z0-9_\-]{8,}|sk-ant-[A-Za-z0-9_\-]{8,})")
 
 _ring: deque = deque(maxlen=RING_SIZE)
 _lock = threading.Lock()
+_sink_error = ""
 
 
 def redact(text: str | None) -> str:
@@ -198,6 +201,7 @@ def record(
         elapsed_ms=round(float(elapsed_ms or 0.0), 2),
         timings={k: round(float(v), 2) for k, v in (timings or {}).items()},
     )
+    global _sink_error
     with _lock:
         _ring.append(rec)
         path = sink_path()
@@ -206,11 +210,13 @@ def record(
                 path.parent.mkdir(parents=True, exist_ok=True)
                 with path.open("a", encoding="utf-8") as handle:
                     handle.write(rec.as_json() + "\n")
-            except OSError:
+                _sink_error = ""
+            except OSError as exc:
                 # A read-only or full filesystem must not take the answer down
                 # with it. The ring still holds the record, and the operations
                 # panel reports the sink as unavailable rather than pretending.
-                pass
+                _sink_error = str(exc)[:200]
+    automation.publish(rec)
     return rec
 
 
@@ -221,8 +227,10 @@ def recent(limit: int = RING_SIZE) -> list[AuditRecord]:
 
 def clear() -> None:
     """Only for tests. The ring is process-global by design."""
+    global _sink_error
     with _lock:
         _ring.clear()
+        _sink_error = ""
 
 
 def _percentile(values: list[float], pct: float) -> float:
@@ -239,7 +247,11 @@ def _percentile(values: list[float], pct: float) -> float:
     return ordered[index]
 
 
-def summarise(records: list[AuditRecord] | None = None) -> dict:
+def summarise(
+    records: list[AuditRecord] | None = None,
+    *,
+    actor: str | None = None,
+) -> dict:
     """Aggregate the ring into the numbers an operator asks for.
 
     This is the difference between observability *of a request* — which this
@@ -248,6 +260,8 @@ def summarise(records: list[AuditRecord] | None = None) -> dict:
     derived from records that were really written; none is a placeholder.
     """
     rows = list(records if records is not None else recent())
+    if actor is not None:
+        rows = [row for row in rows if row.actor == actor]
     total = len(rows)
     answered = [r for r in rows if r.outcome == "answered"]
     refused = [r for r in rows if r.outcome == "refused"]
@@ -289,6 +303,8 @@ def summarise(records: list[AuditRecord] | None = None) -> dict:
         "tokens_out": sum(r.tokens_out for r in rows),
         "certified": sum(1 for r in rows if r.metric),
         "sink": str(sink_path()) if sink_path() else "",
+        "sink_error": _sink_error,
+        "automation": automation.status(),
     }
 
 
@@ -307,4 +323,6 @@ def describe_limits() -> list[str]:
         "copy of the data",
         "with no ASK_YOUR_DATA_AUDIT path set, records live in a bounded "
         f"in-memory ring of {RING_SIZE} and die with the container",
+        "the optional n8n event contains operational metadata only; question, "
+        "SQL, result values, reasons, and retry feedback are excluded",
     ]

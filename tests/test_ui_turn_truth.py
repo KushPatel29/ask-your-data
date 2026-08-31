@@ -42,7 +42,12 @@ for path in (str(ROOT), str(ROOT / "scripts")):
 import audit_ui  # noqa: E402
 
 from engine.assistant import MAX_ATTEMPTS, Assistant  # noqa: E402
-from engine.sql_guard import FORBIDDEN, FORBIDDEN_FUNCTIONS, validate_sql  # noqa: E402
+from engine.sql_guard import (  # noqa: E402
+    FORBIDDEN,
+    FORBIDDEN_FUNCTIONS,
+    MAX_SQL_CHARS,
+    validate_sql,
+)
 from engine.warehouse import schema_catalog  # noqa: E402
 
 APP_SOURCE = (ROOT / "app" / "streamlit_app.py").read_text(encoding="utf-8")
@@ -81,6 +86,7 @@ def guard_readout(ui):
         "validate_sql": validate_sql,
         "FORBIDDEN": FORBIDDEN,
         "FORBIDDEN_FUNCTIONS": FORBIDDEN_FUNCTIONS,
+        "MAX_SQL_CHARS": MAX_SQL_CHARS,
         "ui": ui,
     }
     exec(compile(app_slice("def _guard_readout(", "\n\n# The prefix engine.query"),
@@ -125,6 +131,7 @@ def cell(cells, name):
 # here, `test_no_guard_refusal_falls_through_the_ladder` is what notices.
 REFUSALS = [
     ("   ", "non-empty query"),
+    ("SELECT '" + ("x" * MAX_SQL_CHARS) + "'", f"at most {MAX_SQL_CHARS:,} characters"),
     ("SELECT 1; DROP TABLE t", "single statement"),
     ("EXPLAIN SELECT 1", "starts SELECT / WITH"),
     ("SELECT * FROM t WHERE x IN (DELETE)", f"none of {len(FORBIDDEN)} forbidden verbs"),
@@ -182,7 +189,7 @@ def test_a_passing_query_shows_every_rung_cleared(ui, guard_readout):
     ui.st.take()
     guard_readout("SELECT 1 AS n")
     checks = checks_in(ui.st.take())
-    assert [passed for _label, passed in checks] == [True] * 4
+    assert [passed for _label, passed in checks] == [True] * 5
     assert any("forbidden functions" in label for label, _ in checks)
 
 

@@ -89,9 +89,27 @@ def test_provider_errors_never_echo_credentials_or_response_payloads():
     with pytest.raises(voice.VoiceUnavailable) as caught:
         service.transcribe(b"RIFF")
     assert key not in str(caught.value)
-    assert "Check the OpenAI key" in str(caught.value)
+    assert "configured speech service" in str(caught.value)
 
 
 def test_server_key_is_optional_and_explicit():
     assert voice.server_api_key({}) == ""
     assert voice.server_api_key({"OPENAI_API_KEY": " sk-live "}) == "sk-live"
+
+
+def test_free_local_endpoint_needs_no_paid_key_and_uses_open_models():
+    service = voice.OpenAIVoice(
+        base_url="http://speaches:8000/v1", client=_Client(),
+        stt_model=voice.LOCAL_STT_MODEL, tts_model=voice.LOCAL_TTS_MODEL,
+    )
+    service.transcribe(b"RIFF", language="en")
+    sent = service.client.audio.transcriptions.kwargs
+    assert service.local
+    assert sent["model"] == voice.LOCAL_STT_MODEL
+    assert sent["language"] == "en"
+    assert "extra_body" not in sent
+
+    service.synthesize("Revenue is 42.", voice="af_heart")
+    speech = service.client.audio.speech.kwargs
+    assert speech["model"] == voice.LOCAL_TTS_MODEL
+    assert "instructions" not in speech
