@@ -119,6 +119,7 @@ def _planner_runner(con):
         result = planner.plan_question(question, layer, retrieved=hits(question))
         ran = run_query(con, result.sql) if result.ok else None
         show_plan(result, ran)
+        _record(question, result=result, ran=ran, engine="plan")
         return result
 
     return ask
@@ -138,9 +139,40 @@ def _model_runner(con):
                   "  with --plan to use the keyless compiler instead.\n")
             return None
         show(result)
+        _record(question, result=result, engine="model")
         return result
 
     return ask
+
+
+def _record(question, *, result, engine, ran=None):
+    """The terminal is an entry point too.
+
+    An audit trail that covers the web app and not the CLI has a hole in it
+    exactly where a developer does their most unusual queries. With no
+    ASK_YOUR_DATA_AUDIT path set this writes to a ring that dies with the
+    process, which is the right amount of ceremony for a one-shot command —
+    the point is that the code path exists and is the same one.
+    """
+    from engine import audit
+
+    refused = getattr(result, "refused", False) or not getattr(result, "ok", False)
+    try:
+        audit.record(
+            actor="cli", engine=engine, question=question,
+            sql=getattr(result, "sql", "") or "",
+            outcome=("refused" if refused else
+                     ("error" if ran is not None and not ran.ok else "answered")),
+            refusal_kind=getattr(result, "kind", "") or "",
+            reason=getattr(result, "reason", "") or "",
+            row_count=0 if ran is None else ran.row_count,
+            truncated=bool(getattr(ran, "truncated", False)),
+            attempts=int(getattr(result, "attempts", 1) or 1),
+            coverage=getattr(getattr(result, "plan", None), "coverage", None),
+            elapsed_ms=float(getattr(result, "elapsed_ms", 0.0) or 0.0),
+        )
+    except Exception:  # noqa: BLE001 - an observer must never break the observed
+        pass
 
 
 def main():

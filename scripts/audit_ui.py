@@ -289,6 +289,15 @@ def render_all(ui, fx) -> dict[str, str]:
         plan_ms=4.0, refused=True))
     grab("answer", lambda: ui.answer("1,428", verified=True,
                                      verified_note="Asserted in evals/golden_questions.yaml."))
+    grab("operations", lambda: ui.operations(
+        {"turns": 12, "answered": 9, "refused": 2, "blocked": 1, "failed": 0,
+         "refusal_rate": 2 / 12, "engines": {"plan": 11, "manual": 1},
+         "refusal_kinds": {HOSTILE: 1, "outside the grammar": 1},
+         "p50_ms": 31.4, "p95_ms": 604.2, "max_ms": 604.2,
+         "stage_p50_ms": {"execute": 2.1, "plan": 5.0, HOSTILE: 164.0},
+         "tokens_in": 0, "tokens_out": 0, "certified": 0, "sink": HOSTILE},
+        limits=[HOSTILE, "records die with the container"]))
+    grab("operations_empty", lambda: ui.operations({"turns": 0}))
     grab("domain_card", lambda: ui.domain_card(HOSTILE, "A domain blurb."))
     grab("note", lambda: ui.note(HOSTILE))
     return out

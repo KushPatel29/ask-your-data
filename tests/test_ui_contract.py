@@ -690,3 +690,84 @@ def test_there_is_a_way_back_outside_the_sidebar(rendered):
     assert "Start over" in source
     # and both routes must clear the same state, or they will drift
     assert source.count("_reset_conversation") >= 3
+
+
+# --------------------------------------------------------------------------
+# The operations panel, and the wiring that makes it able to tell the truth.
+#
+# Every other readout in app/ui.py describes ONE turn. This one describes the
+# process, which means it is the first panel in this app that could lie by
+# omission: a turn that is not recorded is a turn the refusal rate does not
+# count. So the tests here are mostly about the RECORDER, not the renderer.
+# --------------------------------------------------------------------------
+
+def test_the_operations_panel_claims_no_accent_it_has_not_earned(rendered):
+    """Machine measurements of itself are cyan by definition. Amber would say
+    CI re-checks these numbers, which nothing does — they are this session's."""
+    _ui, panels = rendered
+    assert "ayd-verified" not in panels["operations"]
+    assert "ayd-ops-fill" in panels["operations"]
+
+
+def test_an_empty_ledger_says_so_instead_of_drawing_zeroes(rendered):
+    """A dashboard of zeroes reads as a broken dashboard. A sentence reads as
+    an app that has not been asked anything yet."""
+    _ui, panels = rendered
+    body = panels["operations_empty"]
+    assert "No turns recorded yet" in body
+    assert "ayd-ops-grid" not in body, "no stat cells until there are stats"
+
+
+def test_a_keyless_session_does_not_report_a_token_cell(rendered):
+    """Reporting `0 tokens` invites the reader to wonder what it would have
+    been. Reporting nothing says the axis does not apply to this session."""
+    _ui, panels = rendered
+    assert "TOKENS" not in panels["operations"].upper()
+
+
+def test_the_panel_publishes_the_limits_of_its_own_trail(rendered):
+    """An undocumented control is how a reviewer ends up relying on something
+    that was never load-bearing."""
+    _ui, panels = rendered
+    assert "records die with the container" in panels["operations"]
+
+
+def test_every_path_that_answers_also_records(rendered):
+    """The compiler path, the guard-block path and the hand-written-SQL path.
+
+    A trail with a hole in it exactly where the interesting queries go is not a
+    trail, and the editor is where a visitor writes the interesting queries.
+    """
+    import ast
+
+    tree = ast.parse(_app_source())
+    for name in ("_plan_turn", "_manual_turn"):
+        fn = next(node for node in ast.walk(tree)
+                  if isinstance(node, ast.FunctionDef) and node.name == name)
+        body = ast.unparse(fn)
+        returns = body.count("return entry")
+        records = body.count("_audit_turn(")
+        assert records >= returns, (
+            f"{name} has {returns} exits and only {records} audit calls — "
+            "a turn that returns without recording is a turn the refusal rate "
+            "does not count")
+
+
+def test_the_recorder_can_never_take_an_answer_down_with_it():
+    """An observer that can break the observed is a worse feature than none."""
+    import ast
+
+    tree = ast.parse(_app_source())
+    fn = next(node for node in ast.walk(tree)
+              if isinstance(node, ast.FunctionDef) and node.name == "_audit_turn")
+    assert any(isinstance(node, ast.Try) for node in ast.walk(fn)), \
+        "_audit_turn must swallow its own failures"
+
+
+def test_the_session_ceiling_admits_what_it_is():
+    """A limit that presents itself as a security control is worse than no
+    limit, because somebody stops looking for the real one."""
+    source = _app_source()
+    assert "MAX_QUESTIONS_PER_SESSION" in source
+    assert "not a security control" in source
+    assert "spend cap" in source

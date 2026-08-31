@@ -69,6 +69,7 @@ embedding engine.retrieval computed for the identical question a moment earlier.
 import re
 import sys
 import time
+import uuid
 from pathlib import Path
 from urllib.parse import quote_plus
 
@@ -81,6 +82,7 @@ sys.path.insert(0, str(ROOT))
 from app import ui  # noqa: E402
 from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
 from engine import (  # noqa: E402
+    audit,
     demo_mode,  # noqa: E402
     exemplars,
     planner,
@@ -106,6 +108,44 @@ def _session_key() -> str:
     is per-browser-session and dies with the tab.
     """
     return str(st.session_state.get("byok", "") or "").strip()
+
+
+def _actor() -> str:
+    """A stable, meaningless-by-design identifier for this browser session.
+
+    Not an identity. This app has no login, so the honest thing an audit record
+    can say is "the same visitor asked these four questions", and nothing more.
+    A field called `actor` holding an email address the app never verified
+    would be a lie the trail has no way to check, and a trail with one lie in
+    it is not evidence of anything.
+    """
+    if "actor" not in st.session_state:
+        st.session_state.actor = "session-" + uuid.uuid4().hex[:10]
+    return str(st.session_state.actor)
+
+
+# The spend ceiling. A demo whose README tells the reader to deploy it with
+# their own key needs a documented bound on what one visitor can spend, and
+# "the compiler is free" is not an answer once a key is pasted in.
+#
+# This is a SESSION counter and it is therefore trivially bypassed by opening a
+# new tab. Saying so here matters more than the number does: a limit that
+# presents itself as a security control is worse than no limit, because
+# somebody stops looking for the real one. The real ceiling is a spend cap on
+# the key itself, and the README says that where a reader will see it.
+MAX_QUESTIONS_PER_SESSION = 60
+
+
+def _questions_asked() -> int:
+    return int(st.session_state.get("asked", 0))
+
+
+def _session_budget_exhausted() -> bool:
+    return _questions_asked() >= MAX_QUESTIONS_PER_SESSION
+
+
+def _count_question() -> None:
+    st.session_state.asked = _questions_asked() + 1
 
 
 LIVE_MODE = demo_mode.has_api_key() or bool(_session_key())
@@ -918,6 +958,56 @@ def _render_key_control() -> None:
         st.rerun()
 
 
+def _audit_turn(entry: dict, *, engine: str, coverage=None, metric: str = "") -> None:
+    """Persist one turn.
+
+    Called from every path that answers, including the one where a person wrote
+    the SQL themselves — a trail with a hole in it where the interesting queries
+    go is not a trail. Wrapped so that an audit failure can never take an answer
+    down: engine/audit.record already swallows its own I/O errors, and this
+    catches everything else for the same reason.
+    """
+    if entry.get("refused"):
+        outcome = "blocked" if entry.get("guard_ok") is False else "refused"
+    elif entry.get("timed_out"):
+        outcome = "timeout"
+    elif entry.get("error"):
+        outcome = "error"
+    else:
+        outcome = "answered"
+    timings = {name: entry[key] for name, key in (
+        ("retrieve", "retrieve_ms"), ("plan", "plan_ms"), ("guard", "guard_ms"),
+        ("verify", "verify_ms"), ("execute", "exec_ms")) if entry.get(key) is not None}
+    usage = entry.get("usage") or {}
+    try:
+        audit.record(
+            actor=_actor(),
+            engine=engine,
+            question=entry.get("question", ""),
+            sql=entry.get("sql", ""),
+            outcome=outcome,
+            refusal_kind=entry.get("refusal_kind", ""),
+            reason=entry.get("reason", ""),
+            tables=[h.table for h in (entry.get("bundle") or {}).get("hits", [])][:10],
+            row_count=0 if entry.get("rows") is None else int(len(entry["rows"])),
+            truncated=bool(entry.get("truncated")),
+            attempts=int(entry.get("attempts", 1) or 1),
+            corrections=list(entry.get("corrections") or []),
+            guard_ok=bool(entry.get("guard_ok", True)),
+            guard_reason=entry.get("guard_reason", ""),
+            verifier=[{"rule": getattr(f, "rule", ""), "severity": getattr(f, "severity", "")}
+                      for f in (entry.get("findings") or [])],
+            metric=metric,
+            coverage=coverage,
+            tokens_in=int(usage.get("input_tokens", 0) or 0),
+            tokens_out=int(usage.get("output_tokens", 0) or 0),
+            elapsed_ms=sum(timings.values()),
+            timings=timings,
+        )
+    except Exception:  # noqa: BLE001 - an observer must never break the observed
+        pass
+
+
 def _plan_turn(question: str) -> dict:
     """Compile a question without a model, run it, and record what happened.
 
@@ -961,6 +1051,8 @@ def _plan_turn(question: str) -> dict:
         "trace": _plan_trace_payload(result),
     }
     if result.refused:
+        _audit_turn(entry, engine="plan",
+                    coverage=getattr(result.plan, "coverage", None))
         return entry
 
     guard_started = time.perf_counter()
@@ -973,8 +1065,11 @@ def _plan_turn(question: str) -> dict:
         # and the guard is the boundary whether or not the thing behind it is
         # trusted.
         entry["refused"] = True
+        entry["guard_ok"] = False
+        entry["guard_reason"] = reason
         entry["reason"] = f"{GUARD_BLOCK_PREFIX}: {reason}"
         entry["corrections"] = [f"{GUARD_BLOCK_PREFIX}: {reason}"]
+        _audit_turn(entry, engine="plan", coverage=result.plan.coverage)
         return entry
 
     exec_started = time.perf_counter()
@@ -991,6 +1086,8 @@ def _plan_turn(question: str) -> dict:
         entry["answer"] = _plan_headline(result.plan, ran)
     elif ran.ok:
         entry["answer"] = "No rows matched."
+    entry["timed_out"] = bool(getattr(ran, "timed_out", False))
+    _audit_turn(entry, engine="plan", coverage=result.plan.coverage)
     return entry
 
 
@@ -1031,6 +1128,7 @@ def _manual_turn(sql: str, origin: str = "") -> dict:
         entry["refused"] = True
         entry["reason"] = f"{GUARD_BLOCK_PREFIX}: {reason}"
         entry["refusal_kind"] = "blocked by the guard"
+        _audit_turn(entry, engine="manual")
         return entry
 
     exec_started = time.perf_counter()
@@ -1049,6 +1147,8 @@ def _manual_turn(sql: str, origin: str = "") -> dict:
                            else f"{ran.row_count} rows returned.")
     elif ran.ok:
         entry["answer"] = "No rows matched."
+    entry["timed_out"] = bool(getattr(ran, "timed_out", False))
+    _audit_turn(entry, engine="manual")
     return entry
 
 
@@ -1572,6 +1672,28 @@ def _show_layer_summary() -> None:
     )
 
 
+def _operations_panel() -> None:
+    """The service view, one expander down from the answers.
+
+    This is the panel a buyer asks for and a demo never has: not "what did this
+    turn do" — the pipeline strip has said that on every turn since the first
+    version — but "what has this process been doing". It could not exist before
+    engine/audit.py, because there was nothing durable to aggregate: every
+    number the app measured was rendered once and dropped.
+
+    It is deliberately not on by default. The evidence is the reason to trust
+    the app; it is not the reason to open it.
+    """
+    with st.expander("Operations — the audit record of this session"):
+        st.caption(
+            "Every number here is computed from `engine/audit.py` records that "
+            "were really written by the turns above. Nothing on this panel is a "
+            "sample or a placeholder, and the limits of the trail are listed "
+            "with it rather than left for a reader to discover."
+        )
+        ui.operations(audit.summarise(), limits=audit.describe_limits())
+
+
 def _reset_conversation() -> None:
     st.session_state.turns = []
     st.session_state.transcript = []
@@ -1694,12 +1816,28 @@ def render_keyless(connection) -> None:
             render_plan_entry(entry, index)
 
     question = st.chat_input("Ask a question about the data...") or clicked or link
+    if question and _session_budget_exhausted():
+        # The ceiling is per browser session and a new tab clears it. That is
+        # said out loud rather than hidden, because a limit presented as a
+        # security control is worse than no limit — somebody stops looking for
+        # the real one, which is a spend cap on the key itself.
+        st.warning(
+            f"This session has reached its {MAX_QUESTIONS_PER_SESSION}-question "
+            "ceiling. Reload the page to start a new session. The bound exists "
+            "because a deployment with a key behind it is an unmetered spend "
+            "surface — but it counts per browser session, so it is a courtesy "
+            "limit and not a security control. The real ceiling is a spend cap "
+            "on the key.")
+        question = None
     if question:
         with st.spinner("Compiling your question into SQL..."):
             entry = _plan_turn(question)
+        _count_question()
         st.session_state.transcript.append(entry)
         st.rerun()
 
+    st.divider()
+    _operations_panel()
     st.divider()
     with st.expander("The accuracy contract — 39 questions whose SQL is committed "
                      "and re-run by CI on every push"):

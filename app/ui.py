@@ -191,7 +191,7 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
    reading getComputedStyle off the running app rather than by looking at it. */
 .ayd-mono, .ayd-stats, .ayd-pipe, .ayd-rail, .ayd-ground-panel, .ayd-map,
 .ayd-guard, .ayd-note, .ayd-verified, .ayd-plan, .ayd-att, .ayd-shape,
-.ayd-cols-list, .ayd-ver, .ayd-ex{
+.ayd-cols-list, .ayd-ver, .ayd-ex, .ayd-ops, .ayd-layer{
   font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
 
 /* A reticle rather than a box: two corners, not four sides. Enough to read as
@@ -443,6 +443,45 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .ayd-layer-foot{ grid-column:1 / -1; padding:.55rem .85rem .6rem;
   border-bottom:1px solid transparent; font-family:var(--ayd-mono) !important;
   font-size:.62rem; color:var(--ayd-muted); line-height:1.5; }
+
+/* ---- operations ledger ------------------------------------------------- */
+/* Observability OF A REQUEST is what the pipeline strip has always shown.
+   Observability OF A SERVICE is a different thing and needs something durable
+   to aggregate over, which is why this panel could not exist until
+   engine/audit.py did. Every number here is computed from records that were
+   really written this session; none is a placeholder and none is a rate the
+   app would like to have.
+
+   No amber anywhere in it. These are the machine's own measurements of itself,
+   which is exactly what cyan means; amber would claim CI re-checks them. */
+.ayd-ops{ border:1px solid var(--ayd-line); border-radius:3px;
+  background:var(--ayd-panel); margin:.2rem 0 1rem; overflow:hidden; }
+.ayd-ops-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(122px,1fr)); gap:0; }
+.ayd-ops-cell{ padding:.6rem .8rem .65rem; min-width:0; background:var(--ayd-panel);
+  border-right:1px solid var(--ayd-line); border-bottom:1px solid var(--ayd-line); }
+.ayd-ops-n{ display:block; font-family:var(--ayd-cond) !important; font-weight:700;
+  font-size:1.32rem; line-height:1.1; color:var(--ayd-machine); }
+.ayd-ops-k{ display:block; font-family:var(--ayd-mono) !important; font-size:.58rem;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--ayd-muted); margin-top:.28rem; }
+/* The stage bars are the one place a length carries meaning, so they are
+   normalised to the slowest stage and the number is printed beside the bar —
+   a bar you cannot read a value off is decoration. */
+.ayd-ops-rows{ padding:.55rem .8rem .7rem; border-bottom:1px solid var(--ayd-line); }
+.ayd-ops-row{ display:grid; grid-template-columns:5.6rem 1fr 4.2rem; gap:.6rem;
+  align-items:center; font-family:var(--ayd-mono) !important; font-size:.66rem;
+  color:var(--ayd-muted); padding:.16rem 0; }
+.ayd-ops-row b{ color:var(--ayd-ink); font-weight:500; }
+.ayd-ops-track{ height:5px; background:var(--ayd-panel-2); border-radius:1px; overflow:hidden; }
+.ayd-ops-fill{ height:100%; background:var(--ayd-machine); opacity:.62; }
+.ayd-ops-num{ text-align:right; color:var(--ayd-ink); }
+.ayd-ops-head{ font-family:var(--ayd-mono) !important; font-size:.6rem;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--ayd-muted);
+  padding:.55rem .8rem .1rem; }
+.ayd-ops-foot{ padding:.55rem .8rem .65rem; font-family:var(--ayd-mono) !important;
+  font-size:.62rem; color:var(--ayd-muted); line-height:1.6; }
+.ayd-ops-foot li{ margin-left:.9rem; }
+@media (max-width:640px){
+  .ayd-ops-row{ grid-template-columns:4.8rem 1fr 3.6rem; font-size:.6rem; } }
 
 /* A refusal, in this palette rather than Streamlit's.
 
@@ -1098,6 +1137,101 @@ def layer_summary(cells: list[tuple[str, str, str]], *, footnote: str = "") -> N
             if footnote else "")
     st.markdown(f'<div class="ayd-layer ayd-hud">{body}{foot}</div>',
                 unsafe_allow_html=True)
+
+
+def operations(summary: dict, *, limits: list[str] | None = None) -> None:
+    """The service, rather than the request.
+
+    Every other readout in this file describes ONE turn. This one describes the
+    process: how many questions it has been asked, how many it refused, how
+    long the stages really took at the median, and which engine answered. It
+    exists because `engine/audit.py` now keeps a durable record — before that
+    there was nothing to aggregate over, and a panel of aggregates computed
+    from nothing is the exact kind of decoration this app spends its whole
+    interface arguing against.
+
+    The refusal rate is the number to watch here, and it is deliberately given
+    a cell of its own. It is the price this system pays for never returning a
+    wrong number, and it is the first thing that moves when the grammar or the
+    confidence gate changes.
+
+    `limits` is not optional in spirit. An audit trail is a control, and a
+    control whose weaknesses are undocumented is how a reviewer ends up relying
+    on something that was never load-bearing.
+    """
+    turns = int(summary.get("turns", 0) or 0)
+    if not turns:
+        st.markdown(
+            '<div class="ayd-ops ayd-hud"><div class="ayd-ops-foot">'
+            'No turns recorded yet this session. Ask a question and this panel '
+            'fills from the audit record of what actually ran — not from a '
+            'sample.</div></div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    def cell(number: str, label: str) -> str:
+        return (f'<div class="ayd-ops-cell"><span class="ayd-ops-n">'
+                f'{html.escape(number)}</span>'
+                f'<span class="ayd-ops-k">{html.escape(label)}</span></div>')
+
+    cells = [
+        cell(f"{turns:,}", "turns"),
+        cell(f"{100 * float(summary.get('refusal_rate', 0.0)):.0f}%", "refused"),
+        cell(f"{float(summary.get('p50_ms', 0.0)):,.0f}ms", "p50"),
+        cell(f"{float(summary.get('p95_ms', 0.0)):,.0f}ms", "p95"),
+    ]
+    blocked = int(summary.get("blocked", 0) or 0)
+    failed = int(summary.get("failed", 0) or 0)
+    if blocked:
+        cells.append(cell(f"{blocked:,}", "guard blocks"))
+    if failed:
+        cells.append(cell(f"{failed:,}", "errors"))
+    tokens = int(summary.get("tokens_in", 0) or 0) + int(summary.get("tokens_out", 0) or 0)
+    # Only shown once a model has actually been used. A keyless session that
+    # reports "0 tokens" is inviting the reader to wonder what it would have
+    # been; a keyless session that reports nothing is telling the truth that
+    # this axis does not apply to it.
+    if tokens:
+        cells.append(cell(f"{tokens:,}", "tokens"))
+
+    stages = summary.get("stage_p50_ms") or {}
+    rows = ""
+    if stages:
+        widest = max(stages.values()) or 1.0
+        rows = "".join(
+            f'<div class="ayd-ops-row"><b>{html.escape(name)}</b>'
+            f'<span class="ayd-ops-track"><span class="ayd-ops-fill" '
+            f'style="width:{max(2.0, 100.0 * value / widest):.1f}%"></span></span>'
+            f'<span class="ayd-ops-num">{value:,.1f}ms</span></div>'
+            for name, value in stages.items()
+        )
+        rows = (f'<div class="ayd-ops-head">median per stage</div>'
+                f'<div class="ayd-ops-rows">{rows}</div>')
+
+    mix = summary.get("engines") or {}
+    kinds = summary.get("refusal_kinds") or {}
+    lines = []
+    if mix:
+        lines.append("answered by " + ", ".join(
+            f"{k} × {v}" for k, v in sorted(mix.items(), key=lambda kv: -kv[1])))
+    if kinds:
+        lines.append("refused because " + ", ".join(
+            f"{k} × {v}" for k, v in sorted(kinds.items(), key=lambda kv: -kv[1])))
+    sink = summary.get("sink") or ""
+    lines.append(f"sink: {sink}" if sink else
+                 "sink: in-memory ring only — set ASK_YOUR_DATA_AUDIT to a path to persist")
+    body = "".join(f"<li>{html.escape(line)}</li>" for line in lines)
+    for note_line in (limits or []):
+        body += f"<li>{html.escape(note_line)}</li>"
+
+    st.markdown(
+        f'<div class="ayd-ops ayd-hud">'
+        f'<div class="ayd-ops-grid">{"".join(cells)}</div>'
+        f'{rows}'
+        f'<div class="ayd-ops-foot"><ul>{body}</ul></div></div>',
+        unsafe_allow_html=True,
+    )
 
 
 def refusal(reason: str, *, kind: str = "not compiled") -> None:
