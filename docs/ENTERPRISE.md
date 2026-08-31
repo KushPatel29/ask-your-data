@@ -1,5 +1,17 @@
 # Enterprise readiness
 
+> **Current status (remediation addendum).** This document is the original
+> point-in-time adversarial assessment; the detailed reproductions below are
+> intentionally preserved as evidence and are not a list of still-open bugs.
+> Since it was written, the host-file readers are denied by the SQL guard, the
+> retrieval panel reports the ranking actually used, every turn reaches a
+> bounded audit sink, statements have time/memory/row ceilings, provider spend
+> has a documented per-session courtesy bound, user-keyed Streamlit caches have
+> `max_entries=256`, DuckDB error feedback is clipped, and certified metric
+> definitions carry owners plus live expected-value tests. The remaining scope
+> boundaries are still real: this is a single-tenant portfolio appliance over
+> synthetic data, not an authenticated multi-tenant analytics service.
+
 A due-diligence pass over Ask-Your-Data, written from the seat of an enterprise
 architect who has been asked whether this could go into a regulated business.
 
@@ -19,7 +31,7 @@ gap list. The distinction that matters is not *present vs. absent* — it is
 
 ---
 
-## Verdict
+## Original verdict (historical; see remediation addendum above)
 
 | # | Area | State | Would a buyer block on it? |
 |---|------|-------|----------------------------|

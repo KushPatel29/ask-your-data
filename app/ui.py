@@ -191,7 +191,7 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
    reading getComputedStyle off the running app rather than by looking at it. */
 .ayd-mono, .ayd-stats, .ayd-pipe, .ayd-rail, .ayd-ground-panel, .ayd-map,
 .ayd-guard, .ayd-note, .ayd-verified, .ayd-plan, .ayd-att, .ayd-shape,
-.ayd-cols-list, .ayd-ver, .ayd-ex, .ayd-ops, .ayd-layer{
+.ayd-cols-list, .ayd-ver, .ayd-ex, .ayd-ops, .ayd-layer, .ayd-voice, .ayd-metric{
   font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
 
 /* A reticle rather than a box: two corners, not four sides. Enough to read as
@@ -282,6 +282,8 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
   color:var(--ayd-muted); background:var(--ayd-panel); white-space:nowrap; }
 .ayd-step[data-on="1"]{ color:var(--ayd-machine); border-color:rgba(34,211,238,.42);
   background:rgba(34,211,238,.07); }
+.ayd-step[data-on="cert"]{ color:var(--ayd-verified); border-color:rgba(251,191,36,.42);
+  background:rgba(251,191,36,.07); }
 .ayd-step[data-on="fail"]{ color:var(--ayd-alert); border-color:rgba(251,113,133,.45);
   background:rgba(251,113,133,.08); }
 /* Measured wall-clock for the stage, when there is one to show. Letter-spacing
@@ -297,6 +299,45 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .ayd-arrow{ flex:0 0 auto; width:14px; height:1px; background:var(--ayd-line); }
 .ayd-arrow[data-on="1"]{ background:var(--ayd-machine); opacity:.5; }
 .ayd-arrow[data-on="fail"]{ background:var(--ayd-alert); opacity:.55; }
+
+/* ---- voice dock ------------------------------------------------------- */
+.ayd-voice{ display:grid; grid-template-columns:44px minmax(0,1fr) auto; gap:.8rem;
+  align-items:center; border:1px solid var(--ayd-line); border-left:2px solid var(--ayd-machine);
+  border-radius:3px; background:linear-gradient(90deg,rgba(34,211,238,.055),transparent 62%),
+  var(--ayd-panel); padding:.7rem .85rem; margin:.45rem 0 .55rem; }
+.ayd-voice-orb{ width:38px; height:38px; border-radius:50%; position:relative;
+  border:1px solid rgba(34,211,238,.52); background:rgba(34,211,238,.08);
+  box-shadow:inset 0 0 0 7px rgba(34,211,238,.025); }
+.ayd-voice-orb::before{ content:''; position:absolute; inset:11px 13px 10px;
+  border:2px solid var(--ayd-machine); border-top:0; border-radius:0 0 9px 9px; opacity:.9; }
+.ayd-voice-orb::after{ content:''; position:absolute; width:2px; height:6px;
+  left:17px; bottom:5px; background:var(--ayd-machine);
+  box-shadow:-5px 5px 0 -1px var(--ayd-machine),
+  5px 5px 0 -1px var(--ayd-machine); opacity:.9; }
+.ayd-voice-copy b{ display:block; font-family:var(--ayd-cond) !important; font-size:.92rem;
+  color:var(--ayd-ink); letter-spacing:.01em; }
+.ayd-voice-copy span{ display:block; margin-top:.12rem; font-family:var(--ayd-mono) !important;
+  color:var(--ayd-muted); font-size:.66rem; line-height:1.45; }
+.ayd-voice-state{ font-family:var(--ayd-mono) !important; font-size:.62rem; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--ayd-machine); white-space:nowrap; }
+.ayd-voice[data-ready="0"]{ border-left-color:var(--ayd-muted); }
+.ayd-voice[data-ready="0"] .ayd-voice-orb{ border-color:var(--ayd-line);
+  filter:grayscale(1); opacity:.65; }
+.ayd-voice[data-ready="0"] .ayd-voice-state{ color:var(--ayd-muted); }
+
+/* ---- certified metric ------------------------------------------------ */
+.ayd-metric{ border:1px solid rgba(251,191,36,.25); border-left:2px solid var(--ayd-verified);
+  border-radius:3px; background:linear-gradient(90deg,rgba(251,191,36,.055),transparent 68%),
+  var(--ayd-panel); padding:.8rem .95rem; margin:.55rem 0 .85rem; }
+.ayd-metric-head{ display:flex; justify-content:space-between; gap:1rem; align-items:baseline;
+  flex-wrap:wrap; font-family:var(--ayd-mono) !important; font-size:.64rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--ayd-verified); }
+.ayd-metric-head span{ color:var(--ayd-muted); letter-spacing:.05em; text-transform:none; }
+.ayd-metric-def{ color:var(--ayd-ink); font-size:.82rem; line-height:1.55; margin:.55rem 0; }
+.ayd-metric-compare{ border-top:1px solid var(--ayd-line); padding-top:.55rem;
+  font-family:var(--ayd-mono) !important; font-size:.68rem; line-height:1.55;
+  color:var(--ayd-muted); }
+.ayd-metric-compare b{ color:var(--ayd-verified); font-weight:500; }
 
 /* ---- grounding readout (the signature) --------------------------------- */
 .ayd-ground-panel{ border:1px solid var(--ayd-line); border-left:2px solid var(--ayd-machine);
@@ -827,6 +868,7 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
    never unlit. A stalled animation now costs the flourish and nothing else. */
 @media (prefers-reduced-motion: no-preference){
   .ayd-step[data-on="1"]{ animation:aydIn .28s ease-out; }
+  .ayd-step[data-on="cert"]{ animation:aydIn .28s ease-out; }
   @keyframes aydIn{ from{ opacity:.35; transform:translateY(1px);} to{ opacity:1; transform:none;} }
   /* backwards fill only so the stagger has something to hold during its delay;
      that held state is scale(.45) of an already-lit cell, not an unlit one. */
@@ -844,6 +886,9 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
      numbers already say everything it says - so this one may sweep from zero. */
   .ayd-gap{ animation:aydGap .26s ease-out; transform-origin:left center; }
   @keyframes aydGap{ from{ transform:scaleX(.02); } to{ transform:none; } }
+  .ayd-voice[data-ready="1"] .ayd-voice-orb{ animation:aydVoiceReady 2.8s ease-in-out infinite; }
+  @keyframes aydVoiceReady{ 0%,100%{ box-shadow:0 0 0 0 rgba(34,211,238,0); }
+    50%{ box-shadow:0 0 0 5px rgba(34,211,238,.08); } }
 }
 
 @media (max-width:900px){
@@ -851,6 +896,11 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 }
 @media (max-width:640px){
   .ayd-mast h1.ayd-title{ font-size:2rem; }
+  .ayd-voice{ grid-template-columns:38px minmax(0,1fr); gap:.65rem;
+    padding:.65rem .7rem; }
+  .ayd-voice-orb{ width:34px; height:34px; }
+  .ayd-voice-orb::after{ left:15px; }
+  .ayd-voice-state{ grid-column:2; white-space:normal; margin-top:-.45rem; }
   /* The track is the first thing to go: at this width it cannot resolve 28
      rank positions, and a track that lies about precision is worse than the
      two numbers on their own. The V and K badges carry the same information.
@@ -951,6 +1001,7 @@ def build_marker() -> str:
     for folder in ("app", "engine"):
         watched.extend(sorted((root / folder).glob("*.py")))
     watched.append(root / "data_manifest.py")
+    watched.append(root / "metrics.yaml")
     watched.extend(sorted((root / "evals").glob("*.yaml")))
 
     digest = hashlib.sha256()
@@ -986,8 +1037,8 @@ def masthead(*, tables: int, domains: int, live: bool) -> None:
         f"""
 <div class="ayd-mast">
   <div class="ayd-kicker">Ask your data</div>
-  <h1 class="ayd-title">A question goes in.<br>SQL comes out, and you see all of it.</h1>
-  <p class="ayd-sub">Natural language over the analytics warehouses from my portfolio projects.
+  <h1 class="ayd-title">Ask it out loud.<br>SQL comes out, and you see all of it.</h1>
+  <p class="ayd-sub">Voice or text over the analytics warehouses from my portfolio projects.
   It retrieves the schema the question needs, writes DuckDB SQL, checks it
   read-only before running it,
   and shows the query next to the number.</p>
@@ -1028,6 +1079,7 @@ def status_rail(cells: list[tuple[str, str]]) -> None:
 
 def pipeline(*, retrieved: bool = False, generated: bool = False,
              planned: bool | str = False,
+             certified: bool | str = False,
              guarded: bool | str = False, executed: bool = False,
              verified: bool | str | None = None,
              attempts: int = 1, timings: dict[str, float] | None = None) -> None:
@@ -1057,7 +1109,8 @@ def pipeline(*, retrieved: bool = False, generated: bool = False,
     timings = timings or {}
 
     def cell(label: str, state) -> str:
-        on = "fail" if state == "fail" else ("1" if state else "0")
+        on = ("fail" if state == "fail" else
+              "cert" if state == "cert" else ("1" if state else "0"))
         ms = timings.get(label)
         if ms is None:
             stamp = ""
@@ -1076,7 +1129,9 @@ def pipeline(*, retrieved: bool = False, generated: bool = False,
     # the single most misleading pixel in this app: it is the claim that a model
     # wrote something a grammar wrote. Keyless mode used to leave the cell dark
     # and disable the chat box; now it lights its own cell with its own name.
-    if planned:
+    if certified:
+        stages = [("metric", "cert" if certified is True else certified)]
+    elif planned:
         stages = [("retrieve", retrieved), ("plan", planned)]
     else:
         stages = [("retrieve", retrieved), ("generate", generated)]
@@ -1104,7 +1159,8 @@ def pipeline(*, retrieved: bool = False, generated: bool = False,
         breath as the cell does.
         """
         def state(value):
-            return "fail" if value == "fail" else ("1" if value else "0")
+            return ("fail" if value == "fail" else
+                    "1" if value in (True, "cert") else "0")
 
         a, b = state(left), state(right)
         if a == "fail":
@@ -1999,6 +2055,40 @@ def result_shape(columns: list[tuple[str, str]], *, rows: int, truncated: bool,
         f'<div class="ayd-shape"><span>result · {head}</span>'
         f'<span>row cap {cap:,}</span></div>'
         f'<div class="ayd-cols-list">{cells}</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def voice_dock(*, ready: bool, stt_model: str, tts_model: str) -> None:
+    """The state of the optional voice edge around the governed query path."""
+    state = "ready" if ready else "add key in sidebar"
+    detail = (f"{stt_model} → review transcript → governed query → {tts_model}"
+              if ready else "Recordings are sent only after voice is enabled")
+    st.markdown(
+        f"""
+<div class="ayd-voice" data-ready="{'1' if ready else '0'}">
+  <span class="ayd-voice-orb" aria-hidden="true"></span>
+  <span class="ayd-voice-copy"><b>Ask by voice</b><span>{html.escape(detail)}</span></span>
+  <span class="ayd-voice-state">{html.escape(state)}</span>
+</div>""",
+        unsafe_allow_html=True,
+    )
+
+
+def metric_definition(*, label: str, owner: str, definition: str,
+                      derived_value, derived_why: str) -> None:
+    """The policy behind a certified number, beside the schema-only contrast."""
+    comparison = ("The schema-only compiler refuses this metric."
+                  if derived_value is None
+                  else f"Schema-only result: {derived_value}")
+    st.markdown(
+        f"""
+<div class="ayd-metric ayd-hud">
+  <div class="ayd-metric-head">certified metric <span>owner · {html.escape(owner)}</span></div>
+  <div class="ayd-metric-def"><b>{html.escape(label)}</b> — {html.escape(definition)}</div>
+  <div class="ayd-metric-compare"><b>{html.escape(comparison)}</b><br>
+    {html.escape(derived_why)}</div>
+</div>""",
         unsafe_allow_html=True,
     )
 

@@ -1,10 +1,10 @@
 # 💬 Ask Your Data
 
-### *This repo used to be a Raspberry Pi voice assistant. Now it's the capstone of my analytics portfolio. Both of those things are true, and the git history proves it.*
+### *This repo started as a Raspberry Pi voice assistant, became an analytics capstone, and now speaks again — with governed SQL between the question and the answer.*
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-674%20%C2%B7%20673%20run%20without%20an%20API%20key-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-791%20%C2%B7%20790%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
@@ -13,15 +13,16 @@
 type your own question. No API key required, and none is configured on the
 deployment: without one, the SQL is written by a **deterministic compiler**
 (`engine/planner.py`) that binds your words to the warehouse's own columns,
-values and join graph. Bring your own key in the sidebar and a language model
-writes it instead. Same guard, same verifier, same executor either way.
+values and join graph. Bring your own keys in the sidebar to let a language model
+write SQL and to ask or hear answers with OpenAI speech models. Same guard, same
+verifier, same executor whether the question was typed or spoken.
 
 *(First load builds the schema index, which downloads a 79 MB embedding model
 once per container, and profiles the warehouse for the compiler — the spinners
 say so. The header carries a `build` hash of the running source, so you can tell
 a fresh deploy from a warm container still serving the old one.)*
 
-Ask a plain-English question about any of my portfolio datasets and get a real
+Say or type a plain-English question about any of my portfolio datasets and get a real
 answer — with the SQL that produced it shown right next to the number.
 
 ![A keyless turn end to end: the question, the pipeline strip with PLAN lit, the retrieved tables, the answer, the compiler's binding trace, the read-only guard, the verifier, the SQL, and the physical plan](docs/keyless_compiler.png)
@@ -39,7 +40,9 @@ same structural verifier the model's SQL goes through.*
 Years ago I built **IVA** — a little Python voice assistant that ran on a
 Raspberry Pi. You said *"Hello Eva"*, it woke up, told you the weather, played a
 song, made a joke. I was proud of it. It was also, let's be honest, a hobby
-project.
+project. The current voice path keeps the useful interaction and drops the old
+illusion: speech is transcribed, shown for confirmation, and only then enters
+the same inspectable data pipeline as a typed question.
 
 Then I spent a career break building an analytics portfolio with one
 non-negotiable rule: **nothing ships unless a test proves it.** Hospital revenue
@@ -270,11 +273,17 @@ those two is not a matter of opinion here; it is 64 questions and a table.
 
 ```mermaid
 flowchart LR
-    Q[Question in<br/>plain English] --> SR[Schema retrieval<br/>Chroma + MiniLM]
+    MIC[Microphone] --> STT[gpt-transcribe<br/>speech to text]
+    STT --> RV[Review transcript]
+    RV --> Q[Question in<br/>plain English]
+    Q --> M{Exact certified<br/>metric phrase?}
+    M -->|yes| CM[Committed definition<br/>metrics.yaml]
+    M -->|no| SR[Schema retrieval<br/>Chroma + MiniLM]
     C[(Schema corpus<br/>71 documented tables)] --> SR
     SR -->|"top 10 tables"| A[Claude<br/>with a key]
     SR -->|"top 10 tables"| P[Compiler<br/>without one]
     L[(Semantic layer<br/>probed from DuckDB)] --> P
+    CM --> V
     A -->|"writes SQL"| V{Structural<br/>verifier}
     P -->|"compiles SQL"| V
     A -->|"out of scope"| R[Refuses honestly]
@@ -285,6 +294,7 @@ flowchart LR
     G -->|"blocked"| X[Rejected]
     W -->|"error goes back for a retry"| A
     W --> S[Answer in plain English<br/>with the SQL and the rows]
+    S -->|Listen on demand| TTS[gpt-4o-mini-tts<br/>AI-generated speech]
 ```
 
 1. **Warehouse** — every vendored CSV loads into an in-memory DuckDB, named
@@ -296,18 +306,26 @@ flowchart LR
    retains tables named in prior-turn SQL, even when the new wording is vague.
    The same ranking serves both engines: it is what the model is shown, and what
    the compiler is allowed to plan against.
-3. **Question → SQL, one of two ways.** With a key, Claude returns a single
+3. **Question → SQL, one of three ways.** An exact, unqualified governed metric
+   phrase uses a policy-owned definition from `metrics.yaml`, whose expected
+   value CI re-runs. With a key, Claude returns a single
    SELECT (or a refusal) as a structured tool call, and prior turns replay as
    context so follow-ups like *"and by region?"* just work. Without one,
    `engine/planner.py` compiles the question against the semantic layer and
    refuses if too much of it cannot be bound. Everything after this step is
-   identical for both.
+   identical for all three.
 4. **Guard → execute** — the SQL is validated read-only and runs on an isolated
    cursor, capped at a sane row count.
 5. **Self-correct if needed** — a failed query's real database error goes back
    to the model for a corrected attempt. At most twice. Then an honest failure.
 6. **Answer** — the result rows are summarized into one or two sentences,
    grounded strictly in what came back.
+7. **Voice, around the boundary** — a completed microphone recording is
+   transcribed with `gpt-transcribe`, then shown in an editable confirmation
+   field. Answers are synthesized with `gpt-4o-mini-tts` only after the visitor
+   presses **Listen**. Recordings, transcripts, keys, and generated audio are
+   held in session/process memory; voice is optional and the UI clearly labels
+   playback as AI-generated.
 
 ## The model is untrusted input
 
@@ -460,6 +478,11 @@ python -m app.cli --plan "what is the average salary by department?"
 # 3. The chat UI. The box works with or without a key; the sidebar takes one.
 streamlit run app/streamlit_app.py
 
+# Optional voice input + answer playback. You can also paste this key into the
+# sidebar for the current browser session only.
+export OPENAI_API_KEY=sk-...              # PowerShell: $env:OPENAI_API_KEY="sk-..."
+# Optional overrides: ASK_STT_MODEL, ASK_TTS_MODEL, ASK_TTS_VOICE
+
 # 4. Score the compiler on both contracts, and sweep its confidence gate
 python scripts/run_planner_eval.py
 python scripts/run_planner_eval.py --sweep
@@ -492,6 +515,8 @@ engine/
   verify.py         structural checks on SQL, whoever wrote it
   exemplars.py      the few-shot bank, selected by RRF over solved questions
   providers.py      the model seam: Anthropic, or any OpenAI-compatible endpoint
+  metrics.py        exact matching + contracts for policy-owned definitions
+  voice.py          bounded OpenAI STT/TTS; no alternate query execution path
   assistant.py      NL -> SQL -> self-correction -> grounded answer + telemetry
 app/
   cli.py            terminal Q&A — compiler by default, model with a key
@@ -502,6 +527,7 @@ evals/
   planner_questions.yaml      the compiler's contract, refusals included
   adversarial_questions.yaml  "delete all claims" -> must refuse or stay read-only
 tests/              guard, warehouse, semantics, planner, golden SQL, fake-client harness
+metrics.yaml        certified definitions, owners, expected values, schema-only contrasts
 scripts/            vendor_data.py, run_planner_eval.py, run_live_eval.py, run_retrieval_eval.py
 Dockerfile          the whole offline suite runs in a container (CI builds it)
 ```
@@ -566,13 +592,13 @@ The point of a portfolio project is as much the restraint as the features:
   with a fake client, not trusted on vibes.
 - **No fine-tuning.** Schema grounding plus golden-question evaluation beats a
   fine-tune at this scale, and every part of it is inspectable.
-- **No hand-written metric layer.** The compiler gets roles, grains, joins and
-  values — all probed from DuckDB — and has to earn each query from evidence in
-  your question. A `revenue = SUM(net_amount)` YAML is the right answer for a
-  warehouse with a modelling team behind it, and the wrong one here: it is
-  exactly the kind of claim this repo refuses to make without a test, and it
-  would have quietly turned the one honest disagreement above into a hard-coded
-  right answer.
+- **No catch-all, untested metric layer.** The compiler still gets roles,
+  grains, joins and values from DuckDB and is graded with the registry switched
+  off. `metrics.yaml` contains only definitions carrying a convention the
+  schema cannot state, and each one has an owner, expected value, live CI test,
+  and the schema-only result shown beside it. Matching is exact and conservative:
+  “denial rate” can use the definition; “denial rate by payer” cannot silently
+  lose the breakdown and therefore falls back to the ordinary engine.
 - **No synonym dictionary.** One 26-entry map covers words a business user says
   that no schema ever spells — `revenue`, `headcount`. Everything else is
   derived, because a growing synonym file is how a compiler starts passing its
@@ -581,7 +607,7 @@ The point of a portfolio project is as much the restraint as the features:
 
 ---
 
-*The voice assistant answered "what's the weather?" by calling a weather API.
-Its successor answers "what's our denial rate?" by writing SQL you can read —
-and on the deployed copy, with no key and no model in the loop, by compiling
-that SQL from the warehouse's own schema. Same repo. Better question.*
+*The first voice assistant answered "what's the weather?" by calling an API.
+Its successor can hear "what's our denial rate?", show the transcript, run a
+certified definition through a guard, display the SQL and rows, then read the
+verified result aloud. Same repo. Better question — and now a provable answer.*

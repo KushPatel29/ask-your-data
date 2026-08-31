@@ -1,0 +1,205 @@
+# The certified metric layer.
+#
+# WHY THIS FILE EXISTS, AND WHY IT NEARLY DIDN'T
+# The README says, under "what I deliberately didn't build":
+#
+#     No hand-written metric layer. The compiler gets roles, grains, joins and
+#     values — all probed from DuckDB — and has to earn each query from
+#     evidence in your question. A `revenue = SUM(net_amount)` YAML is the
+#     right answer for a warehouse with a modelling team behind it, and the
+#     wrong one here.
+#
+# That objection is correct and this file does not contradict it. It answers it.
+# The objection is not to definitions; it is to UNTESTED definitions, which let
+# a compiler pass its own eval by being handed the answers. So every entry here
+# carries three things a mapping file usually does not:
+#
+#   * `expect` — the value the definition produces, asserted by CI on every
+#     push (tests/test_metrics.py). A definition nobody re-runs is a claim.
+#   * `owner` — who decides it. A metric without an owner is a number without
+#     an argument behind it, and "who do I ask about this" is the first
+#     question a real analyst has.
+#   * `derived` — what the SCHEMA-ONLY compiler answers instead, and why the
+#     two differ. This is the field that keeps the layer honest: it makes the
+#     disagreement visible on the page rather than quietly deleting it.
+#
+# And the layer is reported SEPARATELY. scripts/run_planner_eval.py scores the
+# compiler with the registry off, so this file can never flatter the compiler's
+# own contract; the app labels a certified answer as certified, so a reader is
+# never shown a definition-backed number dressed as a derived one.
+#
+# WHAT BELONGS HERE
+# Only metrics whose definition carries a CONVENTION the warehouse cannot
+# state. "Denial rate excludes pending claims" is a policy decision that lives
+# in a revenue-cycle handbook, not in a column. "Total revenue is SUM(revenue)"
+# is not — the compiler derives that correctly on its own, and adding it here
+# would be exactly the alibi the README warns about.
+#
+# MATCHING IS BY NAME, NEVER BY INFERENCE
+# A metric applies only when the question SAYS one of its phrases. There is no
+# fuzzy matching and no embedding: a governed number that arrives because a
+# question looked a bit like something is not governed.
+
+- name: denial_rate
+  label: Claim denial rate
+  domain: healthcare
+  owner: Revenue Cycle
+  unit: percent
+  definition: >
+    Denied claims as a percentage of ADJUDICATED claims — those with a final
+    decision of Paid or Denied. Claims still pending are excluded from the
+    denominator, because a claim nobody has decided yet has not been denied and
+    counting it as a non-denial understates the rate.
+  phrases:
+    - denial rate
+    - claim denial rate
+    - denials rate
+    - rate of denials
+  sql: >
+    SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'Denied')
+      / NULLIF(COUNT(*) FILTER (WHERE status IN ('Paid', 'Denied')), 0), 1)
+      AS denial_rate_pct
+    FROM healthcare_fact_claims
+  expect: 8.2
+  derived:
+    value: 7.3
+    why: >
+      The compiler divides by every claim, because no column in this warehouse
+      records whether a claim has been adjudicated — the exclusion lives in the
+      status values, and knowing which of them count as decided is a policy,
+      not a schema fact. Its arithmetic is right and its definition is not.
+
+- name: net_collection_rate
+  label: Net collection rate
+  domain: healthcare
+  owner: Revenue Cycle
+  unit: percent
+  definition: >
+    Cash collected as a percentage of the allowed amount, over PAID claims
+    only. Denied and pending claims are excluded: a denial is a coding or
+    eligibility outcome, and mixing it into a collections ratio measures two
+    different failures with one number.
+  phrases:
+    - net collection rate
+    - collection rate
+    - ncr
+  sql: >
+    SELECT ROUND(100.0 * SUM(paid_amount) / NULLIF(SUM(allowed_amount), 0), 1)
+      AS net_collection_rate_pct
+    FROM healthcare_fact_claims
+    WHERE status = 'Paid'
+  expect: 84.4
+  derived:
+    value: 84.4
+    why: >
+      Kept even though the two agree, and that is the point of keeping it. On
+      this data the population filter does not move the number, so a reader
+      can see that `derived` is a real comparison rather than a field that only
+      ever gets filled in when it flatters the registry.
+
+- name: voluntary_attrition_rate
+  label: Voluntary attrition rate
+  domain: hr
+  owner: People Operations
+  unit: percent
+  definition: >
+    Employees who left of their own accord as a percentage of all employees on
+    record. Involuntary terminations are excluded: the two have opposite
+    meanings for retention, and a combined figure moves when a layoff happens
+    and reads as people choosing to leave.
+  phrases:
+    - voluntary attrition rate
+    - voluntary turnover rate
+    - attrition rate
+  sql: >
+    SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE term_type = 'Voluntary')
+      / NULLIF(COUNT(*), 0), 1) AS voluntary_attrition_pct
+    FROM hr_fact_employees
+  expect: 16.0
+  derived:
+    value: null
+    why: >
+      The compiler refuses this one. "Attrition" is not a word this warehouse
+      spells anywhere — the column is `term_type` and the value is
+      'Voluntary' — so there is nothing for it to bind, and it says so.
+
+- name: order_fill_rate
+  label: Order fill rate
+  domain: supplychain
+  owner: Distribution
+  unit: percent
+  definition: >
+    Units shipped as a percentage of units ordered, weighted by quantity across
+    every line. Deliberately not the average of per-line fill rates: that gives
+    a single-unit line the same weight as a pallet and reports a number no
+    customer experiences.
+  phrases:
+    - fill rate
+    - order fill rate
+    - service level
+  sql: >
+    SELECT ROUND(100.0 * SUM(qty_shipped) / NULLIF(SUM(qty_ordered), 0), 1)
+      AS fill_rate_pct
+    FROM supplychain_fact_orders
+  expect: 98.8
+  derived:
+    value: 98.8
+    why: >
+      The compiler agrees here because the schema names the parts — `qty_shipped`
+      and `qty_ordered` — and the weighting falls out of SUM. The convention
+      that would break it (averaging the per-line rate) is one no reasonable
+      reading of these two columns produces.
+
+- name: stale_open_query_share
+  label: Stale open query share
+  domain: clinical
+  owner: Data Management
+  unit: percent
+  definition: >
+    Open data queries outstanding 60 days or more, as a percentage of OPEN
+    queries. The denominator is the open population, not every query ever
+    raised: a closed query cannot be stale, and including closed ones makes the
+    figure fall simply because the study has been running longer.
+  phrases:
+    - stale open query share
+    - stale query share
+    - stale queries
+  sql: >
+    SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE age_days >= 60)
+      / NULLIF(COUNT(*), 0), 1) AS stale_open_query_pct
+    FROM clinical_query_log
+    WHERE status = 'open'
+  expect: 31.3
+  derived:
+    value: 10.2
+    why: >
+      Over every query rather than the open ones, the same arithmetic gives
+      10.2% — a third of the real figure, moving in the wrong direction as the
+      study matures. This is the clearest case in the file of a denominator
+      being the whole definition.
+
+- name: gross_margin_rate
+  label: Gross margin rate
+  domain: wholesale
+  owner: Merchandising
+  unit: percent
+  definition: >
+    Gross margin as a percentage of revenue, pooled across every
+    department-month. Pooled rather than averaged: the mean of monthly margin
+    rates weights a quiet February the same as a December peak.
+  phrases:
+    - gross margin rate
+    - margin rate
+    - gross margin percentage
+  sql: >
+    SELECT ROUND(100.0 * SUM(gross_margin) / NULLIF(SUM(revenue), 0), 1)
+      AS gross_margin_pct
+    FROM wholesale_fact_department_month
+  expect: 23.6
+  derived:
+    value: 17508.5
+    why: >
+      `gross_margin` is a DOLLAR column, so a compiler reading the words
+      "gross margin" alone averages the dollars and returns 17,508.5 — an
+      answer in the wrong unit entirely. The word "rate" is doing all the work
+      and only a definition can say what it divides by.

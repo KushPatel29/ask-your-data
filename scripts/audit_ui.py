@@ -165,7 +165,10 @@ def plan_nodes(sql: str, con=None) -> list[dict]:
     # are read as source and exec'd in isolation instead.
     source = (ROOT / "app" / "streamlit_app.py").read_text(encoding="utf-8")
     start = source.index("_PLAN_DETAIL = {")
-    end = source.index("@st.cache_data(show_spinner=False)\ndef _query_plan")
+    function = source.index("def _query_plan", start)
+    end = source.rfind("@st.cache_data", start, function)
+    if end < start:
+        raise ValueError("could not locate the cache decorator before _query_plan")
     namespace: dict = {}
     exec(compile(source[start:end], "streamlit_app_slice", "exec"), namespace)
 
@@ -212,6 +215,9 @@ def render_all(ui, fx) -> dict[str, str]:
     grab("pipeline_plan_refused", lambda: ui.pipeline(
         retrieved=True, planned="fail", guarded=False, executed=False,
         timings={"retrieve": 183.0, "plan": 4.0}))
+    grab("pipeline_metric", lambda: ui.pipeline(
+        certified=True, verified=True, guarded=True, executed=True,
+        timings={"metric": 0.2, "guard": 0.1, "execute": 1.8}))
 
     class Hit:
         def __init__(self, table, domain, score):
@@ -305,6 +311,13 @@ def render_all(ui, fx) -> dict[str, str]:
          "tokens_in": 0, "tokens_out": 0, "certified": 0, "sink": HOSTILE},
         limits=[HOSTILE, "records die with the container"]))
     grab("operations_empty", lambda: ui.operations({"turns": 0}))
+    grab("voice_ready", lambda: ui.voice_dock(
+        ready=True, stt_model="gpt-transcribe", tts_model="gpt-4o-mini-tts"))
+    grab("voice_disabled", lambda: ui.voice_dock(
+        ready=False, stt_model="gpt-transcribe", tts_model="gpt-4o-mini-tts"))
+    grab("metric_definition", lambda: ui.metric_definition(
+        label=HOSTILE, owner="Revenue Cycle", definition=HOSTILE,
+        derived_value=7.3, derived_why=HOSTILE))
     grab("domain_card", lambda: ui.domain_card(HOSTILE, "A domain blurb."))
     grab("note", lambda: ui.note(HOSTILE))
     return out
@@ -423,6 +436,8 @@ def contrast_rows(tokens: dict[str, str]) -> list[tuple[str, str, str, float, bo
         ("column type", machine, panel, True),
         ("answer headline", ink, ground, False),
         ("verified badge", verified, blend(verified, .07, ground), True),
+        ("voice state", machine, panel, True),
+        ("metric label", verified, panel, True),
         ("sidebar domain", machine, panel2, True),
     ]
     rows = []

@@ -66,6 +66,7 @@ lazy, the first question in a fresh container paid 2,916 ms inside its own rende
 embedding engine.retrieval computed for the identical question a moment earlier.
 """
 
+import hashlib
 import re
 import sys
 import time
@@ -83,11 +84,13 @@ from app import ui  # noqa: E402
 from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
 from engine import (  # noqa: E402
     audit,
-    demo_mode,  # noqa: E402
+    demo_mode,
     exemplars,
     planner,
     retrieval,
+    voice,
 )
+from engine import metrics as metric_layer
 from engine.query import MAX_ROWS, run_query  # noqa: E402
 from engine.semantics import Layer  # noqa: E402
 from engine.sql_guard import FORBIDDEN, FORBIDDEN_FUNCTIONS, validate_sql  # noqa: E402
@@ -236,6 +239,12 @@ def get_verifier(_con):
 
 
 @st.cache_resource
+def get_metric_registry():
+    """The committed definitions whose expected values CI re-runs."""
+    return metric_layer.load_metrics()
+
+
+@st.cache_resource
 def get_assistant(_con):
     # Imported and constructed only in live mode, so demo mode never depends on
     # the anthropic client being usable.
@@ -267,11 +276,29 @@ def _live_assistant(_con):
     return st.session_state["_assistant"]
 
 
+def _voice_api_key() -> str:
+    """A server voice key or a per-session key the visitor supplied."""
+    return str(st.session_state.get("voice_byok", "") or voice.server_api_key()).strip()
+
+
+def _voice_client():
+    """One voice client per browser key, never shared across visitors."""
+    key = _voice_api_key()
+    if not key:
+        return None
+    fingerprint = hashlib.sha256(key.encode("utf-8")).hexdigest()
+    if st.session_state.get("_voice_key_fingerprint") != fingerprint:
+        st.session_state["_voice_client"] = voice.OpenAIVoice(api_key=key)
+        st.session_state["_voice_key_fingerprint"] = fingerprint
+    return st.session_state["_voice_client"]
+
+
 con = get_connection()
 RETRIEVAL_READY = warm_retrieval(con)
 layer = get_layer(con)
 PLANNER_READY = layer is not None
 verifier = get_verifier(con)
+metric_registry = get_metric_registry()
 assistant = _live_assistant(con) if LIVE_MODE else None
 st.session_state.setdefault("turns", [])      # engine context (Turn objects)
 st.session_state.setdefault("transcript", [])  # everything we rendered, incl. refusals
@@ -338,6 +365,9 @@ def _status_rail() -> None:
         # boundary that is set before any question is asked. The count comes
         # from the roster below, which a test holds against engine/verify.py.
         ("verifier", f"structural<br><em>{len(VERIFY_CHECKS)} rules · deterministic</em>"),
+        ("voice", ("stt → review → tts<br><em>OpenAI · in-memory</em>"
+                   if _voice_api_key() else
+                   "optional<br><em>bring an OpenAI key</em>")),
         ("row cap", f"{MAX_ROWS:,} <em>/ query</em>"),
     ])
 
@@ -345,13 +375,13 @@ def _status_rail() -> None:
 _status_rail()
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=256)
 def _full_catalog_tokens() -> int:
     """Cost of the un-retrieved prompt block, for the grounding readout."""
     return max(1, len(schema_catalog(con)) // 4)
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=256)
 def _catalog_by_domain() -> dict[str, list[str]]:
     """Every table this warehouse actually loaded, grouped by domain.
 
@@ -369,7 +399,7 @@ def _catalog_by_domain() -> dict[str, list[str]]:
     return grouped
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=256)
 def _retrieval_bundle(question: str):
     """Everything the readouts need about one question's retrieval, fetched once.
 
@@ -542,7 +572,7 @@ def _verification_readout(findings, *, verify_ms=None, refused=False) -> None:
 # The few-shot bank.
 # --------------------------------------------------------------------------
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=256)
 def _exemplar_picks(question: str):
     """The k nearest solved questions to this one, and what selecting them cost.
 
@@ -701,7 +731,7 @@ def _plan_rows(node: dict, prefix: str, root: bool, last: bool, out: list) -> No
         _plan_rows(child, child_prefix, False, index == len(children) - 1, out)
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=256)
 def _query_plan(sql: str):
     """DuckDB's physical plan for this SQL, flattened for display.
 
@@ -739,7 +769,7 @@ def _plan_size(node: dict) -> int:
     return 1 + sum(_plan_size(child) for child in (node.get("children") or []))
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=256)
 def _result_columns(sql: str) -> list[tuple[str, str]]:
     """The output schema in DuckDB's type names, via DESCRIBE.
 
@@ -778,7 +808,7 @@ def _result_readout(sql: str, frame, *, truncated: bool = False) -> None:
                     truncated=truncated, cap=MAX_ROWS)
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=256)
 def _searchable_schema():
     """Every table and column, flattened once, for the sidebar's search box.
 
@@ -875,7 +905,15 @@ def _render_sidebar(active_question: str | None) -> None:
     question is known, and in both modes that is decided further down the page.
     """
     grouped = _catalog_by_domain()
-    bundle = _retrieval_bundle(active_question) if active_question else None
+    transcript = st.session_state.get("transcript") or []
+    latest = (transcript or [{}])[-1]
+    latest_engine = latest.get("engine", "")
+    # Certified definitions already contain their SQL, and a manual turn already
+    # contains the person's SQL. Running retrieval just to paint the sidebar on
+    # either path would report a stage the answer never used.
+    uses_retrieval = bool(transcript) and latest_engine not in {"metric", "manual"}
+    bundle = (_retrieval_bundle(active_question)
+              if active_question and uses_retrieval else None)
     # ORDERED, not a set. The browser lists these in the order given, and a set
     # forced it back to alphabetical — so for "how many denied claims are
     # there?" the sidebar opened on aml_cases and aml_dim_entity while
@@ -893,16 +931,24 @@ def _render_sidebar(active_question: str | None) -> None:
     selected = set(ranked)
 
     with st.sidebar:
+        if latest_engine == "metric":
+            destination = "used · certified SQL bypassed retrieval"
+        elif latest_engine == "manual":
+            destination = "used · manual SQL bypassed retrieval"
+        else:
+            destination = ("sent to the model" if LIVE_MODE
+                           else "handed to the compiler")
         ui.schema_map(
             {domain: [(table, table in selected) for table in tables]
              for domain, tables in grouped.items()},
             retrieved=len(selected), total=TABLE_COUNT,
-            destination=("sent to the model" if LIVE_MODE
-                         else "handed to the compiler"),
+            destination=destination,
         )
         _schema_browser(ranked)
         st.divider()
         _render_key_control()
+        st.divider()
+        _render_voice_control()
         st.divider()
         if st.button("Start a new conversation"):
             _reset_conversation()
@@ -958,6 +1004,173 @@ def _render_key_control() -> None:
         st.rerun()
 
 
+VOICE_LANGUAGES = {
+    "Auto detect": "",
+    "English": "en",
+    "Hindi": "hi",
+    "Gujarati": "gu",
+    "Spanish": "es",
+    "French": "fr",
+}
+VOICE_OPTIONS = {
+    "Cedar · composed": "cedar",
+    "Marin · warm": "marin",
+    "Coral · bright": "coral",
+    "Sage · measured": "sage",
+    "Onyx · grounded": "onyx",
+    "Nova · clear": "nova",
+}
+
+
+def _clear_voice_key() -> None:
+    st.session_state["voice_byok"] = ""
+    st.session_state["voice_key_input"] = ""
+    st.session_state.pop("_voice_client", None)
+    st.session_state.pop("_voice_key_fingerprint", None)
+
+
+def _render_voice_control() -> None:
+    """Voice provider settings, deliberately separate from the SQL model key."""
+    st.markdown("**Voice input & playback**")
+    server_key = voice.server_api_key()
+    if server_key:
+        st.caption("OpenAI voice models are configured by the server environment.")
+    else:
+        st.caption(
+            "Optional. Your recording is sent to OpenAI for transcription; "
+            "answer audio is generated only when you press Listen. The key and "
+            "audio stay in this browser session and process memory."
+        )
+        typed = st.text_input(
+            "OpenAI API key", type="password", key="voice_key_input",
+            placeholder="sk-...", label_visibility="collapsed",
+        )
+        if typed and typed != st.session_state.get("voice_byok"):
+            st.session_state["voice_byok"] = typed
+            st.session_state.pop("_voice_client", None)
+            st.session_state.pop("_voice_key_fingerprint", None)
+            st.rerun()
+        if st.session_state.get("voice_byok"):
+            st.button("Disable voice", on_click=_clear_voice_key)
+
+    if not _voice_api_key():
+        return
+    st.selectbox("Transcription language", tuple(VOICE_LANGUAGES),
+                 key="voice_language", index=0)
+    st.selectbox("Answer voice", tuple(VOICE_OPTIONS),
+                 key="voice_name", index=0)
+    st.caption(
+        f"STT `{voice.STT_MODEL}` · TTS `{voice.TTS_MODEL}` · "
+        "playback is AI-generated speech."
+    )
+
+
+def _voice_language() -> str:
+    return VOICE_LANGUAGES.get(st.session_state.get("voice_language", "Auto detect"), "")
+
+
+def _voice_name() -> str:
+    return VOICE_OPTIONS.get(st.session_state.get("voice_name", "Cedar · composed"),
+                             voice.DEFAULT_VOICE)
+
+
+def _voice_question() -> str:
+    """Record, transcribe, and confirm one question; never auto-run a transcript."""
+    ready = bool(_voice_api_key())
+    ui.voice_dock(ready=ready, stt_model=voice.STT_MODEL, tts_model=voice.TTS_MODEL)
+    if not ready:
+        st.caption("Add an OpenAI API key under Voice input & playback in the sidebar to record.")
+        return ""
+
+    if st.session_state.pop("_voice_reset_pending", False):
+        old_revision = int(st.session_state.get("_voice_revision", 0))
+        st.session_state.pop(f"voice_recording_{old_revision}", None)
+        st.session_state["_voice_revision"] = old_revision + 1
+        for key in ("voice_draft", "voice_last_digest", "voice_error", "voice_meta"):
+            st.session_state.pop(key, None)
+
+    revision = int(st.session_state.get("_voice_revision", 0))
+    recording = st.audio_input(
+        "Record a data question", sample_rate=16000,
+        key=f"voice_recording_{revision}",
+    )
+    if recording is not None:
+        raw = recording.getvalue()
+        digest = hashlib.sha256(raw).hexdigest()
+        if digest != st.session_state.get("voice_last_digest"):
+            # Mark it before the network call. A failed provider request should
+            # not repeat on every unrelated Streamlit rerun and spend again.
+            st.session_state["voice_last_digest"] = digest
+            st.session_state["voice_error"] = ""
+            with st.spinner("Transcribing with the speech model..."):
+                try:
+                    transcript = _voice_client().transcribe(
+                        raw,
+                        filename=getattr(recording, "name", "question.wav"),
+                        mime_type=getattr(recording, "type", "audio/wav"),
+                        language=_voice_language(),
+                    )
+                    st.session_state["voice_draft"] = transcript.text[:400]
+                    st.session_state["voice_meta"] = (
+                        f"{transcript.model} · {transcript.bytes_received / 1024:,.0f} KB"
+                    )
+                except voice.VoiceUnavailable as exc:
+                    st.session_state["voice_error"] = str(exc)
+
+    if st.session_state.get("voice_error"):
+        st.error(st.session_state["voice_error"])
+        if st.button("Retry transcription", key=f"voice_retry_{revision}"):
+            st.session_state.pop("voice_last_digest", None)
+            st.rerun()
+
+    if not st.session_state.get("voice_draft"):
+        st.caption("Record a short question. You will review the transcript before it runs.")
+        return ""
+
+    with st.form("voice_confirm"):
+        st.text_input("Review the transcript", key="voice_draft", max_chars=400)
+        st.caption(st.session_state.get("voice_meta", "") +
+                   " · Nothing reaches the query engine until you confirm.")
+        submitted = st.form_submit_button("Ask this question", use_container_width=True)
+    if submitted:
+        question = str(st.session_state.get("voice_draft", "")).strip()[:400]
+        if question:
+            st.session_state["_voice_reset_pending"] = True
+            return question
+    return ""
+
+
+def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn") -> None:
+    """Generate speech on demand and keep it only for this browser session."""
+    if not answer or not _voice_api_key():
+        return
+    selected = _voice_name()
+    identity = hashlib.sha256(
+        f"{voice.TTS_MODEL}\0{selected}\0{answer}".encode("utf-8")
+    ).hexdigest()[:16]
+    audio_key = f"voice_audio_{identity}"
+    error_key = f"voice_audio_error_{identity}"
+    button_key = f"listen_{namespace}_{index}_{identity}"
+    if audio_key not in st.session_state:
+        if st.button("Listen to answer", key=button_key,
+                     icon=":material/volume_up:"):
+            with st.spinner("Generating answer audio..."):
+                try:
+                    speech = _voice_client().synthesize(answer, voice=selected)
+                    st.session_state[audio_key] = speech.audio
+                    st.session_state.pop(error_key, None)
+                except voice.VoiceUnavailable as exc:
+                    st.session_state[error_key] = str(exc)
+    if st.session_state.get(error_key):
+        st.error(st.session_state[error_key])
+    if st.session_state.get(audio_key):
+        st.audio(st.session_state[audio_key], format="audio/mpeg")
+        st.caption(
+            f"AI-generated voice · {selected} · {voice.TTS_MODEL}. "
+            "Generated on demand and kept in session memory only."
+        )
+
+
 def _audit_turn(entry: dict, *, engine: str, coverage=None, metric: str = "") -> None:
     """Persist one turn.
 
@@ -1006,6 +1219,73 @@ def _audit_turn(entry: dict, *, engine: str, coverage=None, metric: str = "") ->
         )
     except Exception:  # noqa: BLE001 - an observer must never break the observed
         pass
+
+
+def _metric_turn(question: str, metric, match_ms: float) -> dict:
+    """Run one exact governed definition through the ordinary safety boundary."""
+    entry = {
+        "question": question,
+        "engine": "metric",
+        "metric": metric,
+        "refused": False,
+        "reason": "",
+        "refusal_kind": "",
+        "answer": "",
+        "sql": metric.sql,
+        "attempts": 1,
+        "corrections": [],
+        "findings": [],
+        "ran": False,
+        "rows": None,
+        "truncated": False,
+        "error": "",
+        "usage": {},
+        "metric_ms": match_ms,
+        "bundle": None,
+        "trace": {},
+        "contract_match": False,
+    }
+    guard_started = time.perf_counter()
+    ok, reason = validate_sql(metric.sql)
+    entry["guard_ms"] = 1000 * (time.perf_counter() - guard_started)
+    entry["guard_ok"] = ok
+    entry["guard_reason"] = reason
+    if not ok:
+        entry["refused"] = True
+        entry["reason"] = f"{GUARD_BLOCK_PREFIX}: {reason}"
+        entry["refusal_kind"] = "blocked by the guard"
+        _audit_turn(entry, engine="metric", metric=metric.name)
+        return entry
+
+    exec_started = time.perf_counter()
+    ran = run_query(con, metric.sql)
+    entry["exec_ms"] = 1000 * (time.perf_counter() - exec_started)
+    findings, verify_ms = _verify_now(metric.sql, ran, question)
+    entry["findings"] = findings
+    entry["verify_ms"] = verify_ms
+    entry["ran"] = bool(ran.ok)
+    entry["error"] = "" if ran.ok else ran.error
+    entry["timed_out"] = bool(getattr(ran, "timed_out", False))
+    certified = metric_layer.MetricAnswer(metric=metric, result=ran)
+    if ran.ok and ran.rows:
+        entry["rows"] = pd.DataFrame(ran.rows, columns=ran.columns)
+        entry["truncated"] = bool(ran.truncated)
+        entry["answer"] = certified.headline
+        entry["contract_match"] = certified.matches_contract
+    elif ran.ok:
+        entry["answer"] = "No rows matched."
+    _audit_turn(entry, engine="metric", metric=metric.name)
+    return entry
+
+
+def _keyless_turn(question: str) -> dict:
+    """Prefer an explicitly named certified metric; otherwise compile the schema."""
+    started = time.perf_counter()
+    metric = metric_layer.match_metric(question, metric_registry)
+    match_ms = 1000 * (time.perf_counter() - started)
+    if metric is not None:
+        return _metric_turn(question, metric, match_ms)
+    return _plan_turn(question)
 
 
 def _plan_turn(question: str) -> dict:
@@ -1423,7 +1703,7 @@ def render_demo_mode(connection) -> None:
     return active["question"]
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=256)
 def _nearest_vocabulary(words: tuple[str, ...]) -> list[tuple[str, str]]:
     """For words the compiler could not place, what the warehouse DOES have.
 
@@ -1623,11 +1903,55 @@ def render_manual_entry(entry, index: int) -> None:
                     executed=True if entry["ran"] else "fail", timings=timings)
         if entry["answer"]:
             ui.answer(entry["answer"])
+            _render_answer_audio(entry["answer"], index, namespace="manual")
         st.code(entry["sql"], language="sql", wrap_lines=True)
         _evidence_block(entry, {})
         _result_block(entry, index)
         _sql_editor(entry, index)
         st.caption("You wrote this one. Same guard, same verifier, same row cap.")
+
+
+def render_metric_entry(entry, index: int) -> None:
+    """A policy-owned definition, visually and operationally distinct from inference."""
+    metric = entry["metric"]
+    st.chat_message("user").write(entry["question"])
+    timings = {label: entry[key] for label, key in (
+        ("metric", "metric_ms"), ("guard", "guard_ms"),
+        ("verify", "verify_ms"), ("execute", "exec_ms"),
+    ) if entry.get(key) is not None}
+    with st.chat_message("assistant"):
+        if entry["refused"]:
+            ui.pipeline(certified="fail", verified=False, guarded="fail",
+                        executed=False, timings=timings)
+            ui.refusal(entry["reason"], kind=entry.get("refusal_kind", "blocked"))
+            return
+        ui.pipeline(certified=True, verified=True, guarded=True,
+                    executed=True if entry["ran"] else "fail", timings=timings)
+        if entry["answer"]:
+            ui.answer(
+                entry["answer"], verified=bool(entry.get("contract_match")),
+                verified_note=(f"Expected {metric.expect} in metrics.yaml; the committed "
+                               "definition produced the same value live."),
+            )
+            _render_answer_audio(entry["answer"], index, namespace="metric")
+        if entry["ran"] and not entry.get("contract_match"):
+            st.error(
+                f"Definition drift: metrics.yaml expects {metric.expect}, but the live "
+                "warehouse returned a different value. The SQL is shown below."
+            )
+        ui.metric_definition(
+            label=metric.label, owner=metric.owner, definition=metric.definition,
+            derived_value=metric.derived_value, derived_why=metric.derived_why,
+        )
+        st.code(entry["sql"], language="sql", wrap_lines=True)
+        _evidence_block(entry, {})
+        _result_block(entry, index)
+        _sql_editor(entry, index)
+        st.caption(
+            f"Certified definition `{metric.name}` · owner: {metric.owner}. Exact phrase "
+            "matching only; qualified questions fall back to the compiler rather than "
+            "silently dropping a filter or breakdown."
+        )
 
 
 def render_plan_entry(entry, index: int) -> None:
@@ -1677,6 +2001,7 @@ def render_plan_entry(entry, index: int) -> None:
                     executed=True if entry["ran"] else "fail", timings=timings)
         if entry["answer"]:
             ui.answer(entry["answer"])
+            _render_answer_audio(entry["answer"], index, namespace="plan")
         elif entry["error"]:
             st.error(f"Query error: {entry['error']}")
         ui.plan_trace(trace["rationale"], coverage=trace["coverage"],
@@ -1699,7 +2024,7 @@ def render_plan_entry(entry, index: int) -> None:
         )
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=256)
 def _layer_cells():
     """The semantic layer's counts, read off the layer itself.
 
@@ -1729,9 +2054,10 @@ def _show_layer_summary() -> None:
         return
     ui.layer_summary(
         cells,
-        footnote=("All four probed from DuckDB at startup — no mapping file, no "
-                  "metric layer, nothing hand-written. This is what the compiler "
-                  "knows before you ask it anything."),
+        footnote=("All four are probed from DuckDB at startup. The separate certified "
+                  "metric registry applies only when a question explicitly names one "
+                  "of its governed phrases; the compiler is still evaluated with that "
+                  "registry switched off."),
     )
 
 
@@ -1796,7 +2122,10 @@ KEYLESS_NOTICE = (
     "against the schema: it reads the warehouse's own column roles, join graph "
     "and dimension values, binds your words to them, and emits SQL through the "
     "same read-only guard and the same verifier the model's SQL goes through. "
-    "It answers questions nobody pre-registered, and when it cannot bind a "
+    "When you explicitly name a policy-owned metric, a committed "
+    "definition supplies the SQL and CI re-checks its expected value. Everything "
+    "else stays schema-derived. It answers questions nobody pre-registered, and "
+    "when it cannot bind a "
     "question it refuses and shows you which words it could not place. "
     "Measured, both ways: `python scripts/run_planner_eval.py`."
 )
@@ -1886,10 +2215,14 @@ def render_keyless(connection) -> None:
     for index, entry in enumerate(st.session_state.transcript):
         if entry.get("engine") == "manual":
             render_manual_entry(entry, index)
+        elif entry.get("engine") == "metric":
+            render_metric_entry(entry, index)
         else:
             render_plan_entry(entry, index)
 
-    question = st.chat_input("Ask a question about the data...") or clicked or link
+    voice_question = _voice_question()
+    question = (st.chat_input("Ask a question about the data...")
+                or voice_question or clicked or link)
     if question and _session_budget_exhausted():
         # The ceiling is per browser session and a new tab clears it. That is
         # said out loud rather than hidden, because a limit presented as a
@@ -1904,8 +2237,8 @@ def render_keyless(connection) -> None:
             "on the key.")
         question = None
     if question:
-        with st.spinner("Compiling your question into SQL..."):
-            entry = _plan_turn(question)
+        with st.spinner("Resolving the definition and compiling SQL..."):
+            entry = _keyless_turn(question)
         _count_question()
         st.session_state.transcript.append(entry)
         st.rerun()
@@ -1948,7 +2281,7 @@ if not st.session_state.transcript:
             clicked = ex
 
 
-def render_entry(entry):
+def render_entry(entry, index: int):
     bundle = _retrieval_bundle(entry["question"])
     st.chat_message("user").write(entry["question"])
     with st.chat_message("assistant"):
@@ -2035,6 +2368,7 @@ def render_entry(entry):
         _show_grounding(bundle)
         if entry["answer"]:
             ui.answer(entry["answer"])
+            _render_answer_audio(entry["answer"], index, namespace="model")
         else:
             # The loop spent every attempt and the last query still failed, so
             # there is no answer to headline. This used to call ui.answer("")
@@ -2108,10 +2442,19 @@ def render_entry(entry):
                 st.caption(" · ".join(bits))
 
 
-for entry in st.session_state.transcript:
-    render_entry(entry)
+for index, entry in enumerate(st.session_state.transcript):
+    render_entry(entry, index)
 
-question = st.chat_input("Ask a question about the data...") or clicked
+voice_question = _voice_question()
+question = st.chat_input("Ask a question about the data...") or voice_question or clicked
+
+if question and _session_budget_exhausted():
+    st.warning(
+        f"This session has reached its {MAX_QUESTIONS_PER_SESSION}-question ceiling. "
+        "Start a new browser session to continue. This is a courtesy bound; the "
+        "real cost control is a spend cap on the provider keys."
+    )
+    question = None
 
 if question:
     st.chat_message("user").write(question)
@@ -2152,6 +2495,8 @@ if question:
         "usage": result.usage,
         "elapsed_ms": elapsed_ms,
     }
+    _audit_turn(entry, engine="model")
+    _count_question()
     st.session_state.transcript.append(entry)
     if result.ok:
         st.session_state.turns.append(result.as_turn())
