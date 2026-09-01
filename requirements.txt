@@ -1,4 +1,4 @@
-duckdb>=1.0
+duckdb>=1.5.5
 anthropic>=1.2.0
 openai>=2.0
 streamlit>=1.62,<2
