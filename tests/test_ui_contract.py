@@ -441,6 +441,23 @@ def test_the_keyless_page_checks_the_planner_is_available():
     assert "if not PLANNER_READY:" in source
 
 
+def test_the_worked_examples_remain_reachable_from_the_ask_page():
+    """Trust center is evidence architecture, not a replacement for discovery.
+
+    These 39 questions used to live under the question box. Moving their only
+    copy behind another workspace made a working feature look removed.
+    """
+    import ast
+
+    tree = ast.parse(_app_source())
+    keyless = next(node for node in ast.walk(tree)
+                   if isinstance(node, ast.FunctionDef)
+                   and node.name == "render_keyless")
+    body = ast.unparse(keyless)
+    assert "Worked examples" in body
+    assert "render_demo_mode(connection)" in body
+
+
 def test_a_pasted_key_is_never_cached_across_sessions():
     """@st.cache_resource is per-container, and a key is per-visitor.
 

@@ -15,10 +15,39 @@ This module removes the server. Both halves run in THIS process, on models
 whose weights are open:
 
   * STT - faster-whisper `tiny.en`, CTranslate2, int8 on CPU. ~40 MB.
-  * TTS - Piper `en_US-lessac-low`, a VITS model on onnxruntime. ~63 MB.
+  * TTS - Piper `en_US-joe-medium`, a male VITS model on onnxruntime. ~63 MB.
 
-Measured on this machine, warm: synthesis 0.04-0.10 s for 1.6-2.3 s of speech
-(20-50x faster than real time), transcription 0.02-0.32 s for a short question.
+WHICH VOICE, AND THE PREMISE THAT TURNED OUT TO BE WRONG
+Five en_US voices were downloaded and driven through 30 synthesis takes each,
+then transcribed back by the STT half above and scored on exact round-trip:
+
+    en_US-hfc_male-medium   30/30   +87.0 MB   34x real time
+    en_US-lessac-low        27/30   +87.3 MB   "about 19% of IT allowed amount"
+    en_US-ryan-low          27/30   +87.1 MB   "tonight claims" for "denied claims"
+    en_US-joe-medium        26/30   +87.0 MB   "of the amount" for "allowed amount"
+    en_US-norman-medium      2/10   +94.4 MB   corrupted the NUMBER, 5 takes of 5
+
+The premise going in was that a `medium` voice would cost memory a 611 MB app
+cannot spare. It does not: in Piper, `low` and `medium` are the SAME model at
+different sample rates — every single-speaker en_US voice at both tiers is the
+same ~63 MB file, and only `high` is larger. There was no trade-off to make.
+
+One take is not a measurement; VITS sampling is stochastic, which is why the
+score is out of 30. norman is disqualified on its own: it turned "876" into
+"the 76 to 9" and "19%" into "99%", and a voice that corrupts the number is
+unusable in an app whose entire argument is the number.
+
+LICENCE, STATED BECAUSE IT IS A REAL CONSTRAINT
+The best round-trip score belonged to hfc_male, but its source dataset is
+CC BY-NC-SA 4.0 and therefore unsuitable as an enterprise default. Joe's source
+dataset is CC0, its Piper model repository is MIT, it is explicitly male, and
+it costs the same memory. The default therefore prefers deployability over four
+extra exact transcripts in a synthetic round-trip test. A user reviews every
+STT transcript before it runs, while the TTS answer is already visible beside
+its audio control.
+
+Measured on this machine, warm: synthesis 0.086-0.123 s for 3.0-4.2 s of speech
+(34-35x faster than real time), transcription 0.02-0.32 s for a short question.
 Cold, each pays a one-time model download and a first-call warm-up, which is
 why both are lazy and neither is touched at import.
 
@@ -89,7 +118,8 @@ from engine.voice import (
 # latest tiny model" is not a reproducible claim and this repository does not
 # make those.
 STT_MODEL = os.environ.get("ASK_LOCAL_STT_MODEL", "tiny.en")
-TTS_VOICE = os.environ.get("ASK_LOCAL_TTS_VOICE", "en_US-lessac-low")
+DEFAULT_TTS_VOICE = "en_US-joe-medium"
+TTS_VOICE = os.environ.get("ASK_LOCAL_TTS_VOICE", DEFAULT_TTS_VOICE)
 
 # Checksums for the Piper voice, in the same spirit as engine/vector_index.py:
 # the download is over HTTPS from a host this project does not control, and a
@@ -97,6 +127,12 @@ TTS_VOICE = os.environ.get("ASK_LOCAL_TTS_VOICE", "en_US-lessac-low")
 # than a warning, because a voice model that is not the one measured above is
 # not the one this module documents.
 TTS_SHA256 = {
+    "en_US-joe-medium.onnx":
+        "58afce0321b8d9c46d7cdf9c16500cc55a793b4220212dba6b70fb788b3baf06",
+    "en_US-joe-medium.onnx.json":
+        "3d6d5410b3795cb1950595247ef8f06190719e6fdbfa3a2356d8ec368e1aad33",
+    # The previous voice, kept so an existing cache and ASK_LOCAL_TTS_VOICE
+    # still verify rather than falling through the check unpinned.
     "en_US-lessac-low.onnx":
         "f7d01dde371555732c4c314111ac79672b1a5ce2fc19266ab42178fd8df7f375",
     "en_US-lessac-low.onnx.json":
@@ -155,9 +191,9 @@ def build_prompt(extra=()) -> str:
     )
 
 
-# Narration is bounded well below the remote ceiling. Synthesis is ~20-50x real
-# time, so 1,200 characters is roughly 60 s of audio and about 2 s of work; the
-# remote 4,096 would be nearer three minutes of speech nobody listens to.
+# Narration is bounded well below the remote ceiling. Synthesis is ~34x real
+# time, so 1,200 characters is 62 s of audio and 1.7 s of work; the remote 4,096
+# would be nearer three minutes of speech nobody listens to.
 MAX_TTS_CHARS = 1200
 
 _LOCK = threading.RLock()
@@ -230,8 +266,28 @@ def _verify(path: Path, expected: str) -> None:
         )
 
 
+def _pinned_tts_files(voice_id: str) -> dict[str, str]:
+    """The two artifacts a supported Piper voice must verify against.
+
+    This check intentionally runs before importing Piper or touching the
+    network. An operator typo must fail closed, not download an unreviewed
+    executable graph and silently skip the checksum because the mapping did
+    not contain its name.
+    """
+    names = (f"{voice_id}.onnx", f"{voice_id}.onnx.json")
+    expected = {name: TTS_SHA256.get(name, "") for name in names}
+    if not all(expected.values()):
+        raise VoiceUnavailable(
+            f"The configured Piper voice {voice_id!r} is not checksum-pinned by "
+            "this release. Choose a supported voice or deploy a self-hosted "
+            "speech endpoint."
+        )
+    return expected
+
+
 def _load_tts():
     """Piper, downloaded once and checksum-verified."""
+    expected = _pinned_tts_files(TTS_VOICE)
     from piper import PiperVoice
     from piper.download_voices import download_voice
 
@@ -242,9 +298,7 @@ def _load_tts():
     if not (model.is_file() and config.is_file()):
         download_voice(TTS_VOICE, directory)
     for path in (model, config):
-        expected = TTS_SHA256.get(path.name)
-        if expected:
-            _verify(path, expected)
+        _verify(path, expected[path.name])
     return PiperVoice.load(model)
 
 

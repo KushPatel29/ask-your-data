@@ -87,6 +87,7 @@ from engine import (  # noqa: E402
     deadline,
     demo_mode,
     exemplars,
+    narrate,
     planner,
     providers,
     retrieval,
@@ -1247,13 +1248,21 @@ LOCAL_VOICE_OPTIONS = {
 # The in-process Piper model IS one voice, so offering a menu of four would be
 # a control that does nothing — the worst kind, because it invites the reader
 # to believe the other three exist.
-IN_PROCESS_VOICE_OPTIONS = {"Lessac · neutral": "en_US-lessac-low"}
+IN_PROCESS_VOICE_LABELS = {
+    "en_US-joe-medium": "Joe · grounded male",
+    # Kept for operators upgrading an existing deployment that deliberately
+    # pinned the previous voice. The public/default path is Joe.
+    "en_US-lessac-low": "Lessac · neutral",
+}
 
 
 def _voice_options() -> dict[str, str]:
     label = _voice_label()
     if label == "local":
-        return IN_PROCESS_VOICE_OPTIONS
+        _stt, model = _voice_models()
+        voice_id = str(model).removeprefix("piper ").strip()
+        friendly = IN_PROCESS_VOICE_LABELS.get(voice_id, f"{voice_id} · local")
+        return {friendly: voice_id}
     return LOCAL_VOICE_OPTIONS if label == "self-hosted" else VOICE_OPTIONS
 
 
@@ -1274,9 +1283,10 @@ def _render_voice_control() -> None:
     if st.session_state.get("_voice_error"):
         st.error(st.session_state["_voice_error"])
     if _voice_label() == "local":
+        _stt, tts_model = _voice_models()
         st.caption(
             "Voice runs **in this process** on open models — faster-whisper "
-            "`tiny.en` transcribes and Piper `en_US-lessac-low` speaks. No API "
+            f"`tiny.en` transcribes and `{tts_model}` supplies the male voice. No API "
             "key, no account, and no second service: the recording and the "
             "answer text never leave the server. Both models download once on "
             "first use and are cached with a pinned checksum."
@@ -1317,7 +1327,13 @@ def _render_voice_control() -> None:
         return
     st.selectbox("Transcription language", tuple(VOICE_LANGUAGES),
                  key="voice_language", index=0)
-    st.selectbox("Answer voice", tuple(_voice_options()),
+    options = _voice_options()
+    # A browser session can outlive a deployment. If its widget still holds the
+    # previous Lessac label, Streamlit must not try to render a selection that
+    # the newly deployed Joe-only option set no longer contains.
+    if st.session_state.get("voice_name") not in options:
+        st.session_state["voice_name"] = next(iter(options))
+    st.selectbox("Answer voice", tuple(options),
                  key="voice_name", index=0)
     stt_model, tts_model = _voice_models()
     st.caption(f"STT `{stt_model}` · TTS `{tts_model}` · playback is AI-generated speech.")
@@ -1428,8 +1444,9 @@ def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn") ->
     if not answer or not _voice_ready():
         return
     selected = _voice_name()
+    _stt_model, resolved_tts_model = _voice_models()
     identity = hashlib.sha256(
-        f"{voice.configured_tts_model()}\0{selected}\0{answer}".encode("utf-8")
+        f"{resolved_tts_model}\0{selected}\0{answer}".encode("utf-8")
     ).hexdigest()[:16]
     audio_key = f"voice_audio_{identity}"
     error_key = f"voice_audio_error_{identity}"
@@ -1963,40 +1980,29 @@ def _fmt(value) -> str:
 def _plan_headline(plan, ran) -> str:
     """One sentence, built from the plan rather than written about it.
 
-    No language model is involved, so this cannot be a summary — it is a
-    restatement of the query in words, which is the honest thing a compiler can
-    offer. The number always comes from `ran`, never from anywhere else.
+    The composition moved to `engine/narrate.py`; this is the seam. That module
+    is Streamlit-free and depends only on engine.planner, so every sentence it
+    can produce is testable without rendering a page — which is what let the
+    shapes a typed question cannot reach (a truncated breakdown, a NULL group
+    label, a fan-out COUNT) be driven from mutated plans rather than argued
+    about.
 
-    It used to restate the PLAN ("5 groups by customer_name, ordered desc"),
-    which told a reader what the compiler did and nothing about their data. When
-    a ranking has a winner, the winner is the answer, so it leads; when a
-    breakdown has no order, the span between its ends is the most useful single
-    sentence available without inventing an interpretation.
+    What it replaced fell off a cliff at exactly the most common shape. Grouped
+    results read reasonably; every scalar — COUNT, SUM, AVG, MIN, MAX, SHARE —
+    fell through to `return _fmt(value)`, so "how many denied claims are there?"
+    was answered with the four characters `876`. Correct, and not an answer a
+    person would give.
+
+    Three defects came out of writing the replacement, all of them shipping:
+      * "the highest of 5 departments" for `top 5 departments by headcount`,
+        over a warehouse with TWELVE. A LIMIT tells you how many rows came
+        back and nothing about how many groups exist.
+      * `_plural("hour_of_day")` pluralised the tail — "24 hour of days".
+      * `_plural("status")` short-circuited on the trailing s, and any NULL in
+        a breakdown bailed to "3 status. The full breakdown is below." — the
+        case where a sentence is most useful is the one it gave up on.
     """
-    rows, value = ran.rows, ran.rows[0][0]
-
-    if plan.aggregate == planner.RANK and len(rows[0]) > 1:
-        return f"{rows[0][0]} — {_humanise(plan.measure.name)} {_fmt(rows[0][1])}"
-
-    if plan.group_by is not None and len(rows[0]) > 1:
-        label = _humanise(plan.group_by.name)
-        if len(rows) == 1:
-            return f"{rows[0][0]} — {_fmt(rows[0][1])}"
-        if plan.order:
-            lead = "highest" if plan.order == "desc" else "lowest"
-            return (f"{rows[0][0]} — {_fmt(rows[0][1])}, the {lead} of "
-                    f"{ran.row_count} {_plural(label)}.")
-        # No ordering was asked for, so naming a "top" would be inventing one.
-        # The two ends of the range are a true summary of an unordered set.
-        numeric = [r[1] for r in rows
-                   if isinstance(r[1], (int, float)) and not isinstance(r[1], bool)]
-        if len(numeric) == len(rows) and numeric:
-            low, high = min(rows, key=lambda r: r[1]), max(rows, key=lambda r: r[1])
-            return (f"{ran.row_count} {_plural(label)}, from {low[0]} "
-                    f"({_fmt(low[1])}) to {high[0]} ({_fmt(high[1])}).")
-        return f"{ran.row_count} {_plural(label)}. The full breakdown is below."
-
-    return _fmt(value)
+    return narrate.answer_sentence(plan, ran)
 
 
 def _numeric_format(frame):

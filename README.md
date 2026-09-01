@@ -606,7 +606,13 @@ answer text never leave the server:
 | | model | weights | why this one |
 |---|---|---|---|
 | speech → text | faster-whisper `tiny.en` (CTranslate2, int8) | ~40 MB | see below |
-| text → speech | Piper `en_US-lessac-low` (VITS on onnxruntime) | ~63 MB | onnxruntime was already a dependency, so this adds a model rather than a runtime |
+| text → speech | Piper `en_US-joe-medium` male voice (VITS on onnxruntime, CC0 source dataset) | ~63 MB | onnxruntime was already a dependency, so this adds a model rather than a runtime |
+
+Joe is an enterprise-safe default rather than merely the best-sounding local
+test. The higher-scoring hfc male voice was rejected because its source dataset
+is non-commercial; Joe's source dataset is CC0 and its two runtime artifacts are
+checksum-pinned before download. An unknown `ASK_LOCAL_TTS_VOICE` value fails
+closed instead of fetching an unreviewed model and skipping verification.
 
 This replaced a real but unreachable feature. The Compose stack below has always
 offered free voice through a self-hosted Speaches container, and it still does —

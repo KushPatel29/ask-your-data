@@ -69,6 +69,22 @@ def test_the_prompt_names_the_terms_whose_spelling_is_load_bearing():
     assert "denial rate" in prompt
 
 
+def test_the_default_voice_is_male_permissive_and_checksum_pinned():
+    """The better-scoring hfc voice is non-commercial, so it cannot quietly
+    become the default of an app presented as enterprise-ready."""
+    assert local_voice.DEFAULT_TTS_VOICE == "en_US-joe-medium"
+    files = local_voice._pinned_tts_files(local_voice.DEFAULT_TTS_VOICE)
+    assert set(files) == {
+        "en_US-joe-medium.onnx", "en_US-joe-medium.onnx.json",
+    }
+    assert all(len(digest) == 64 for digest in files.values())
+
+
+def test_an_unreviewed_voice_fails_before_download():
+    with pytest.raises(voice.VoiceUnavailable, match="not checksum-pinned"):
+        local_voice._pinned_tts_files("en_US-some-new-voice")
+
+
 def test_the_prompt_is_curated_rather_than_derived_from_the_lexicon():
     """The tempting version was tried three ways and measured worse each time;
     the reason is structural. `engine/semantics.py` normalises its 797 value
