@@ -31,6 +31,8 @@ BLOCKED = [
     "ATTACH 'other.db' AS o",
     "PRAGMA database_list",
     "SET memory_limit='1GB'",
+    "SELECT * FROM query_table('hr_fact_employees')",
+    "SELECT * FROM query('SELECT * FROM hr_fact_employees')",
     "",
     "   ",
 ]

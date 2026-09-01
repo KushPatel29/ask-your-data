@@ -19,10 +19,10 @@ ranking against the keyword ranking - they are separated by FORM (filled tick
 against hollow tick), never by inventing a third hue. A third accent would cost
 the two real ones their meaning.
 
-Type is IBM Plex - Condensed for display, Sans for prose, Mono for anything the
-machine produced. Plex was drawn for technical products and it reads as
-instrumentation rather than as a brand; it is also not the typeface every other
-LLM demo reaches for.
+Type uses an operating-system-native control-room stack: condensed faces for
+display, humanist sans for prose, and mono for anything the machine produced.
+It keeps the instrumentation hierarchy without making the governed application
+phone a third-party font CDN or weaken a strict production CSP.
 
 THE SIGNATURE ELEMENT: `grounding()`, THE FUSION READOUT
 It shows which tables the retriever selected out of the full catalogue and -
@@ -130,15 +130,13 @@ AMBER = "#FBBF24"
 
 _CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500&display=swap');
-
 :root{
   --ayd-ground:#0A0C14; --ayd-panel:#12151F; --ayd-panel-2:#171B28;
   --ayd-line:#232838; --ayd-ink:#E6E9F2; --ayd-muted:#7C859C;
   --ayd-machine:#22D3EE; --ayd-verified:#FBBF24; --ayd-alert:#FB7185;
-  --ayd-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
-  --ayd-sans:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
-  --ayd-cond:'IBM Plex Sans Condensed','IBM Plex Sans',system-ui,sans-serif;
+  --ayd-mono:'Cascadia Code','SFMono-Regular',Consolas,'Liberation Mono',monospace;
+  --ayd-sans:Aptos,'Segoe UI Variable Text','Segoe UI',system-ui,-apple-system,sans-serif;
+  --ayd-cond:'Bahnschrift SemiCondensed','Arial Narrow',Aptos,'Segoe UI',system-ui,sans-serif;
 }
 
 html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
@@ -167,7 +165,7 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
    Symbols font composes into one glyph. The selector above matches
    `[class*="st-"]`, every one of those spans carries an `st-emotion-cache-…`
    class, and `!important` beat Streamlit's own font-family. So the glyph font
-   never applied and the ligature fell back to IBM Plex, which has no ligature
+   never applied and the ligature fell back to the prose face, which has no ligature
    for it and simply drew the letters.
 
    Every expander read "keyboard_arrow_right The accuracy contract…", the
@@ -180,7 +178,7 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
    The family is NAMED rather than `unset`. font-family is an inherited
    property, so `unset` computes to `inherit` — and the parent is also matched
    by `[class*="st-"]`, so unsetting the override merely inherited the same
-   wrong font. Measured: still "IBM Plex Sans" on all fifteen icons.
+   wrong font. Measured: still the prose face on all fifteen icons.
 
    `font-feature-settings:'liga'` is belt and braces: these glyphs ARE
    ligatures, and anything that disables them puts the letters back. */
@@ -236,6 +234,56 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .ayd-stats{ display:flex; gap:1.6rem; flex-wrap:wrap; margin-top:1rem;
   font-family:var(--ayd-mono) !important; font-size:.72rem; color:var(--ayd-muted); }
 .ayd-stats b{ color:var(--ayd-ink); font-weight:600; }
+.ayd-mast[data-compact="1"]{ padding-bottom:.65rem; margin-bottom:.7rem; }
+.ayd-mast[data-compact="1"] .ayd-kicker{ font-size:.6rem; }
+.ayd-mast[data-compact="1"] h1.ayd-title{ font-size:1.5rem; margin:.28rem 0 0; }
+.ayd-mast[data-compact="1"] h1.ayd-title br{ display:none; }
+.ayd-mast[data-compact="1"] .ayd-title-tail::before{ content:' '; }
+.ayd-mast[data-compact="1"] .ayd-sub{ display:none; }
+.ayd-mast[data-compact="1"] .ayd-stats{ margin-top:.5rem; }
+
+/* ---- workspace navigation --------------------------------------------- */
+/* Three product jobs, three destinations: ask, inspect the governed catalog,
+   and verify the controls. The active item reads as a selected instrument tab,
+   not a marketing-site pill. The Streamlit control retains native keyboard and
+   screen-reader behaviour; these rules only establish hierarchy. */
+.st-key-workspace-nav{ margin:-.2rem 0 1rem; }
+.st-key-workspace-nav [data-testid="stSegmentedControl"]{ width:100%; }
+.st-key-workspace-nav [role="radiogroup"]{ width:100%; padding:3px;
+  border:1px solid var(--ayd-line); border-radius:4px; background:var(--ayd-panel); }
+.st-key-workspace-nav [role="radiogroup"] > label{ flex:1 1 0; justify-content:center;
+  min-height:40px; font-family:var(--ayd-mono) !important; font-size:.68rem;
+  letter-spacing:.08em; text-transform:uppercase; }
+.st-key-workspace-nav [aria-checked="true"]{ color:var(--ayd-machine) !important;
+  background:rgba(34,211,238,.08) !important; }
+
+.ayd-viewhead{ margin:.1rem 0 1rem; max-width:72ch; }
+.ayd-viewhead .k{ display:block; font-family:var(--ayd-mono) !important;
+  color:var(--ayd-machine); font-size:.62rem; letter-spacing:.16em;
+  text-transform:uppercase; margin-bottom:.32rem; }
+.ayd-viewhead h2{ font-family:var(--ayd-cond) !important; color:var(--ayd-ink);
+  font-size:1.55rem; line-height:1.1; margin:0 0 .32rem; }
+.ayd-viewhead p{ color:var(--ayd-muted); font-size:.88rem; line-height:1.5; margin:0; }
+
+/* The product's signature: every answer has a visible, governed route. This is
+   a real sequence (unlike decorative numbered cards), so order carries meaning. */
+.ayd-life{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr));
+  border:1px solid var(--ayd-line); border-radius:3px; overflow:hidden;
+  background:var(--ayd-panel); margin:-.35rem 0 1.15rem; }
+.ayd-life-step{ position:relative; padding:.52rem .58rem .58rem;
+  min-width:0; border-right:1px solid var(--ayd-line); }
+.ayd-life-step:last-child{ border-right:0; }
+.ayd-life-step::after{ content:''; position:absolute; width:5px; height:5px;
+  border-top:1px solid var(--ayd-machine); border-right:1px solid var(--ayd-machine);
+  right:-3px; top:50%; transform:translateY(-50%) rotate(45deg);
+  background:var(--ayd-panel); z-index:1; }
+.ayd-life-step:last-child::after{ display:none; }
+.ayd-life-step b{ display:block; font-family:var(--ayd-mono) !important;
+  font-size:.63rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ayd-ink); font-weight:500; white-space:nowrap; }
+.ayd-life-step span{ display:block; color:var(--ayd-muted); font-size:.66rem;
+  line-height:1.25; margin-top:.2rem; }
+.ayd-life-step[data-stage="control"] b{ color:var(--ayd-machine); }
 
 /* The example-question row. st.columns lays five buttons side by side and each
    sizes to its own text, so "Which department has the highest average tenure?"
@@ -407,7 +455,7 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .ayd-saving b{ color:var(--ayd-machine); }
 
 /* ---- schema map -------------------------------------------------------- */
-/* One cell per table in the warehouse, grouped by domain. It answers "14 of 71"
+/* One cell per table in the warehouse, grouped by domain. It answers "10 of 71"
    with the actual 71, so the scale of what was NOT sent to the model is visible
    rather than asserted. Hovering a cell names its table. */
 .ayd-map{ border:1px solid var(--ayd-line); border-radius:3px; background:var(--ayd-panel);
@@ -787,8 +835,8 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
    two-child operator cannot be drawn from a row that does not know its
    ancestors' sibling counts.
 
-   But they are NOT laid out by the monospace grid, because IBM Plex Mono does
-   not cover the Box Drawing block. Measured in the running app at .72rem:
+   But they are NOT laid out by the monospace grid, because coverage of the Box
+   Drawing block varies across operating-system mono faces. Measured at .72rem:
    space, M and i all advance 6.913px, while │ └ ├ ─ advance 6.334px — they are
    coming from a fallback face, and a tree drawn with them drifts about half a
    pixel per character, which at depth 10 is a branch line three pixels off the
@@ -958,6 +1006,11 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
   .ayd-trace-row{ display:grid; grid-template-columns:minmax(0,1fr);
     row-gap:.05rem; padding:.24rem 0; }
   .ayd-trace-key{ min-width:0; }
+  .ayd-life{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ayd-life-step{ border-bottom:1px solid var(--ayd-line); }
+  .ayd-life-step:nth-child(2n){ border-right:0; }
+  .ayd-life-step:nth-child(2n)::after{ display:none; }
+  .ayd-life-step:last-child{ grid-column:1 / -1; border-bottom:0; }
 
   /* The domain/score pair drops under the question rather than squeezing it,
      and the SQL loses its hanging indent so the scroll track is full width. */
@@ -1037,7 +1090,7 @@ def build_marker() -> str:
     return digest.hexdigest()[:7]
 
 
-def masthead(*, tables: int, domains: int, live: bool) -> None:
+def masthead(*, tables: int, domains: int, live: bool, compact: bool = False) -> None:
     """The banner. `mode` is the one line on this page that says which engine ran.
 
     It used to read "demo · committed reference SQL" whenever no key was set,
@@ -1051,13 +1104,13 @@ def masthead(*, tables: int, domains: int, live: bool) -> None:
             else "keyless · compiled from the schema")
     st.markdown(
         f"""
-<div class="ayd-mast">
+<div class="ayd-mast" data-compact="{1 if compact else 0}">
   <div class="ayd-kicker">Ask your data</div>
-  <h1 class="ayd-title">Ask it out loud.<br>SQL comes out, and you see all of it.</h1>
-  <p class="ayd-sub">Voice or text over the analytics warehouses from my portfolio projects.
-  It retrieves the schema the question needs, writes DuckDB SQL, checks it
-  read-only before running it,
-  and shows the query next to the number.</p>
+  <h1 class="ayd-title">Ask governed data.<br>
+    <span class="ayd-title-tail">See every step.</span></h1>
+  <p class="ayd-sub">Voice or text across an enterprise analytics warehouse.
+  Each question is scoped by access policy, grounded in the catalog, verified,
+  executed read-only, and returned with the SQL and evidence behind the answer.</p>
   <div class="ayd-stats">
     <span><b>{tables}</b> tables</span>
     <span><b>{domains}</b> domains</span>
@@ -1067,6 +1120,35 @@ def masthead(*, tables: int, domains: int, live: bool) -> None:
 </div>""",
         unsafe_allow_html=True,
     )
+
+
+def view_header(kicker: str, title: str, description: str) -> None:
+    """A compact, consistent orientation point for each workspace."""
+    st.markdown(
+        f'<div class="ayd-viewhead"><span class="k">{html.escape(kicker)}</span>'
+        f'<h2>{html.escape(title)}</h2><p>{html.escape(description)}</p></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def lifecycle(*, live: bool) -> None:
+    """The governed route an answer takes, visible before the first question."""
+    producer = ("generate", "model writes SQL") if live else ("plan", "compiler writes SQL")
+    stages = [
+        ("ask", "voice or text", "input"),
+        ("scope", "policy + catalog", "control"),
+        (producer[0], producer[1], "work"),
+        ("verify", "meaning checks", "control"),
+        ("guard", "read-only gate", "control"),
+        ("execute", "bounded query", "work"),
+        ("evidence", "SQL + audit", "control"),
+    ]
+    body = "".join(
+        f'<div class="ayd-life-step" data-stage="{kind}"><b>{html.escape(label)}</b>'
+        f'<span>{html.escape(detail)}</span></div>'
+        for label, detail, kind in stages
+    )
+    st.markdown(f'<div class="ayd-life ayd-hud">{body}</div>', unsafe_allow_html=True)
 
 
 def status_rail(cells: list[tuple[str, str]]) -> None:
@@ -1656,7 +1738,7 @@ def schema_map(by_domain: dict[str, list[tuple[str, bool]]], *,
                destination: str = "sent to the model") -> None:
     """One cell per table in the warehouse, lit where the retriever selected it.
 
-    The grounding panel says "14 of 71". This draws the 71. The claim the whole
+    The grounding panel says "10 of 71". This draws the 71. The claim the whole
     retrieval module rests on is that most of a warehouse is irrelevant to any
     one question, and a wall of unlit cells argues that better than a ratio.
 
@@ -1854,7 +1936,7 @@ def exemplars(picks, *, corpus: int, in_prompt: bool, fused: bool = False,
     question's own pair excluded by the leave-one-out rule that makes an eval
     over this corpus mean anything.
 
-    `score` is the cosine similarity Chroma returned (1 - distance), which is
+    `score` is the cosine similarity returned by the local exact index, which is
     the text signal only. When the selector also had retrieved tables to fuse
     against, the ORDER is the fused one and the score is not what produced it —
     so the score is labelled `sim` rather than presented as the ranking key.

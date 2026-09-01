@@ -16,7 +16,9 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt ruff
+        run: |
+          pip install --require-hashes -r requirements.lock
+          pip install ruff==0.16.4
 
       - name: Lint
         run: ruff check .

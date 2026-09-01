@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-804%20%C2%B7%20803%20run%20without%20an%20API%20key-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-839%20%C2%B7%20838%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
@@ -17,6 +17,12 @@ values and join graph. Bring your own key in the sidebar to let a language model
 write SQL. Voice can run entirely locally with faster-whisper and Kokoro through
 Speaches, or use OpenAI as an optional cloud fallback. Same guard, same verifier,
 same executor whether the question was typed or spoken.
+
+The interface is organized around three jobs: **Ask** keeps the governed answer
+flow focused, **Data catalog** searches authorized tables/columns/values, and
+**Trust center** collects identity scope, runtime controls, session telemetry,
+and the reproducible accuracy contract. Model and voice settings stay collapsed
+until they are needed.
 
 *(First load builds the schema index, which downloads a 79 MB embedding model
 once per container, and profiles the warehouse for the compiler — the spinners
@@ -158,7 +164,7 @@ The planner is graded on two contracts, and the gap between them is the finding:
 
 | | questions | match | **differs** | refused | SQL errors |
 |---|---:|---:|---:|---:|---:|
-| `evals/planner_questions.yaml` — ordinary ad-hoc questions | 46 | **38** | **0** | 8 | 0 |
+| `evals/planner_questions.yaml` — ordinary ad-hoc questions | 58 | **46** | **0** | 12 | 0 |
 | `evals/golden_questions.yaml` — written to need a model | 39 | 5 | 1 | 33 | 0 |
 
 `differs` is the column that matters. A refusal costs you an answer; a
@@ -223,7 +229,7 @@ question adjacent to the one asked:
   and said nothing about margin. A partial answer presented as a whole one is
   the quiet version of being wrong.
 
-The contract is **46 questions** now, eight of which must be refused.
+The contract is **58 questions** now, twelve of which must be refused.
 
 The confidence gate has its own version of that story. The first working build
 scored **8 right and 26 wrong** on the golden set, because the gate blended
@@ -234,17 +240,17 @@ to zero. Reproducible with `python scripts/run_planner_eval.py --sweep`:
 
 ```
   gate   match   differs   refused
-  0.40      47        15        23
-  0.50      47        14        24
-  0.60      45         5        35
-  0.70      43         1        41     <- shipped
-  0.80      42         0        43
+  0.40      56        16        25
+  0.50      56        15        26
+  0.60      53         6        38
+  0.70      51         1        45     <- shipped
+  0.80      50         1        46
 ```
 
-Loosening to 0.40 buys four more right answers and fifteen wrong ones.
-Tightening to 0.80 does reach zero disagreements — and costs a correct answer to
-do it, because *"who is the top wholesale customer by revenue?"* starts refusing
-over the word `wholesale`, which this warehouse also uses as a domain name.
+Loosening to 0.40 buys five more right answers and fifteen additional wrong
+answers. Tightening to 0.80 costs a correct answer and still cannot remove the
+one governed-definition disagreement described below; confidence cannot infer a
+business rule the schema does not contain.
 
 ### The one disagreement, which I kept
 
@@ -268,18 +274,18 @@ That is the honest answer to *"do you even need an LLM for this?"*. For a
 question whose measure and dimension are named in words the schema uses, no —
 a compiler is faster, free, and cannot hallucinate. For a question that carries a
 business definition the warehouse has never been told, yes. The boundary between
-those two is not a matter of opinion here; it is 64 questions and a table.
+those two is not a matter of opinion here; it is 97 questions and a table.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-    MIC[Microphone] --> STT[gpt-transcribe<br/>speech to text]
+    MIC[Microphone] --> STT[faster-whisper local<br/>or optional cloud STT]
     STT --> RV[Review transcript]
     RV --> Q[Question in<br/>plain English]
     Q --> M{Exact certified<br/>metric phrase?}
     M -->|yes| CM[Committed definition<br/>metrics.yaml]
-    M -->|no| SR[Schema retrieval<br/>Chroma + MiniLM]
+    M -->|no| SR[Schema retrieval<br/>exact cosine + MiniLM]
     C[(Schema corpus<br/>71 documented tables)] --> SR
     SR -->|"top 10 tables"| A[Claude<br/>with a key]
     SR -->|"top 10 tables"| P[Compiler<br/>without one]
@@ -295,15 +301,17 @@ flowchart LR
     G -->|"blocked"| X[Rejected]
     W -->|"error goes back for a retry"| A
     W --> S[Answer in plain English<br/>with the SQL and the rows]
-    S -->|Listen on demand| TTS[gpt-4o-mini-tts<br/>AI-generated speech]
+    S -->|Listen on demand| TTS[Kokoro local<br/>or optional cloud TTS]
 ```
 
 1. **Warehouse** — every vendored CSV loads into an in-memory DuckDB, named
    `<domain>_<table>` so the several `dim_customer` / `fact_orders` tables from
    different domains never collide.
-2. **Schema retrieval** — Chroma embeds one document per table using local,
-   keyless MiniLM ONNX embeddings, then passes only the ten best matches—with
-   business descriptions and real column types—downstream. A follow-up always
+2. **Schema retrieval** — a read-only exact cosine index embeds one document per
+   table using local, keyless MiniLM ONNX embeddings, then passes only the ten
+   best matches—with business descriptions and real column types—downstream.
+   At 71 records an exact matrix multiply is deterministic and removes the
+   security and operational surface of a vector database. A follow-up always
    retains tables named in prior-turn SQL, even when the new wording is vague.
    The same ranking serves both engines: it is what the model is shown, and what
    the compiler is allowed to plan against.
@@ -353,7 +361,7 @@ defend in an interview:
 
 - **The guard** has an exhaustive suite — every mutation verb rejected, real
   analytical SQL (CTEs, aggregates, keywords inside string literals) allowed.
-- **The golden questions** are the accuracy contract: 14 natural-language
+- **The golden questions** are the accuracy contract: 39 natural-language
   questions, each with reference SQL and its expected answer (*denial rate
   8.2%*, *1,483 active employees*, *fill rate 98.8%*, *top customer Canyon
   Charcuterie 064*...). CI runs every reference query on every push, so the
@@ -382,7 +390,7 @@ defend in an interview:
   comparing one scored twelve correct breakdowns as wrong.
 
 ```
-804 tests — 803 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
+839 tests — 838 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
 1 live model test skips without a key.
 ```
 
@@ -466,7 +474,7 @@ the curated set in.
 ## Run it
 
 ```bash
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.lock
 
 # 1. Prove the plumbing — no API key needed
 pytest tests/ -v
@@ -501,13 +509,40 @@ python -m engine.semantics
 Defaults to `claude-opus-5`; set `ASK_YOUR_DATA_MODEL` to swap models. The
 compiler has no model to swap.
 
+### Enterprise identity, policy, and request bounds
+
+The public synthetic demo remains explicitly unauthenticated. A protected
+deployment enables OIDC and a default-deny role policy:
+
+```bash
+export ASK_AUTH_MODE=oidc
+export ASK_OIDC_ISSUER=https://identity.example.com/
+export ASK_OIDC_AUDIENCE=ask-your-data
+export ASK_OIDC_JWKS_URL=https://identity.example.com/.well-known/jwks.json
+export ASK_POLICY_FILE=/run/secrets/ask-your-data-policy.yaml
+export ASK_REQUEST_TIMEOUT_S=45
+```
+
+Start from `enterprise-policy.example.yaml`. JWT signature, issuer, audience,
+expiry, issued-at, and subject are verified; unknown roles default to no tables.
+The schema sent to a model and shown in the browser is filtered to authorized
+tables and columns. Manual SQL, certified metrics, the compiler, and model SQL
+all pass through the same policy point in `engine/query.py`.
+
+This is defense in depth, not a replacement for warehouse RLS/masking. The full
+target architecture, SLOs, runbook, remaining production evidence, and honest
+readiness assessment are in
+[`docs/ENTERPRISE_ARCHITECTURE.md`](docs/ENTERPRISE_ARCHITECTURE.md),
+[`docs/SLO_AND_RUNBOOK.md`](docs/SLO_AND_RUNBOOK.md), and
+[`docs/ENTERPRISE_READINESS_2026.md`](docs/ENTERPRISE_READINESS_2026.md).
+
 ### Free local voice and optional n8n operations
 
-The included Compose stack runs the app with a pinned CPU Speaches image and a
+The included Compose stack runs the app with a versioned CPU Speaches image and a
 self-hosted n8n instance:
 
 ```bash
-# Replace both defaults outside throwaway local development.
+# Both are required; Compose refuses to start with placeholders or empty values.
 export ASK_N8N_WEBHOOK_SECRET="$(openssl rand -hex 32)"
 export N8N_ENCRYPTION_KEY="$(openssl rand -hex 32)"
 
@@ -534,9 +569,12 @@ data_manifest.py    the catalog: every table's domain, source, and description
 data/               vendored synthetic CSVs, by domain
 engine/
   warehouse.py      builds the in-memory DuckDB + the schema catalog
+  access.py         OIDC principal + default-deny table/column policy
+  deadline.py       one monotonic end-to-end request budget
   sql_guard.py      read-only validation — the safety boundary
   query.py          capped, cursor-isolated execution
   retrieval.py      local schema index + measured keyword baseline
+  vector_index.py   checksum-pinned MiniLM ONNX + exact cosine search
   semantics.py      the warehouse profiled: roles, grains, joins, value lexicon
   planner.py        the keyless engine: question -> bindings -> SQL, or a refusal
   verify.py         structural checks on SQL, whoever wrote it
@@ -548,7 +586,7 @@ engine/
   assistant.py      NL -> SQL -> self-correction -> grounded answer + telemetry
 app/
   cli.py            terminal Q&A — compiler by default, model with a key
-  streamlit_app.py  chat UI: the answer, the SQL, the rows, and which engine ran
+  streamlit_app.py  Ask, Data catalog, and Trust center workspaces
   ui.py             the instrument panel — every readout in this repo
 evals/
   golden_questions.yaml       question -> reference SQL -> expected answer
@@ -560,6 +598,8 @@ scripts/            vendor_data.py, run_planner_eval.py, run_live_eval.py, run_r
 automations/n8n/     importable HMAC-verified operations workflow
 compose.local.yml   app + free local voice + optional workflow automation
 Dockerfile          non-root app image with a health check (CI also builds it)
+requirements.lock   fully transitive, hash-locked Python environment
+enterprise-policy.example.yaml  example role and sensitive-column policy
 ```
 
 ## Retrieving the schema, and checking it was worth it
@@ -580,9 +620,9 @@ correct answer selects from, so the labels are derived rather than authored.
 | strategy | k | questions fully covered | tables recalled | ~tokens/turn |
 |---|---|---|---|---|
 | full catalogue | — | 100.0% | 100.0% | 12,741 |
-| keyword | 14 | 89.7% | 86.7% | 1,945 |
-| vector | 14 | 94.9% | 95.6% | 3,334 |
-| **hybrid (RRF)** | **14** | **97.4%** | **97.8%** | **3,241** |
+| keyword | 10 | 100.0% | 100.0% | 2,121 |
+| vector | 10 | 94.9% | 95.6% | 2,371 |
+| **hybrid (RRF)** | **10** | **100.0%** | **100.0%** | **2,253** |
 
 Hybrid is reciprocal-rank fusion of the other two, and it exists because each
 fails where the other succeeds. *"Who is the top wholesale customer by revenue?"*
@@ -592,16 +632,14 @@ token match does not care about aboutness. RRF reads only the ranks, because
 cosine similarity and integer token overlap have no common scale and normalising
 them would invent one.
 
-**It is not 100%, and more context does not fix it.** Vector recall plateaus at
-94.9% from k=9 through k=16: those misses are ranking failures, not budget
-failures. One question fails under every strategy at every k — `top_category_revenue`
-never retrieves `supplychain_fact_orders`, because that table's description does
-not say what the question asks. The fix is a better description, not a bigger
-prompt, and until it is written the number stays 97.4%.
+Vector-only recall plateaus at 94.9% because two questions are ranking failures,
+not context-budget failures. Keyword retrieval catches both, so the shipped
+hybrid reaches 100% table and question recall on the committed 39-question set
+at k=10. This is a regression contract over that set, not a claim that arbitrary
+future questions have perfect retrieval.
 
-The embedding model is all-MiniLM-L6-v2 running locally through Chroma's ONNX
-backend, so retrieval — and its evaluation — run with no API key, like the rest
-of this repo.
+The embedding model is all-MiniLM-L6-v2 running through the app's checksum-pinned
+local ONNX implementation, so retrieval — and its evaluation — need no API key.
 
 ---
 
@@ -609,10 +647,10 @@ of this repo.
 
 The point of a portfolio project is as much the restraint as the features:
 
-- **No vector search over business data.** Chroma indexes 71 schema
+- **No vector search over business data.** The local index contains 71 schema
   descriptions and nothing else — the one place semantic matching measurably
-  beats keyword overlap. Every business value still comes from inspectable SQL
-  over DuckDB; embeddings never retrieve claims, employees, customers, or
+  complements keyword overlap. Every business value still comes from inspectable
+  SQL over DuckDB; embeddings never retrieve claims, employees, customers, or
   financial rows.
 - **No agent framework.** The whole loop is ~80 lines you can read: one call to
   write SQL, one to summarize, a bounded retry. A framework would add layers to

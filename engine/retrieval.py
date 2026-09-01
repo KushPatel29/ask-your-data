@@ -33,15 +33,15 @@ the tables a question genuinely needs are the tables its correct answer selects
 from. If the keyword baseline had won, the honest outcome would have been to
 delete this file.
 
-Backend: Chroma, with its default all-MiniLM-L6-v2 ONNX embedding function —
-384 dimensions, runs locally, no API key and no torch. That matters here: the
-demo has to work for a reviewer who has not set a key, which is the same reason
-the rest of this repo runs keyless.
+Backend: a read-only, exact cosine index over all-MiniLM-L6-v2 ONNX embeddings —
+384 dimensions, runs locally, no API key and no torch. At 71 records an exact
+matrix multiply is simpler and safer than a vector database. That matters here:
+the demo has to work for a reviewer who has not set a key, which is the same
+reason the rest of this repo runs keyless.
 """
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 import threading
@@ -96,14 +96,13 @@ from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
 DEFAULT_K = 10
 
 _COLLECTION = "schema_objects"
-_client = None
 _collection = None
 _collection_source = None
 _index_lock = threading.RLock()
 
 
 def _serialised(fn):
-    """Chroma collection creation is process-global; make that fact safe."""
+    """Model/index creation is process-global; make that fact safe."""
     @wraps(fn)
     def wrapped(*args, **kwargs):
         with _index_lock:
@@ -113,9 +112,8 @@ def _serialised(fn):
 
 def _forget_index() -> None:
     """Drop a dead handle so the next request can rebuild instead of failing forever."""
-    global _client, _collection, _collection_source
+    global _collection, _collection_source
     with _index_lock:
-        _client = None
         _collection = None
         _collection_source = None
 
@@ -191,22 +189,17 @@ def _corpus_fingerprint(corpus: list[dict]) -> str:
 # The index.
 # --------------------------------------------------------------------------
 
-def _persist_dir() -> str | None:
-    raw = (os.getenv("ASK_RETRIEVAL_PERSIST_DIR") or "").strip()
-    return raw or None
-
-
 @_serialised
 def build_index(con=None, *, rebuild: bool = False):
-    """Create (or reuse) the Chroma collection holding the schema documents.
+    """Create or reuse the exact local index holding the schema documents.
 
-    Ephemeral by default. Thirty-odd documents embed in well under a second, so
-    persisting buys nothing at this size and costs a whole class of bug - an
-    index that silently describes a warehouse the code no longer builds. Set
-    ASK_RETRIEVAL_PERSIST_DIR when the corpus is big enough for that trade to
-    flip.
+    Embeddings are memory-only by default. Set ASK_RETRIEVAL_PERSIST_DIR to cache
+    the immutable float32 matrix; the corpus fingerprint in its filename makes
+    stale schema embeddings impossible to reuse silently.
     """
-    global _client, _collection, _collection_source
+    from engine.vector_index import LocalVectorIndex
+
+    global _collection, _collection_source
 
     source = "warehouse" if con is not None else "manifest"
     if _collection is not None and _collection_source == source and not rebuild:
@@ -214,43 +207,7 @@ def build_index(con=None, *, rebuild: bool = False):
     corpus = build_corpus(con)
     fingerprint = _corpus_fingerprint(corpus)
 
-    import chromadb
-
-    persist = _persist_dir()
-    _client = chromadb.PersistentClient(path=persist) if persist else chromadb.EphemeralClient()
-
-    if rebuild:
-        try:
-            _client.delete_collection(_COLLECTION)
-        except Exception:
-            pass
-
-    try:
-        _collection = _client.get_collection(_COLLECTION)
-        metadata = _collection.metadata or {}
-        if (
-            _collection.count() == len(corpus)
-            and metadata.get("corpus_fingerprint") == fingerprint
-            and not rebuild
-        ):
-            _collection_source = source
-            return _collection
-        _client.delete_collection(_COLLECTION)
-    except Exception:
-        pass
-
-    # Cosine, not the L2 default: these documents differ a lot in length (a
-    # one-line dimension against a six-line fact table) and L2 would rank on
-    # magnitude as much as on meaning.
-    _collection = _client.create_collection(
-        _COLLECTION,
-        metadata={"hnsw:space": "cosine", "corpus_fingerprint": fingerprint},
-    )
-    _collection.add(
-        ids=[row["id"] for row in corpus],
-        documents=[row["document"] for row in corpus],
-        metadatas=[row["metadata"] for row in corpus],
-    )
+    _collection = LocalVectorIndex.build(_COLLECTION, corpus, fingerprint)
     _collection_source = source
     return _collection
 
@@ -276,7 +233,7 @@ def retrieve(question: str, *, k: int = DEFAULT_K, con=None) -> list[RetrievedTa
                 table=table,
                 domain=str((meta or {}).get("domain") or ""),
                 description=str((meta or {}).get("description") or ""),
-                # Chroma returns cosine DISTANCE; similarity is 1 - d.
+                # The local index returns cosine distance; similarity is 1 - d.
                 score=round(1.0 - distance, 4),
             )
         )
@@ -419,6 +376,8 @@ def schema_catalog_for(
     # shipped behaviour.
     strategy: str = "hybrid",
     include_tables: tuple[str, ...] | list[str] = (),
+    allowed_tables: frozenset[str] | set[str] | None = None,
+    denied_columns: dict[str, frozenset[str]] | None = None,
 ) -> str:
     """A `schema_catalog()`-shaped block containing only the retrieved tables.
 
@@ -435,17 +394,19 @@ def schema_catalog_for(
     except Exception:
         # Retrieval is an optimisation over pasting the whole catalogue, so a
         # failure here must cost tokens, not answers. Two real ways this fires
-        # on a hosted free tier: chromadb not installing at all, and the 79 MB
-        # all-MiniLM download failing or timing out on first use. Either way the
+        # on a hosted free tier: ONNX Runtime not installing, and the 79 MB
+        # MiniLM download failing or timing out on first use. Either way the
         # assistant should still work, just with the bigger prompt it used
         # before this module existed.
         # A collection can become invalid after startup (persistent-directory
-        # replacement, Chroma failure, deleted collection). Keeping that dead
+        # replacement, model failure, invalidated index). Keeping that dead
         # module-global handle made every later request pay the full-catalogue
         # fallback until the process restarted. Fail this turn open, then allow
         # the next turn to rebuild.
         _forget_index()
-        return schema_catalog(con)
+        if allowed_tables is None and not denied_columns:
+            return schema_catalog(con)
+        hits = []
 
     # A follow-up such as "and by region?" has almost no standalone retrieval
     # signal. The assistant passes tables used by prior-turn SQL here, making
@@ -455,10 +416,14 @@ def schema_catalog_for(
         table_name(domain, table): {"domain": domain, "description": description}
         for domain, table, _source, description in MANIFEST
     }
+    if allowed_tables is not None:
+        hits = [hit for hit in hits if hit.table in allowed_tables]
     seen = {hit.table for hit in hits}
     for name in include_tables:
         row = known.get(name)
-        if row is None or name in seen:
+        if row is None or name in seen or (
+            allowed_tables is not None and name not in allowed_tables
+        ):
             continue
         hits.append(
             RetrievedTable(
@@ -470,7 +435,14 @@ def schema_catalog_for(
         )
         seen.add(name)
     if not hits:
-        return schema_catalog(con)
+        for name, row in known.items():
+            if allowed_tables is None or name in allowed_tables:
+                hits.append(RetrievedTable(
+                    table=name,
+                    domain=str(row["domain"]),
+                    description=str(row["description"]),
+                    score=0.0,
+                ))
 
     by_domain: dict[str, list[RetrievedTable]] = {}
     for hit in hits:
@@ -481,7 +453,11 @@ def schema_catalog_for(
         lines.append(f"\n### Domain: {domain} — {DOMAINS.get(domain, '')}")
         for hit in rows:
             try:
-                cols = ", ".join(f"{c} {t}" for c, t in table_columns(con, hit.table))
+                hidden = (denied_columns or {}).get(hit.table, frozenset())
+                cols = ", ".join(
+                    f"{c} {t}" for c, t in table_columns(con, hit.table)
+                    if str(c).lower() not in hidden
+                )
             except Exception:
                 cols = ""
             lines.append(f"- {hit.table}: {hit.description}")

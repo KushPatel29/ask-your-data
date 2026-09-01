@@ -46,3 +46,12 @@ def test_signature_is_deterministic_and_secret_bound():
 
 def test_unconfigured_automation_is_an_immediate_no_op():
     assert automation.publish(_record(), environ={}) is False
+
+
+def test_weak_webhook_secret_fails_before_starting_delivery():
+    configured = {
+        automation.ENV_WEBHOOK_URL: "http://n8n.local/webhook",
+        automation.ENV_WEBHOOK_SECRET: "too-short",
+    }
+    assert automation.publish(_record(), environ=configured) is False
+    assert "at least 32" in automation.status()["last_error"]

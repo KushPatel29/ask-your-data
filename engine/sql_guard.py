@@ -45,7 +45,7 @@ FORBIDDEN_FUNCTIONS = [
     "read_text", "read_blob", "read_ndjson", "read_ndjson_auto", "glob",
     "sniff_csv", "parquet_scan", "parquet_metadata", "parquet_schema",
     "duckdb_settings", "duckdb_extensions", "iceberg_scan", "delta_scan",
-    "postgres_scan", "sqlite_scan", "mysql_scan",
+    "postgres_scan", "sqlite_scan", "mysql_scan", "query", "query_table",
 ]
 
 

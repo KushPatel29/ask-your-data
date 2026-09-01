@@ -380,7 +380,7 @@ def test_the_reference_sql_is_shown_exactly(panels):
 
 
 def test_an_empty_bank_draws_nothing(ui):
-    """Chroma being unavailable must cost a panel, never an empty frame."""
+    """Local embedding being unavailable must cost a panel, never an empty frame."""
     assert render(ui, lambda: ui.exemplars([], corpus=39, in_prompt=True)) == ""
 
 
@@ -415,7 +415,7 @@ def test_exemplar_selection_recovers_from_a_dead_collection():
     from engine import exemplars as ex
 
     ex.build_index()
-    ex._client.delete_collection(ex._COLLECTION)
+    ex._collection.invalidate()
     picks = ex.select_exemplars("What is the overall claim denial rate?")
     assert picks
     assert ex._collection is not None

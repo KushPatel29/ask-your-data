@@ -10,7 +10,7 @@ services:
       ASK_TTS_MODEL: speaches-ai/Kokoro-82M-v1.0-ONNX
       ASK_TTS_VOICE: af_heart
       ASK_N8N_WEBHOOK_URL: http://n8n:5678/webhook/ask-your-data-events
-      ASK_N8N_WEBHOOK_SECRET: ${ASK_N8N_WEBHOOK_SECRET:-change-this-local-secret}
+      ASK_N8N_WEBHOOK_SECRET: ${ASK_N8N_WEBHOOK_SECRET:?Generate a 32+ character secret}
     depends_on:
       speaches:
         condition: service_healthy
@@ -44,8 +44,8 @@ services:
       N8N_HOST: localhost
       N8N_PORT: "5678"
       N8N_PROTOCOL: http
-      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-change-this-local-encryption-key}
-      ASK_N8N_WEBHOOK_SECRET: ${ASK_N8N_WEBHOOK_SECRET:-change-this-local-secret}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?Generate a persistent encryption key}
+      ASK_N8N_WEBHOOK_SECRET: ${ASK_N8N_WEBHOOK_SECRET:?Generate a 32+ character secret}
       NODE_FUNCTION_ALLOW_BUILTIN: crypto
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       GENERIC_TIMEZONE: ${TZ:-Asia/Kolkata}

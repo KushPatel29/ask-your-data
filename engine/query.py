@@ -75,6 +75,8 @@ import threading
 import time
 from dataclasses import dataclass, field
 
+from engine.access import AccessScope, authorize_sql
+from engine.deadline import DeadlineExpired, RequestDeadline
 from engine.sql_guard import validate_sql
 
 MAX_ROWS = 200
@@ -102,6 +104,8 @@ class QueryResult:
     # wants to say "too expensive" rather than "broken" can now tell. They are
     # different facts about a turn and they lead to different next actions.
     timed_out: bool = False
+    policy_denied: bool = False
+    timeout_stage: str = ""
     elapsed_ms: float = 0.0
 
     @property
@@ -177,10 +181,29 @@ def _short(error: str) -> str:
 
 
 def run_query(con, sql: str, max_rows: int = MAX_ROWS,
-              timeout_s: float = STATEMENT_TIMEOUT_S) -> QueryResult:
+              timeout_s: float = STATEMENT_TIMEOUT_S,
+              access: AccessScope | None = None,
+              deadline: RequestDeadline | None = None) -> QueryResult:
     ok, reason = validate_sql(sql)
     if not ok:
         return QueryResult(sql=sql, error=f"blocked by SQL guard: {reason}")
+    decision = authorize_sql(con, sql, access)
+    if not decision.allowed:
+        return QueryResult(
+            sql=sql,
+            policy_denied=True,
+            error=f"blocked by data policy: {decision.reason}",
+        )
+    if deadline is not None:
+        try:
+            timeout_s = min(timeout_s, deadline.require("query execution"))
+        except DeadlineExpired as exc:
+            return QueryResult(
+                sql=sql,
+                timed_out=True,
+                timeout_stage=exc.stage,
+                error=str(exc),
+            )
     # Each query runs on its own cursor (a duplicate connection to the same
     # in-memory database), so concurrent callers — e.g. two Streamlit sessions
     # sharing the cached warehouse — never interleave on one connection. The
@@ -202,6 +225,8 @@ def run_query(con, sql: str, max_rows: int = MAX_ROWS,
         if state["fired"]:
             return QueryResult(
                 sql=sql, timed_out=True, elapsed_ms=elapsed,
+                timeout_stage=("request" if deadline is not None
+                               and deadline.remaining_s <= 0 else "query execution"),
                 error=(f"query exceeded the {timeout_s:g}s statement timeout and was "
                        "cancelled. Narrow it — add a filter, a GROUP BY, or a LIMIT."))
         return QueryResult(sql=sql, error=_short(e), elapsed_ms=elapsed)

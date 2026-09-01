@@ -1,6 +1,6 @@
 # Enterprise readiness
 
-> **New review:** The current 31 August 2026 assessment, including free local
+> **New review:** The current 1 September 2026 assessment, including free local
 > voice, n8n operations, newly fixed defects, and the remaining enterprise
 > release gates, is in [`ENTERPRISE_READINESS_2026.md`](ENTERPRISE_READINESS_2026.md).
 
@@ -12,9 +12,12 @@
 > bounded audit sink, statements have time/memory/row ceilings, provider spend
 > has a documented per-session courtesy bound, user-keyed Streamlit caches have
 > `max_entries=256`, DuckDB error feedback is clipped, and certified metric
-> definitions carry owners plus live expected-value tests. The remaining scope
-> boundaries are still real: this is a single-tenant portfolio appliance over
-> synthetic data, not an authenticated multi-tenant analytics service.
+> definitions carry owners plus live expected-value tests. Optional verified
+> OIDC identity and a default-deny application policy now exist, and the Chroma
+> dependency described in the historical findings below has been replaced by a
+> read-only exact cosine index. The remaining scope boundaries are still real:
+> this is a synthetic-data appliance until a deployment proves its IdP, database
+> tenant isolation, durable audit storage, HA, and disaster recovery.
 
 A due-diligence pass over Ask-Your-Data, written from the seat of an enterprise
 architect who has been asked whether this could go into a regulated business.

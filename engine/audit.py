@@ -18,12 +18,12 @@ So this is not "logging". It is the artifact a reviewer asks for when they ask
 containing the statement that produced it.
 
 WHAT IT IS NOT
-It is not authentication, and this module must not pretend otherwise. There is
-no login on this app, so `actor` is a per-browser session identifier and a role
-label, not an identity. A record that says `actor: session-8f2a1c` is honest;
-one that says `actor: alice@corp` would be a lie the app has no way to check.
-`describe_limits()` says so in the interface, because an audit trail whose
-weaknesses are undocumented is worse than none — someone will rely on it.
+It is not authentication, and this module must not pretend otherwise. In public
+demo mode `actor` is a per-browser session identifier, not an identity. In OIDC
+mode the caller supplies the verified subject and mapped roles from the access
+scope. `describe_limits()` distinguishes those modes in the interface, because
+an audit trail whose weaknesses are undocumented is worse than none — someone
+will rely on it.
 
 DESIGN CHOICES WORTH DEFENDING
 
@@ -72,6 +72,8 @@ MAX_QUESTION_CHARS = 500
 MAX_SQL_CHARS = 4000
 MAX_REASON_CHARS = 600
 MAX_CORRECTION_CHARS = 200
+MAX_ACTOR_CHARS = 256
+MAX_ROLE_CHARS = 256
 
 # The in-memory sink. Bounded, because the process is long-lived and the app is
 # a public URL. 500 turns is far more than one session produces and small
@@ -133,6 +135,7 @@ class AuditRecord:
     tokens_out: int = 0
     elapsed_ms: float = 0.0
     timings: dict = field(default_factory=dict)
+    timeout_stage: str = ""
 
     def as_json(self) -> str:
         return json.dumps(asdict(self), separators=(",", ":"), default=str)
@@ -172,14 +175,15 @@ def record(
     tokens_out: int = 0,
     elapsed_ms: float = 0.0,
     timings: dict | None = None,
+    timeout_stage: str = "",
 ) -> AuditRecord:
     """Write one record. Never raises — an audit sink that can break a turn is
     a worse feature than no audit sink, and the caller is in the middle of
     answering somebody's question."""
     rec = AuditRecord(
         ts=_now(),
-        actor=_clip(actor, 64),
-        role=_clip(role, 32),
+        actor=_clip(actor, MAX_ACTOR_CHARS),
+        role=_clip(role, MAX_ROLE_CHARS),
         engine=engine,
         question=_clip(question, MAX_QUESTION_CHARS),
         sql=_clip(sql, MAX_SQL_CHARS),
@@ -200,6 +204,7 @@ def record(
         tokens_out=int(tokens_out or 0),
         elapsed_ms=round(float(elapsed_ms or 0.0), 2),
         timings={k: round(float(v), 2) for k, v in (timings or {}).items()},
+        timeout_stage=_clip(timeout_stage, 64),
     )
     global _sink_error
     with _lock:
@@ -261,7 +266,8 @@ def summarise(
     """
     rows = list(records if records is not None else recent())
     if actor is not None:
-        rows = [row for row in rows if row.actor == actor]
+        actor_key = _clip(actor, MAX_ACTOR_CHARS)
+        rows = [row for row in rows if row.actor == actor_key]
     total = len(rows)
     answered = [r for r in rows if r.outcome == "answered"]
     refused = [r for r in rows if r.outcome == "refused"]
@@ -308,15 +314,20 @@ def summarise(
     }
 
 
-def describe_limits() -> list[str]:
+def describe_limits(*, authenticated: bool = False) -> list[str]:
     """What this trail does NOT prove. Rendered in the app beside the panel.
 
     An audit trail is a control, and an undocumented control is how a reviewer
     ends up relying on something that was never load-bearing.
     """
+    identity_limit = (
+        "actor is the verified OIDC subject for this process; the reference "
+        "JSONL/ring is still not a durable identity ledger"
+        if authenticated else
+        "actor is a per-browser demo session id, not an authenticated identity"
+    )
     return [
-        "actor is a per-browser session id, not an authenticated identity — "
-        "this app has no login",
+        identity_limit,
         "records are appended by the process that answers, so a crash mid-turn "
         "loses that turn",
         "row values are never written, only counts — the trail is not a second "

@@ -152,16 +152,16 @@ def test_the_golden_set_barely_exercises_the_structural_checks(con):
 # (label, wrong, right); the assistant answers the wrong one with the same
 # confidence as the right one.
 SILENT_WRONG = [
-    ("denial_rate_denominator",
+    ("What is the claim denial rate?",
      "SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE status='Denied') / COUNT(*), 1) AS denial_rate "
      "FROM healthcare_fact_claims",
      "SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE status='Denied') / "
      "COUNT(*) FILTER (WHERE status IN ('Paid','Denied')), 1) AS denial_rate "
      "FROM healthcare_fact_claims"),
-    ("dropped_is_active_filter",
+    ("What is our current employee headcount?",
      "SELECT COUNT(*) AS n FROM hr_fact_employees",
      "SELECT COUNT(*) AS n FROM hr_fact_employees WHERE is_active = 1"),
-    ("reversed_sort_reports_the_bottom",
+    ("Who is the top payer by paid amount?",
      "SELECT payer_id, SUM(paid_amount) AS s FROM healthcare_fact_claims "
      "GROUP BY 1 ORDER BY s ASC LIMIT 1",
      "SELECT payer_id, SUM(paid_amount) AS s FROM healthcare_fact_claims "
@@ -169,23 +169,16 @@ SILENT_WRONG = [
 ]
 
 
-@pytest.mark.parametrize("label,wrong,right", SILENT_WRONG, ids=[c[0] for c in SILENT_WRONG])
-def test_silent_wrong_space_is_documented_not_covered(con, label, wrong, right):
-    """These return a different number from the correct query, and zero findings.
-
-    This test PASSES today: it pins the size of the gap rather than pretending
-    it is closed. The verifier catches structural nonsense (cross-domain joins,
-    cartesians, fan-out across tables); it does not and cannot catch a wrong
-    filter, a wrong denominator, a reversed sort, or a self-join fan-out.
-    """
+@pytest.mark.parametrize("question,wrong,right", SILENT_WRONG, ids=[c[0] for c in SILENT_WRONG])
+def test_known_silent_wrong_space_is_now_blocked(con, question, wrong, right):
+    """Known, explicit business intent is checked before a wrong query executes."""
     verifier = Verifier(con)
     wrong_result, right_result = run_query(con, wrong), run_query(con, right)
     assert wrong_result.ok and right_result.ok
     assert wrong_result.rows[0][-1] != right_result.rows[0][-1], "not actually a wrong answer"
-    findings = verifier.check_sql(wrong) + verifier.check_result(wrong, wrong_result, label)
-    assert findings == [], (
-        f"{label} is now caught - move it out of the silent-wrong list: "
-        f"{[str(f) for f in findings]}")
+    findings = verifier.check_sql(wrong, question)
+    assert any(f.blocking for f in findings), [str(f) for f in findings]
+    assert verifier.check_sql(right, question) == []
 
 
 def test_self_join_fanout_is_blocked(con):
@@ -221,13 +214,12 @@ def test_production_retrieval_uses_the_strategy_that_was_measured(con):
 
 
 def test_retrieval_failure_falls_back_once_then_rebuilds(con):
-    """A dead Chroma handle may cost one full-catalogue turn, not the process."""
+    """A dead local index may cost one full-catalogue turn, not the process."""
     from engine import retrieval
 
-    saved = (retrieval._client, retrieval._collection, retrieval._collection_source)
     try:
         narrow = retrieval.schema_catalog_for("What is the overall claim denial rate?", con)
-        retrieval._client.delete_collection(retrieval._COLLECTION)
+        retrieval._collection.invalidate()
         after = [retrieval.schema_catalog_for("What is the overall claim denial rate?", con)
                  for _ in range(3)]
         full = schema_catalog(con)
@@ -239,7 +231,7 @@ def test_retrieval_failure_falls_back_once_then_rebuilds(con):
         assert retrieval._collection is not None, (
             "a healthy collection should be restored after the fallback")
     finally:
-        retrieval._client, retrieval._collection, retrieval._collection_source = saved
+        retrieval._forget_index()
         retrieval.build_index(con, rebuild=True)
 
 

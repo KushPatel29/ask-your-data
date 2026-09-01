@@ -19,6 +19,7 @@ import urllib.request
 ENV_WEBHOOK_URL = "ASK_N8N_WEBHOOK_URL"
 ENV_WEBHOOK_SECRET = "ASK_N8N_WEBHOOK_SECRET"
 QUEUE_SIZE = 128
+MIN_WEBHOOK_SECRET_CHARS = 32
 
 _queue: queue.Queue[dict] = queue.Queue(maxsize=QUEUE_SIZE)
 _lock = threading.Lock()
@@ -58,6 +59,7 @@ def operational_event(record) -> dict:
         "guard_ok": bool(_value(record, "guard_ok", True)),
         "tokens_in": int(_value(record, "tokens_in", 0) or 0),
         "tokens_out": int(_value(record, "tokens_out", 0) or 0),
+        "timeout_stage": str(_value(record, "timeout_stage", "")),
         # Integer milliseconds keep the signed JSON canonical across Python and
         # JavaScript (`125.0` is encoded as 125.0 by Python but 125 by JS).
         "elapsed_ms": int(round(float(_value(record, "elapsed_ms", 0.0) or 0.0))),
@@ -120,10 +122,13 @@ def publish(record, environ: dict[str, str] | None = None) -> bool:
     if not url:
         return False
     secret = str(env.get(ENV_WEBHOOK_SECRET, "") or "")
-    if not secret:
+    if len(secret) < MIN_WEBHOOK_SECRET_CHARS:
         with _lock:
             _status["failed"] += 1
-            _status["last_error"] = f"{ENV_WEBHOOK_SECRET} is not configured"
+            _status["last_error"] = (
+                f"{ENV_WEBHOOK_SECRET} must contain at least "
+                f"{MIN_WEBHOOK_SECRET_CHARS} characters"
+            )
         return False
     _ensure_worker()
     try:

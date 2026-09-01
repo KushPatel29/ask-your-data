@@ -1,4 +1,4 @@
-# Enterprise readiness review — 31 August 2026
+# Enterprise readiness review — 1 September 2026
 
 ## Executive verdict
 
@@ -11,9 +11,9 @@ The central strengths are real: all answer values originate in DuckDB, SQL is
 shown, model output is treated as untrusted, filesystem/network table readers
 are denied, execution is bounded, a deterministic keyless compiler exists, and
 the repository carries broad offline contracts. The remaining blockers are not
-UI polish. They are identity, tenant/data policy enforcement, semantic
-correctness coverage, durable service architecture, supply-chain controls, and
-production operations.
+UI polish. They are database-enforced tenant isolation, deployment-specific IdP
+and live-model validation, durable service architecture, and production
+operations.
 
 ## Review evidence
 
@@ -26,7 +26,7 @@ Anthropic key was available.
 
 Measured before this remediation:
 
-- 790 tests passed and one live-model test skipped.
+- 838 tests passed and one live-model test skipped.
 - The ordinary planner contract answered 46 correctly, refused 12 required
   cases, and produced no wrong result among answered cases.
 - On the model-oriented golden contract it answered five of six attempted cases
@@ -49,9 +49,10 @@ hand.
 | Local model provider | Answer summarization posted to `/chat/completions` while SQL generation used `/v1/chat/completions` | Both now use the versioned OpenAI-compatible route, with an offline route contract test |
 | Model tool contract | `answer_with_sql` with missing `sql` crashed with `KeyError` | Invalid payloads enter the bounded correction loop and end in an honest refusal |
 | Provider tool parsing | A non-object Anthropic tool payload crashed during `dict(...)` conversion | Provider normalizes malformed input to an empty payload for safe validation |
-| Retrieval reliability | A deleted/dead Chroma collection forced full-catalog prompts until process restart | Dead handles are cleared, the failing turn falls back safely, and the next turn rebuilds under a lock |
-| Concurrent retrieval | Process-global Chroma construction was not serialized | Index lifecycle is protected by a re-entrant process lock |
-| Exemplar reliability | A stale/deleted Chroma exemplar handle intermittently returned no neighbor | Exemplar index lifecycle is serialized and query failure rebuilds once before degrading |
+| Retrieval dependency | The former Chroma 1.5.9 dependency had four known unpatched advisories and supplied a multi-tenant data-store surface the app did not need | Chroma was removed; 71 schema records and 39 exemplars now use a read-only exact cosine matrix over the same local MiniLM embeddings |
+| Retrieval reliability | A dead index handle forced full-catalog prompts until process restart | Dead handles are cleared, the failing turn falls back safely, and the next turn rebuilds under a lock |
+| Concurrent retrieval | Process-global model/index construction was not serialized | Index lifecycle is protected by a re-entrant process lock |
+| Exemplar reliability | A stale exemplar handle intermittently returned no neighbor | Exemplar index lifecycle is serialized and query failure rebuilds once before degrading |
 | SQL denial of service | Validation/parser work accepted arbitrarily large pasted SQL before the execution watchdog | SQL is bounded at 20,000 characters at the guard boundary and in the editor |
 | Question bounds | Typed questions had no server-side length boundary | Both UI and assistant enforce a 400-character maximum |
 | Audit latency | Model turns recorded zero latency because only absent stage timings were summed | Audit uses the measured model round-trip when present |
@@ -66,6 +67,12 @@ hand.
 | Dev container | Python 3.11 disagreed with the 3.12 project and disabled CORS/XSRF | Aligned to Python 3.12 and restored Streamlit protections |
 | Voice privacy/cost | Voice required a paid key and the disclosure contradicted the network behavior | Free local faster-whisper/Kokoro path added; cloud fallback disclosure now names what is sent |
 | Voice memory | Generated answer audio accumulated for the session | Cache is bounded to the three most recent generated clips |
+| Identity seam | Browser sessions were the only actor concept | Optional OIDC mode verifies RS256/JWKS, issuer, audience, expiry, issued-at, and subject; demo actors remain explicitly unauthenticated |
+| Application data policy | Every accepted SELECT could read every loaded relation/column | Default-deny role grants, sensitive-column rules, prompt/schema masking, and one executor policy point now cover all UI query paths |
+| Known semantic gaps | Wrong denial denominator, dropped active filter, and reversed ranking all passed | Question-aware blocking contracts now reject all three reproduced cases before execution |
+| Request budget | Query execution had a clock but upstream stages did not share it | One monotonic budget is propagated to provider calls and the DuckDB watchdog, with the timeout stage retained |
+| Supply chain | Broad ranges had no reproducible install or automated security evidence | Transitive hash lock, pip audit, CodeQL, Trivy repository/image scans, Dependabot, and SPDX SBOM artifact added |
+| Product navigation | Catalog, settings, operations, and accuracy evidence competed in one long page/sidebar | Dedicated Ask, Data catalog, and Trust center workspaces now separate primary work from control evidence; settings are collapsed and the governed lifecycle is visible before the first question |
 
 ## New optional capabilities
 
@@ -99,23 +106,23 @@ source; legal review is required before embedding it in a commercial offering.
 
 ### P0 — required before sensitive or multi-tenant production use
 
-1. **No authenticated identity or authorization boundary.** The `actor` is a
-   random browser-session label. There is no SSO/OIDC, RBAC/ABAC, service
-   account, tenant identifier, policy decision point, or administrator role.
+1. **Production identity integration is not proven.** A configurable OIDC/JWT
+   verifier and default-deny role policy now exist, while the public demo actor
+   remains honestly unauthenticated. Release still needs integration tests
+   against the chosen IdP, login/logout/session UX, service identities, tenant
+   claim contracts, access-review operations, and emergency access controls.
 
-2. **No data-plane enforcement.** Every accepted SELECT can read every loaded
-   table and column. A real deployment needs tenant-scoped database principals,
-   row-level security or policy views, column masking, purpose-based access, and
-   denial tests executed against the same credentials as the query.
+2. **Database data-plane enforcement remains missing.** Application policy now
+   denies unauthorized relations and sensitive columns and filters schema
+   metadata, but a real deployment still needs tenant-scoped database
+   principals, row-level security or policy views, column masking,
+   purpose-based access, and denial tests using the query credentials.
 
-3. **Known semantic wrong-answer space remains.** Deterministic checks now catch
-   structural fan-out, including self joins, but cannot generally infer a
-   missing business filter, a wrong metric denominator, or reversed business
-   intent from valid SQL. Reproductions remain committed for denial-rate
-   denominator, dropped `is_active`, and reversed top/bottom sort. Enterprise
-   release needs governed metric contracts and question-to-plan conformance for
-   every decision-critical KPI, not a promise that arbitrary SQL can be proven
-   semantically correct.
+3. **General semantic wrong-answer space remains.** Deterministic contracts now
+   catch the three committed reproductions—denial-rate denominator, dropped
+   `is_active`, and reversed top/bottom sort—plus structural fan-out. They do
+   not prove arbitrary business intent. Enterprise release needs governed
+   metric/plan contracts for every decision-critical KPI.
 
 4. **No production data governance.** The current warehouse is synthetic.
    There is no sensitivity catalog, owner/steward workflow across all columns,
@@ -157,19 +164,21 @@ source; legal review is required before embedding it in a commercial offering.
    needs explicit trust-zone tagging, content isolation, output policy checks,
    and adversarial tests using realistic untrusted warehouse values.
 
-6. **Query planning outside the execution watchdog.** SQL length is now bounded,
-   but verifier parsing, uniqueness probes, `EXPLAIN`, and `DESCRIBE` are not all
-   governed by the same request deadline. One deadline/cancellation context
-   should cover retrieval through rendering.
+6. **Cancellation is not yet distributed.** One monotonic deadline now covers
+   retrieval checks, provider HTTP timeouts, verification checks, and query
+   cancellation in-process. A production gateway, remote warehouse, worker
+   queue, and telemetry backend must propagate the same absolute deadline and
+   prove cancellation under load.
 
-7. **Supply-chain assurance is incomplete.** Runtime requirements use broad
-   ranges and there is no committed lock, hash verification, SBOM, provenance
-   attestation, dependency vulnerability gate, secret scan, SAST, container
-   scan, or license inventory. The project environment was internally
-   consistent during review; reproducibility is the gap.
+7. **Supply-chain assurance is incomplete.** A transitive hash lock, hash-only
+   CI/container install, dependency audit, CodeQL, repository secret/config
+   scan, image scan, Dependabot, and SPDX SBOM now exist. Remaining work is
+   immutable-SHA pinning for every action/base image, signed image/provenance
+   attestation, license inventory/policy, and review of any vulnerability
+   exceptions.
 
 8. **n8n/Speaches production hardening is not supplied.** The Compose file is a
-   local profile. Default placeholder secrets must be replaced; n8n needs real
+   local profile and now refuses to start without explicit strong local secrets; n8n needs real
    authentication, TLS ingress, backup, database, least-privilege credentials,
    egress policy, upgrade testing, and a reviewed Sustainable Use License use
    case. Speech model artifacts need version/digest pinning and model-license

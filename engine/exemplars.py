@@ -35,9 +35,9 @@ it is enforced twice, on every call:
 `tests/test_exemplars.py` asserts that no golden question can retrieve itself.
 
 FAILURE IS SILENT AND CHEAP
-A dead collection is rebuilt once. If Chroma is genuinely unavailable (the
-same failure modes retrieval.py documents — no chromadb, or the MiniLM download
-timing out on a free tier), this returns no exemplars. That is exactly the
+A dead index is rebuilt once. If local inference is genuinely unavailable (the
+same failure modes retrieval.py documents — no ONNX Runtime, or the MiniLM
+download timing out on a free tier), this returns no exemplars. That is exactly the
 prompt the assistant sent before this module existed. An optimisation may cost
 tokens when it fails; it must not cost answers.
 """
@@ -77,7 +77,6 @@ DEFAULT_K = 3
 RRF_K = 60
 
 _COLLECTION = "golden_exemplars"
-_client = None
 _collection = None
 _cases: list[dict] | None = None
 _index_lock = threading.RLock()
@@ -173,14 +172,16 @@ def _fingerprint(cases: list[dict]) -> str:
 
 @_serialised
 def build_index(*, rebuild: bool = False):
-    """Create (or reuse) the Chroma collection holding the golden questions.
+    """Create or reuse the exact local index holding the golden questions.
 
     Ephemeral and separate from the schema collection on purpose: a question
     document and a table document are different corpora, and mixing them into
     one collection would make every `retrieve()` call rank exemplars against
     tables on a single similarity scale that means nothing.
     """
-    global _client, _collection
+    from engine.vector_index import LocalVectorIndex
+
+    global _collection
 
     if _collection is not None and not rebuild:
         return _collection
@@ -188,40 +189,19 @@ def build_index(*, rebuild: bool = False):
     cases = load_cases()
     fingerprint = _fingerprint(cases)
 
-    import chromadb
-
-    if _client is None:
-        _client = chromadb.EphemeralClient()
-
-    if rebuild:
-        try:
-            _client.delete_collection(_COLLECTION)
-        except Exception:
-            pass
-
-    try:
-        _collection = _client.get_collection(_COLLECTION)
-        metadata = _collection.metadata or {}
-        if (
-            _collection.count() == len(cases)
-            and metadata.get("corpus_fingerprint") == fingerprint
-            and not rebuild
-        ):
-            return _collection
-        _client.delete_collection(_COLLECTION)
-    except Exception:
-        pass
-
-    _collection = _client.create_collection(
-        _COLLECTION,
-        metadata={"hnsw:space": "cosine", "corpus_fingerprint": fingerprint},
-    )
-    _collection.add(
-        ids=[c["id"] for c in cases],
-        documents=[_document(c) for c in cases],
-        metadatas=[{"domain": c["domain"], "question": c["question"], "sql": c["sql"]}
-                   for c in cases],
-    )
+    rows = [
+        {
+            "id": case["id"],
+            "document": _document(case),
+            "metadata": {
+                "domain": case["domain"],
+                "question": case["question"],
+                "sql": case["sql"],
+            },
+        }
+        for case in cases
+    ]
+    _collection = LocalVectorIndex.build(_COLLECTION, rows, fingerprint)
     return _collection
 
 
@@ -300,7 +280,7 @@ def select_exemplars(
         result = collection.query(**query_args, n_results=max(1, pool))
     except Exception:
         # A collection can be deleted or invalidated after startup. Retry once
-        # with a fresh handle; only a genuine Chroma/model failure should
+        # with a fresh handle; only a genuine local-model failure should
         # degrade to the pre-exemplar prompt.
         _forget_index()
         try:
@@ -372,7 +352,7 @@ def exemplar_block(
 
     Returning "" rather than a header with no examples matters: an empty
     section reads to the model as "there are no similar examples, so this
-    question is unusual", which is not what a Chroma import failure means.
+    question is unusual", which is not what a local-model failure means.
     """
     picks = select_exemplars(question, k=k, exclude_ids=exclude_ids,
                              retrieved_tables=retrieved_tables,

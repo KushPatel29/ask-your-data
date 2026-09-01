@@ -1,0 +1,28 @@
+version: "2026-09-01"
+
+# Role grants are a union. Unknown roles grant nothing. A production database
+# must enforce the same boundary with RLS/policy views and least-privilege
+# credentials; this file is the application's pre-execution policy point.
+roles:
+  enterprise_analyst:
+    domains: [healthcare, finance, supplychain, retail, marketing, wholesale, dbt]
+    tables: []
+  people_analyst:
+    domains: [hr]
+    tables: []
+  hr_compensation:
+    domains: [hr]
+    tables: []
+  platform_admin:
+    domains: "*"
+    tables: []
+
+sensitive_columns:
+  hr_fact_employees:
+    base_salary:
+      allow_roles: [hr_compensation, platform_admin]
+    employee_id:
+      allow_roles: [people_analyst, hr_compensation, platform_admin]
+  retail_dim_customer:
+    customer_id:
+      allow_roles: [platform_admin]

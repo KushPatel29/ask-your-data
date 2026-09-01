@@ -83,7 +83,9 @@ sys.path.insert(0, str(ROOT))
 from app import ui  # noqa: E402
 from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
 from engine import (  # noqa: E402
+    access,
     audit,
+    deadline,
     demo_mode,
     exemplars,
     planner,
@@ -101,7 +103,7 @@ from engine.sql_guard import (  # noqa: E402
     validate_sql,
 )
 from engine.verify import Verifier  # noqa: E402
-from engine.warehouse import build_warehouse, schema_catalog, table_names  # noqa: E402
+from engine.warehouse import build_warehouse, table_names  # noqa: E402
 
 st.set_page_config(page_title="Ask Your Data", page_icon="💬", layout="wide")
 
@@ -119,10 +121,10 @@ def _session_key() -> str:
     return str(st.session_state.get("byok", "") or "").strip()
 
 
-def _actor() -> str:
+def _session_actor() -> str:
     """A stable, meaningless-by-design identifier for this browser session.
 
-    Not an identity. This app has no login, so the honest thing an audit record
+    Not an identity. Demo mode has no login, so the honest thing an audit record
     can say is "the same visitor asked these four questions", and nothing more.
     A field called `actor` holding an email address the app never verified
     would be a lie the trail has no way to check, and a trail with one lie in
@@ -131,6 +133,18 @@ def _actor() -> str:
     if "actor" not in st.session_state:
         st.session_state.actor = "session-" + uuid.uuid4().hex[:10]
     return str(st.session_state.actor)
+
+
+def _principal() -> access.Principal:
+    """Return a demo principal or a cryptographically verified OIDC identity."""
+    if access.auth_mode() == access.AUTH_DISABLED:
+        return access.Principal.demo(_session_actor())
+    return access.authenticate_headers(st.context.headers)
+
+
+def _actor() -> str:
+    """The verified subject in OIDC mode; an explicit session label in demo mode."""
+    return PRINCIPAL.subject
 
 
 # The spend ceiling. A demo whose README tells the reader to deploy it with
@@ -169,10 +183,10 @@ def get_connection():
 @st.cache_resource(show_spinner="Preparing the schema index "
                                 "(first run downloads the embedding model)…")
 def warm_retrieval(_con):
-    """Build the Chroma index once, at startup, with the wait made visible.
+    """Build the local exact index once, at startup, with the wait made visible.
 
-    Chroma fetches all-MiniLM-L6-v2 the first time it embeds anything - 79 MB,
-    into ~/.cache/chroma. Left lazy, that download lands in the middle of
+    The embedder fetches all-MiniLM-L6-v2 the first time it runs - 79 MB, into
+    the app's model cache. Left lazy, that download lands in the middle of
     someone's first question and looks like a hang; on Render it landed during
     the health check and got the deploy cancelled. Doing it here moves the cost
     to page load, where a spinner can explain it, and @st.cache_resource means
@@ -185,7 +199,7 @@ def warm_retrieval(_con):
         retrieval.build_index(_con)
     except Exception:
         return False
-    # The exemplar bank embeds against its own Chroma collection, and the FIRST
+    # The exemplar bank embeds against its own exact index, and the FIRST
     # embedding in a process pays for the ONNX session as well as the forward
     # pass. Measured by driving this script headlessly: leaving it lazy put
     # 2,916 ms inside the first question's render — nine times the 319 ms median
@@ -250,35 +264,30 @@ def get_metric_registry():
     return metric_layer.load_metrics()
 
 
-@st.cache_resource
-def get_assistant(_con):
-    # Imported and constructed only in live mode, so demo mode never depends on
-    # the anthropic client being usable.
-    from engine.assistant import Assistant
-
-    return Assistant(_con)
-
-
 def _live_assistant(_con):
     """The assistant for THIS session, honouring a pasted key.
 
     Not cached on the connection alone: two visitors can be in the same
     container with different keys, and a @st.cache_resource assistant would hand
-    the second one the first one's client. When a session key is present the
-    Assistant is built per session and kept in session_state; the keyless-server
-    path still uses the shared cached one.
+    the second one the first one's client. Every instance is also bound to this
+    session's immutable access scope, so neither credentials nor policy can
+    cross a browser-session boundary.
     """
     key = _session_key()
-    if not key:
-        return get_assistant(_con)
-    if st.session_state.get("_assistant_key") != key:
-        import anthropic
-
+    assistant_key = (key, ACCESS.fingerprint)
+    if st.session_state.get("_assistant_key") != assistant_key:
         from engine.assistant import Assistant
 
-        st.session_state["_assistant"] = Assistant(
-            _con, client=anthropic.Anthropic(api_key=key))
-        st.session_state["_assistant_key"] = key
+        if key:
+            import anthropic
+
+            instance = Assistant(
+                _con, client=anthropic.Anthropic(api_key=key), access=ACCESS,
+            )
+        else:
+            instance = Assistant(_con, access=ACCESS)
+        st.session_state["_assistant"] = instance
+        st.session_state["_assistant_key"] = assistant_key
     return st.session_state["_assistant"]
 
 
@@ -302,17 +311,34 @@ def _voice_client():
     return st.session_state["_voice_client"]
 
 
+try:
+    PRINCIPAL = _principal()
+    ACCESS = access.access_scope(PRINCIPAL)
+except (access.AuthenticationError, access.PolicyConfigurationError) as exc:
+    st.error(f"Access denied: {exc}")
+    st.stop()
+
 con = get_connection()
+try:
+    access.validate_scope_schema(con, ACCESS)
+except access.PolicyConfigurationError as exc:
+    st.error(f"Access denied: {exc}")
+    st.stop()
 RETRIEVAL_READY = warm_retrieval(con)
 layer = get_layer(con)
 PLANNER_READY = layer is not None
 verifier = get_verifier(con)
-metric_registry = get_metric_registry()
+metric_registry = tuple(
+    metric for metric in get_metric_registry() if metric.domain in {
+        name.split("_", 1)[0] for name in ACCESS.allowed_tables
+    }
+)
 assistant = _live_assistant(con) if LIVE_MODE else None
 st.session_state.setdefault("turns", [])      # engine context (Turn objects)
 st.session_state.setdefault("transcript", [])  # everything we rendered, incl. refusals
 
-TABLE_COUNT = len(table_names(con))
+TABLE_COUNT = len(set(table_names(con)) & set(ACCESS.allowed_tables))
+ACCESS_DOMAINS = {name.split("_", 1)[0] for name in ACCESS.allowed_tables}
 POOL = max(retrieval.DEFAULT_K * 2, 12)  # the depth retrieve_hybrid reads each ranking to
 
 # The rules Verifier can actually produce a finding for on this app's paths, in
@@ -336,12 +362,30 @@ VERIFY_CHECKS = [
     # merely too large, so advisory severity meant the inflated figure reached
     # the user narrated as fact. Fires on 0 of the 39 golden queries.
     ("join_fanout", "error"),
+    ("intent_order", "error"),
+    ("required_business_filter", "error"),
+    ("governed_metric_filter", "error"),
     ("empty_result", "warn"),
     ("null_scalar", "warn"),
     ("share_out_of_range", "note"),
 ]
 
-ui.masthead(tables=TABLE_COUNT, domains=len(DOMAINS), live=LIVE_MODE)
+CURRENT_VIEW = str(st.session_state.get("workspace-nav", "Ask"))
+ui.masthead(
+    tables=TABLE_COUNT,
+    domains=len(ACCESS_DOMAINS),
+    live=LIVE_MODE,
+    compact=CURRENT_VIEW != "Ask",
+)
+
+WORKSPACE_VIEW = st.segmented_control(
+    "Workspace",
+    ("Ask", "Data catalog", "Trust center"),
+    default="Ask",
+    key="workspace-nav",
+    label_visibility="collapsed",
+    width="stretch",
+) or "Ask"
 
 
 def _status_rail() -> None:
@@ -358,9 +402,9 @@ def _status_rail() -> None:
     index = ("<s>ready</s>" if RETRIEVAL_READY
              else "<u>fallback</u>")
     ui.status_rail([
-        ("warehouse", f"<s>{TABLE_COUNT}</s> tables <em>· {len(DOMAINS)} domains</em>"),
+        ("warehouse", f"<s>{TABLE_COUNT}</s> tables <em>· {len(ACCESS_DOMAINS)} domains</em>"),
         ("engine", f"duckdb <em>{duckdb.__version__}</em>"),
-        ("index", f"MiniLM-L6-v2 · {index}<br><em>384-d · onnx · local</em>"),
+        ("index", f"MiniLM-L6-v2 · {index}<br><em>exact cosine · onnx · local</em>"),
         ("retrieval", f"hybrid rrf · k={retrieval.DEFAULT_K}<br>"
                       f"<em>pool {POOL} · rrf_k={retrieval.RRF_K}</em>"),
         # Both of the guard's lists, because it enforces both. The rail said
@@ -382,20 +426,34 @@ def _status_rail() -> None:
             "optional<br><em>configure local voice or cloud key</em>"
         )),
         ("row cap", f"{MAX_ROWS:,} <em>/ query</em>"),
+        ("deadline", f"{deadline.configured_timeout_s():g}s <em>/ request</em>"),
     ])
 
 
-_status_rail()
+if WORKSPACE_VIEW == "Ask":
+    ui.lifecycle(live=LIVE_MODE)
+with st.expander("Runtime controls and model status"):
+    _status_rail()
 
 
 @st.cache_data(show_spinner=False, max_entries=256)
-def _full_catalog_tokens() -> int:
+def _full_catalog_tokens_cached(scope_fingerprint: tuple) -> int:
     """Cost of the un-retrieved prompt block, for the grounding readout."""
-    return max(1, len(schema_catalog(con)) // 4)
+    del scope_fingerprint
+    block = retrieval.schema_catalog_for(
+        "", con,
+        allowed_tables=ACCESS.allowed_tables,
+        denied_columns=ACCESS.denied_by_table,
+    )
+    return max(1, len(block) // 4)
+
+
+def _full_catalog_tokens() -> int:
+    return _full_catalog_tokens_cached(ACCESS.fingerprint)
 
 
 @st.cache_data(show_spinner=False, max_entries=256)
-def _catalog_by_domain() -> dict[str, list[str]]:
+def _catalog_by_domain_cached(scope_fingerprint: tuple) -> dict[str, list[str]]:
     """Every table this warehouse actually loaded, grouped by domain.
 
     Filtered against table_names(con) rather than trusting MANIFEST: a manifest
@@ -403,7 +461,8 @@ def _catalog_by_domain() -> dict[str, list[str]]:
     unlit cell, because that would draw a table the retriever could never have
     selected and quietly inflate the denominator.
     """
-    loaded = set(table_names(con))
+    del scope_fingerprint
+    loaded = set(table_names(con)) & set(ACCESS.allowed_tables)
     grouped: dict[str, list[str]] = {}
     for domain, table, _source, _description in MANIFEST:
         name = table_name(domain, table)
@@ -412,8 +471,12 @@ def _catalog_by_domain() -> dict[str, list[str]]:
     return grouped
 
 
+def _catalog_by_domain() -> dict[str, list[str]]:
+    return _catalog_by_domain_cached(ACCESS.fingerprint)
+
+
 @st.cache_data(show_spinner=False, max_entries=256)
-def _retrieval_bundle(question: str):
+def _retrieval_bundle_cached(question: str, scope_fingerprint: tuple):
     """Everything the readouts need about one question's retrieval, fetched once.
 
     Cached on the question text, which is the only thing retrieval depends on -
@@ -428,7 +491,9 @@ def _retrieval_bundle(question: str):
     """
     try:
         started = time.perf_counter()
-        hits = retrieval.retrieve_hybrid(question, con=con)
+        del scope_fingerprint
+        hits = [hit for hit in retrieval.retrieve_hybrid(question, con=con)
+                if hit.table in ACCESS.allowed_tables]
         # Only the hybrid call is the RETRIEVE stage. The two rankings gathered
         # below are re-run purely so the panel can show the ranks RRF consumed,
         # and charging the pipeline for the display's own overhead would
@@ -436,10 +501,16 @@ def _retrieval_bundle(question: str):
         hybrid_ms = 1000 * (time.perf_counter() - started)
 
         vector = {hit.table: rank for rank, hit
-                  in enumerate(retrieval.retrieve(question, k=POOL, con=con), 1)}
+                  in enumerate(retrieval.retrieve(question, k=POOL, con=con), 1)
+                  if hit.table in ACCESS.allowed_tables}
         keyword = {hit.table: rank for rank, hit
-                   in enumerate(retrieval.retrieve_keyword(question, k=POOL, con=con), 1)}
-        tokens_used = max(1, len(retrieval.schema_catalog_for(question, con)) // 4)
+                   in enumerate(retrieval.retrieve_keyword(question, k=POOL, con=con), 1)
+                   if hit.table in ACCESS.allowed_tables}
+        tokens_used = max(1, len(retrieval.schema_catalog_for(
+            question, con,
+            allowed_tables=ACCESS.allowed_tables,
+            denied_columns=ACCESS.denied_by_table,
+        )) // 4)
     except Exception:
         return None
     return {
@@ -454,6 +525,16 @@ def _retrieval_bundle(question: str):
         "tokens_used": tokens_used,
         "ms": hybrid_ms,
     }
+
+
+def _retrieval_bundle(question: str):
+    bundle = _retrieval_bundle_cached(question, ACCESS.fingerprint)
+    if bundle is not None:
+        # Re-derive this cheap field at the session boundary as a guard against
+        # stale cached payloads from an older code version.
+        vector, keyword = bundle["vector"], bundle["keyword"]
+        bundle = {**bundle, "candidates": len(set(vector) | set(keyword))}
+    return bundle
 
 
 def _model_retrieval_bundle(entry: dict):
@@ -595,7 +676,7 @@ def _verify_now(sql: str, result, question: str):
     avoids by never re-scanning the SQL itself.
     """
     started = time.perf_counter()
-    findings = verifier.check_sql(sql)
+    findings = verifier.check_sql(sql, question)
     if result is not None and getattr(result, "ok", False):
         findings = findings + verifier.check_result(sql, result, question)
     return findings, 1000 * (time.perf_counter() - started)
@@ -633,7 +714,7 @@ def _exemplar_picks(question: str):
     earlier and does not expose the vector, which is the one change that would
     make this panel free — see the spec note in the track report.
 
-    Returns None rather than raising. Chroma being unavailable must cost a
+    Returns None rather than raising. Local embedding being unavailable must cost a
     panel, never an answer.
     """
     # The tables retrieval already chose for this question, which is the second
@@ -855,7 +936,7 @@ def _result_readout(sql: str, frame, *, truncated: bool = False) -> None:
 
 
 @st.cache_data(show_spinner=False, max_entries=256)
-def _searchable_schema():
+def _searchable_schema_cached(scope_fingerprint: tuple):
     """Every table and column, flattened once, for the sidebar's search box.
 
     Read off engine.semantics rather than the manifest, because the interesting
@@ -864,23 +945,32 @@ def _searchable_schema():
     the layer inferred at the column level, which is a strange omission for the
     module the whole keyless engine is built on.
     """
+    del scope_fingerprint
     if layer is None:
         return []
     rows = []
     for name, table in sorted(layer.tables.items()):
+        if name not in ACCESS.allowed_tables:
+            continue
+        hidden = ACCESS.denied_by_table.get(name, frozenset())
+        visible = [column for column in table.columns if column.name.lower() not in hidden]
         rows.append({
             "table": name,
             "domain": table.domain,
             "description": table.description,
             "rows": table.rows,
-            "columns": [(c.name, c.role, c.values[:4]) for c in table.columns],
+            "columns": [(c.name, c.role, c.values[:4]) for c in visible],
             "haystack": " ".join(
                 [name, table.domain, table.description]
-                + [c.name for c in table.columns]
-                + [v for c in table.columns for v in c.values[:6]]
+                + [c.name for c in visible]
+                + [v for c in visible for v in c.values[:6]]
             ).lower(),
         })
     return rows
+
+
+def _searchable_schema():
+    return _searchable_schema_cached(ACCESS.fingerprint)
 
 
 def _schema_browser(ranked: list[str] | None = None) -> None:
@@ -900,6 +990,8 @@ def _schema_browser(ranked: list[str] | None = None) -> None:
     if not schema:
         st.subheader("What you can ask about")
         for domain, blurb in DOMAINS.items():
+            if domain not in ACCESS_DOMAINS:
+                continue
             ui.domain_card(domain, blurb)
         return
 
@@ -977,6 +1069,18 @@ def _render_sidebar(active_question: str | None) -> None:
     selected = set(ranked)
 
     with st.sidebar:
+        st.caption(
+            f"{WORKSPACE_VIEW} workspace · roles "
+            f"{', '.join(sorted(PRINCIPAL.roles)) or 'none'}"
+        )
+        if transcript:
+            if st.button(
+                "Start a new conversation",
+                width="stretch",
+                help="Clear this session's answers and return to the starting questions",
+            ):
+                _reset_conversation()
+                st.rerun()
         if latest_engine == "metric":
             destination = "used · certified SQL bypassed retrieval"
         elif latest_engine == "manual":
@@ -984,21 +1088,19 @@ def _render_sidebar(active_question: str | None) -> None:
         else:
             destination = ("sent to the model" if LIVE_MODE
                            else "handed to the compiler")
-        ui.schema_map(
-            {domain: [(table, table in selected) for table in tables]
-             for domain, tables in grouped.items()},
-            retrieved=len(selected), total=TABLE_COUNT,
-            destination=destination,
-        )
-        _schema_browser(ranked)
-        st.divider()
-        _render_key_control()
-        st.divider()
-        _render_voice_control()
-        st.divider()
-        if st.button("Start a new conversation"):
-            _reset_conversation()
-            st.rerun()
+        with st.expander("Query context", expanded=asked):
+            ui.schema_map(
+                {domain: [(table, table in selected) for table in tables]
+                 for domain, tables in grouped.items()},
+                retrieved=len(selected), total=TABLE_COUNT,
+                destination=destination,
+            )
+        if WORKSPACE_VIEW == "Ask":
+            _schema_browser(ranked)
+        with st.expander("Model settings"):
+            _render_key_control()
+        with st.expander("Voice settings"):
+            _render_voice_control()
 
 
 def _clear_model_key() -> None:
@@ -1217,7 +1319,7 @@ def _voice_question() -> str:
         )
         st.caption(st.session_state.get("voice_meta", "") +
                    " · Nothing reaches the query engine until you confirm.")
-        submitted = st.form_submit_button("Ask this question", use_container_width=True)
+        submitted = st.form_submit_button("Ask this question", width="stretch")
     if submitted:
         question = str(st.session_state.get("voice_draft", "")).strip()[:MAX_QUESTION_CHARS]
         if question:
@@ -1273,10 +1375,12 @@ def _audit_turn(entry: dict, *, engine: str, coverage=None, metric: str = "") ->
     down: engine/audit.record already swallows its own I/O errors, and this
     catches everything else for the same reason.
     """
-    if entry.get("refused"):
-        outcome = "blocked" if entry.get("guard_ok") is False else "refused"
+    if entry.get("policy_denied"):
+        outcome = "blocked"
     elif entry.get("timed_out"):
         outcome = "timeout"
+    elif entry.get("refused"):
+        outcome = "blocked" if entry.get("guard_ok") is False else "refused"
     elif entry.get("error"):
         outcome = "error"
     else:
@@ -1288,6 +1392,7 @@ def _audit_turn(entry: dict, *, engine: str, coverage=None, metric: str = "") ->
     try:
         audit.record(
             actor=_actor(),
+            role=",".join(sorted(PRINCIPAL.roles)) or "none",
             engine=engine,
             question=entry.get("question", ""),
             sql=entry.get("sql", ""),
@@ -1311,13 +1416,51 @@ def _audit_turn(entry: dict, *, engine: str, coverage=None, metric: str = "") ->
             tokens_out=int(usage.get("output_tokens", 0) or 0),
             elapsed_ms=float(entry.get("elapsed_ms") or sum(timings.values())),
             timings=timings,
+            timeout_stage=entry.get("timeout_stage", ""),
         )
     except Exception:  # noqa: BLE001 - an observer must never break the observed
         pass
 
 
-def _metric_turn(question: str, metric, match_ms: float) -> dict:
+def _timeout_turn(
+    question: str,
+    engine: str,
+    exc: deadline.DeadlineExpired,
+    *,
+    entry: dict | None = None,
+    coverage=None,
+    metric: str = "",
+) -> dict:
+    """Turn a stage overrun into the same visible, auditable refusal shape."""
+    timed_out = dict(entry or {})
+    timed_out.update({
+        "question": question,
+        "engine": engine,
+        "refused": True,
+        "reason": str(exc),
+        "refusal_kind": "request timeout",
+        "answer": "",
+        "timed_out": True,
+        "error": str(exc),
+        "timeout_stage": exc.stage,
+        "attempts": int(timed_out.get("attempts", 1) or 1),
+        "corrections": list(timed_out.get("corrections") or []),
+        "findings": list(timed_out.get("findings") or []),
+        "ran": bool(timed_out.get("ran", False)),
+        "rows": None,
+        "truncated": False,
+        "usage": dict(timed_out.get("usage") or {}),
+        "sql": str(timed_out.get("sql", "") or ""),
+        "trace": dict(timed_out.get("trace") or {}),
+    })
+    _audit_turn(timed_out, engine=engine, coverage=coverage, metric=metric)
+    return timed_out
+
+
+def _metric_turn(question: str, metric, match_ms: float,
+                 request_deadline=None) -> dict:
     """Run one exact governed definition through the ordinary safety boundary."""
+    request_deadline = request_deadline or deadline.RequestDeadline.configured()
     entry = {
         "question": question,
         "engine": "metric",
@@ -1345,6 +1488,12 @@ def _metric_turn(question: str, metric, match_ms: float) -> dict:
     entry["guard_ms"] = 1000 * (time.perf_counter() - guard_started)
     entry["guard_ok"] = ok
     entry["guard_reason"] = reason
+    try:
+        request_deadline.require("SQL guard")
+    except deadline.DeadlineExpired as exc:
+        return _timeout_turn(
+            question, "metric", exc, entry=entry, metric=metric.name
+        )
     if not ok:
         entry["refused"] = True
         entry["reason"] = f"{GUARD_BLOCK_PREFIX}: {reason}"
@@ -1353,14 +1502,21 @@ def _metric_turn(question: str, metric, match_ms: float) -> dict:
         return entry
 
     exec_started = time.perf_counter()
-    ran = run_query(con, metric.sql)
+    ran = run_query(con, metric.sql, access=ACCESS, deadline=request_deadline)
     entry["exec_ms"] = 1000 * (time.perf_counter() - exec_started)
     findings, verify_ms = _verify_now(metric.sql, ran, question)
     entry["findings"] = findings
     entry["verify_ms"] = verify_ms
     entry["ran"] = bool(ran.ok)
     entry["error"] = "" if ran.ok else ran.error
+    try:
+        request_deadline.require("verification")
+    except deadline.DeadlineExpired as exc:
+        return _timeout_turn(
+            question, "metric", exc, entry=entry, metric=metric.name
+        )
     entry["timed_out"] = bool(getattr(ran, "timed_out", False))
+    entry["policy_denied"] = bool(getattr(ran, "policy_denied", False))
     certified = metric_layer.MetricAnswer(metric=metric, result=ran)
     if ran.ok and ran.rows:
         entry["rows"] = pd.DataFrame(ran.rows, columns=ran.columns)
@@ -1375,6 +1531,7 @@ def _metric_turn(question: str, metric, match_ms: float) -> dict:
 
 def _keyless_turn(question: str) -> dict:
     """Prefer an explicitly named certified metric; otherwise compile the schema."""
+    request_deadline = deadline.RequestDeadline.configured()
     question = str(question or "").strip()
     if len(question) > MAX_QUESTION_CHARS:
         entry = {
@@ -1403,11 +1560,11 @@ def _keyless_turn(question: str) -> dict:
     metric = metric_layer.match_metric(question, metric_registry)
     match_ms = 1000 * (time.perf_counter() - started)
     if metric is not None:
-        return _metric_turn(question, metric, match_ms)
-    return _plan_turn(question)
+        return _metric_turn(question, metric, match_ms, request_deadline)
+    return _plan_turn(question, request_deadline)
 
 
-def _plan_turn(question: str) -> dict:
+def _plan_turn(question: str, request_deadline=None) -> dict:
     """Compile a question without a model, run it, and record what happened.
 
     Deliberately shaped like the live path's transcript entry, because the same
@@ -1416,6 +1573,7 @@ def _plan_turn(question: str) -> dict:
     `run_query`, and the same `Verifier` the model's SQL goes through, and the
     only difference the page shows is which cell of the pipeline strip lights.
     """
+    request_deadline = request_deadline or deadline.RequestDeadline.configured()
     # Retrieval and planning are timed SEPARATELY, because they are separate
     # stages and the strip draws a cell for each. Timed together, the first
     # question in a container reported PLAN 501ms -- almost all of it the MiniLM
@@ -1423,6 +1581,18 @@ def _plan_turn(question: str) -> dict:
     # A stage that bills another stage's clock is the same class of error as a
     # cell that lights on the wrong evidence.
     bundle = _retrieval_bundle(question)
+    try:
+        request_deadline.require("schema retrieval")
+    except deadline.DeadlineExpired as exc:
+        return _timeout_turn(
+            question,
+            "plan",
+            exc,
+            entry={
+                "bundle": bundle,
+                "retrieve_ms": bundle["ms"] if bundle else None,
+            },
+        )
     hits = [hit.table for hit in bundle["hits"]] if bundle else []
     started = time.perf_counter()
     result = planner.plan_question(question, layer, retrieved=hits)
@@ -1449,6 +1619,16 @@ def _plan_turn(question: str) -> dict:
         "bundle": bundle,
         "trace": _plan_trace_payload(result),
     }
+    try:
+        request_deadline.require("planning")
+    except deadline.DeadlineExpired as exc:
+        return _timeout_turn(
+            question,
+            "plan",
+            exc,
+            entry=entry,
+            coverage=getattr(result.plan, "coverage", None),
+        )
     if result.refused:
         _audit_turn(entry, engine="plan",
                     coverage=getattr(result.plan, "coverage", None))
@@ -1457,6 +1637,12 @@ def _plan_turn(question: str) -> dict:
     guard_started = time.perf_counter()
     ok, reason = validate_sql(result.sql)
     entry["guard_ms"] = 1000 * (time.perf_counter() - guard_started)
+    try:
+        request_deadline.require("SQL guard")
+    except deadline.DeadlineExpired as exc:
+        return _timeout_turn(
+            question, "plan", exc, entry=entry, coverage=result.plan.coverage
+        )
     if not ok:
         # Has never happened: the compiler emits SELECT from a grammar that has
         # no way to write anything else. The branch exists because "it cannot
@@ -1472,13 +1658,19 @@ def _plan_turn(question: str) -> dict:
         return entry
 
     exec_started = time.perf_counter()
-    ran = run_query(con, result.sql)
+    ran = run_query(con, result.sql, access=ACCESS, deadline=request_deadline)
     entry["exec_ms"] = 1000 * (time.perf_counter() - exec_started)
     findings, verify_ms = _verify_now(result.sql, ran, question)
     entry["findings"] = findings
     entry["verify_ms"] = verify_ms
     entry["ran"] = bool(ran.ok)
     entry["error"] = "" if ran.ok else ran.error
+    try:
+        request_deadline.require("verification")
+    except deadline.DeadlineExpired as exc:
+        return _timeout_turn(
+            question, "plan", exc, entry=entry, coverage=result.plan.coverage
+        )
     if ran.ok and ran.rows:
         entry["rows"] = pd.DataFrame(ran.rows, columns=ran.columns)
         entry["truncated"] = bool(ran.truncated)
@@ -1486,6 +1678,7 @@ def _plan_turn(question: str) -> dict:
     elif ran.ok:
         entry["answer"] = "No rows matched."
     entry["timed_out"] = bool(getattr(ran, "timed_out", False))
+    entry["policy_denied"] = bool(getattr(ran, "policy_denied", False))
     _audit_turn(entry, engine="plan", coverage=result.plan.coverage)
     return entry
 
@@ -1504,6 +1697,7 @@ def _manual_turn(sql: str, origin: str = "") -> dict:
     capped, cursor-isolated executor. That is the point — the boundary was
     never about who was writing, so it costs nothing to let you write.
     """
+    request_deadline = deadline.RequestDeadline.configured()
     entry = {
         "question": origin or "Edited query",
         "engine": "manual",
@@ -1523,6 +1717,10 @@ def _manual_turn(sql: str, origin: str = "") -> dict:
     entry["guard_ms"] = 1000 * (time.perf_counter() - started)
     entry["guard_ok"] = ok
     entry["guard_reason"] = reason
+    try:
+        request_deadline.require("SQL guard")
+    except deadline.DeadlineExpired as exc:
+        return _timeout_turn(entry["question"], "manual", exc, entry=entry)
     if not ok:
         entry["refused"] = True
         entry["reason"] = f"{GUARD_BLOCK_PREFIX}: {reason}"
@@ -1531,13 +1729,17 @@ def _manual_turn(sql: str, origin: str = "") -> dict:
         return entry
 
     exec_started = time.perf_counter()
-    ran = run_query(con, entry["sql"])
+    ran = run_query(con, entry["sql"], access=ACCESS, deadline=request_deadline)
     entry["exec_ms"] = 1000 * (time.perf_counter() - exec_started)
     findings, verify_ms = _verify_now(entry["sql"], ran, origin or "")
     entry["findings"] = findings
     entry["verify_ms"] = verify_ms
     entry["ran"] = bool(ran.ok)
     entry["error"] = "" if ran.ok else ran.error
+    try:
+        request_deadline.require("verification")
+    except deadline.DeadlineExpired as exc:
+        return _timeout_turn(entry["question"], "manual", exc, entry=entry)
     if ran.ok and ran.rows:
         entry["rows"] = pd.DataFrame(ran.rows, columns=ran.columns)
         entry["truncated"] = bool(ran.truncated)
@@ -1547,6 +1749,7 @@ def _manual_turn(sql: str, origin: str = "") -> dict:
     elif ran.ok:
         entry["answer"] = "No rows matched."
     entry["timed_out"] = bool(getattr(ran, "timed_out", False))
+    entry["policy_denied"] = bool(getattr(ran, "policy_denied", False))
     _audit_turn(entry, engine="manual")
     return entry
 
@@ -1814,7 +2017,7 @@ def render_demo_mode(connection) -> None:
             st.code(result.sql, language="sql", wrap_lines=True)
             frame = pd.DataFrame(result.result.rows, columns=result.result.columns)
             _result_readout(result.sql, frame, truncated=result.result.truncated)
-            st.dataframe(frame, use_container_width=True, hide_index=True)
+            st.dataframe(frame, width="stretch", hide_index=True)
             st.caption(
                 "Reference SQL, executed live — not written by the model. "
                 "The model-authored path is what the API key unlocks."
@@ -1963,14 +2166,14 @@ def _result_block(entry, index: int) -> None:
             st.error(f"Query error: {entry['error']}")
         return
     _result_chart(entry)
-    st.dataframe(entry["rows"], use_container_width=True, hide_index=True,
+    st.dataframe(entry["rows"], width="stretch", hide_index=True,
                  column_config=_numeric_format(entry["rows"]))
     left, right = st.columns([1, 3])
     left.download_button(
         "Download CSV",
         data=entry["rows"].to_csv(index=False).encode("utf-8"),
         file_name="ask-your-data.csv", mime="text/csv",
-        key=f"csv_{index}", use_container_width=True,
+        key=f"csv_{index}", width="stretch",
     )
     if entry.get("engine") != "manual":
         right.caption(
@@ -2200,7 +2403,10 @@ def _operations_panel() -> None:
             "sample or a placeholder, and the limits of the trail are listed "
             "with it rather than left for a reader to discover."
         )
-        ui.operations(audit.summarise(actor=_actor()), limits=audit.describe_limits())
+        ui.operations(
+            audit.summarise(actor=_actor()),
+            limits=audit.describe_limits(authenticated=PRINCIPAL.authenticated),
+        )
 
 
 def _reset_conversation() -> None:
@@ -2229,25 +2435,25 @@ def _transcript_header() -> None:
     count = len(st.session_state.transcript)
     left, right = st.columns([3, 1])
     left.caption(f"{count} question{'' if count == 1 else 's'} this session")
-    if right.button("Start over", key="reset_top", use_container_width=True,
+    if right.button("Start over", key="reset_top", width="stretch",
                     help="Clear these answers and show the example questions again"):
         _reset_conversation()
         st.rerun()
 
 
 KEYLESS_NOTICE = (
-    "**No API key is configured, and the chat box below still works.** This app "
-    "carries two engines. With a key, a language model writes the SQL. Without "
-    "one — right now — `engine/planner.py` compiles your question directly "
-    "against the schema: it reads the warehouse's own column roles, join graph "
-    "and dimension values, binds your words to them, and emits SQL through the "
-    "same read-only guard and the same verifier the model's SQL goes through. "
-    "When you explicitly name a policy-owned metric, a committed "
-    "definition supplies the SQL and CI re-checks its expected value. Everything "
-    "else stays schema-derived. It answers questions nobody pre-registered, and "
-    "when it cannot bind a "
-    "question it refuses and shows you which words it could not place. "
-    "Measured, both ways: `python scripts/run_planner_eval.py`."
+    "**Local compiler active — no API key required.** Questions are bound to the "
+    "governed schema, checked for meaning, gated read-only, and executed with the "
+    "same limits as model-authored SQL."
+)
+
+KEYLESS_DETAILS = (
+    "`engine/planner.py` reads column roles, the join graph, and approved dimension "
+    "values directly from the warehouse. It binds the words in a question to that "
+    "semantic layer and emits SQL without sending data to a model. Explicitly named "
+    "governed metrics use committed definitions whose values CI re-checks. If the "
+    "compiler cannot bind a request safely, it refuses and identifies the unmatched "
+    "terms. Run `python scripts/run_planner_eval.py` to reproduce its measured contract."
 )
 
 
@@ -2272,6 +2478,142 @@ def _link_question() -> str:
         return ""
     st.session_state["_link_used"] = True
     return str(raw or "").strip()[:400]
+
+
+def _catalog_workspace() -> None:
+    """Searchable, policy-filtered catalog for understanding what can be asked."""
+    ui.view_header(
+        "Governed data",
+        "Find the table before you ask the question.",
+        "Search table names, descriptions, columns, and approved sample values. "
+        "Everything shown here is filtered through this session's access policy.",
+    )
+    schema = _searchable_schema()
+    if not schema:
+        st.warning("No catalog entries are visible to this access scope.")
+        return
+
+    search_col, domain_col = st.columns([3, 1])
+    needle = search_col.text_input(
+        "Search the data catalog",
+        placeholder="Try: denied, salary, channel, supplier…",
+        key="catalog_workspace_search",
+    ).strip().lower()
+    domains = ("All domains",) + tuple(sorted({row["domain"] for row in schema}))
+    chosen_domain = domain_col.selectbox("Domain", domains, key="catalog_workspace_domain")
+    matches = [
+        row for row in schema
+        if (not needle or needle in row["haystack"])
+        and (chosen_domain == "All domains" or row["domain"] == chosen_domain)
+    ]
+
+    st.caption(
+        f"{len(matches)} of {len(schema)} authorized tables"
+        + (f" matching “{needle}”" if needle else "")
+    )
+    frame = pd.DataFrame(
+        [
+            {
+                "Table": row["table"],
+                "Domain": row["domain"],
+                "Rows": row["rows"],
+                "Columns": len(row["columns"]),
+                "Description": row["description"],
+            }
+            for row in matches
+        ]
+    )
+    if frame.empty:
+        st.info(
+            "No authorized table matches those filters. Clear the search or "
+            "choose another domain."
+        )
+        return
+    st.dataframe(
+        frame,
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "Rows": st.column_config.NumberColumn(format="localized"),
+            "Columns": st.column_config.NumberColumn(format="%d"),
+        },
+    )
+
+    selected = st.selectbox(
+        "Inspect columns and approved values",
+        tuple(row["table"] for row in matches),
+        key="catalog_workspace_table",
+    )
+    detail = next(row for row in matches if row["table"] == selected)
+    st.caption(
+        f"{detail['domain']} domain · {detail['rows']:,} rows"
+        + (f" · {detail['description']}" if detail["description"] else "")
+    )
+    ui.column_list(detail["columns"], highlight=needle)
+
+
+def _trust_workspace(connection) -> str | None:
+    """Identity, controls, operations, and reproducible accuracy in one place."""
+    ui.view_header(
+        "Trust center",
+        "Inspect the controls behind every answer.",
+        "Current access scope, execution boundaries, live session telemetry, and "
+        "the committed accuracy contract are collected here for review.",
+    )
+    protected = sum(len(columns) for columns in ACCESS.denied_by_table.values())
+    ui.layer_summary(
+        [
+            (
+                str(len(PRINCIPAL.roles)),
+                "active roles",
+                ", ".join(sorted(PRINCIPAL.roles)) or "none",
+            ),
+            (f"{TABLE_COUNT:,}", "authorized tables", f"policy {ACCESS.policy_version}"),
+            (f"{protected:,}", "masked columns", "removed before prompting and execution"),
+            (f"{MAX_ROWS:,}", "row ceiling", "enforced for every query"),
+        ],
+        footnote=(
+            f"Identity: {PRINCIPAL.subject} · authentication: "
+            + (
+                "verified OIDC"
+                if PRINCIPAL.authenticated
+                else "explicit synthetic demo session"
+            )
+            + " · "
+            f"request deadline: {deadline.configured_timeout_s():g}s."
+        ),
+    )
+    if PRINCIPAL.authenticated:
+        st.success("OIDC identity verified and the role policy is active for this session.")
+    else:
+        st.info(
+            "This local demo uses synthetic data and an explicitly unauthenticated demo role. "
+            "Set ASK_AUTH_MODE=oidc and a policy file before serving real organizational data."
+        )
+
+    st.subheader("Session operations")
+    st.caption(
+        (
+            "Turns for this verified subject in the current process appear here. "
+            if PRINCIPAL.authenticated
+            else "Only turns executed in this browser session appear here. "
+        )
+        + "Production deployments should export the same structured events to durable "
+        "observability storage."
+    )
+    ui.operations(
+        audit.summarise(actor=_actor()),
+        limits=audit.describe_limits(authenticated=PRINCIPAL.authenticated),
+    )
+
+    st.subheader("Reproducible accuracy")
+    st.caption(
+        "These reference questions bypass both the model and compiler. Their committed SQL "
+        "runs live, and CI checks that the expected result has not drifted."
+    )
+    with st.expander("Open the 39-question accuracy contract"):
+        return render_demo_mode(connection)
+    return None
 
 
 def render_keyless(connection) -> None:
@@ -2309,11 +2651,10 @@ def render_keyless(connection) -> None:
     # already 973px down the page. Once a question has been asked the reader
     # has both read it and seen the engine named on the pipeline strip, so it
     # folds into an expander and stops being in the way.
-    if st.session_state.transcript:
-        with st.expander("Two engines, and no API key on this deployment"):
-            st.info(KEYLESS_NOTICE)
-    else:
-        st.info(KEYLESS_NOTICE)
+    st.info(KEYLESS_NOTICE)
+    if not st.session_state.transcript:
+        with st.expander("How keyless mode works"):
+            st.markdown(KEYLESS_DETAILS)
 
     link = _link_question()
     clicked = None
@@ -2325,7 +2666,7 @@ def render_keyless(connection) -> None:
         with st.container(key="ayd-examples"):
             for column, example in zip(st.columns(len(PLANNER_EXAMPLES)),
                                        PLANNER_EXAMPLES, strict=True):
-                if column.button(example, use_container_width=True):
+                if column.button(example, width="stretch"):
                     clicked = example
         _show_layer_summary()
 
@@ -2365,23 +2706,24 @@ def render_keyless(connection) -> None:
         st.rerun()
 
     st.divider()
-    _operations_panel()
-    st.divider()
-    with st.expander("The accuracy contract — 39 questions whose SQL is committed "
-                     "and re-run by CI on every push"):
-        st.caption(
-            "Separate from the box above, and a different kind of evidence. "
-            "These questions ship with reference SQL in "
-            "`evals/golden_questions.yaml`; picking one runs that committed "
-            "query live and shows whether the result still matches the value CI "
-            "asserts. Nothing here is written by the model OR by the planner."
-        )
-        contract_question = render_demo_mode(connection)
-
+    st.caption(
+        "Need control evidence, session telemetry, or the reproducible accuracy suite? "
+        "Open **Trust center** above."
+    )
     last = (st.session_state.transcript[-1]["question"]
-            if st.session_state.transcript else contract_question)
+            if st.session_state.transcript else None)
     _render_sidebar(last)
 
+
+if WORKSPACE_VIEW == "Data catalog":
+    _catalog_workspace()
+    _render_sidebar(None)
+    st.stop()
+
+if WORKSPACE_VIEW == "Trust center":
+    trust_question = _trust_workspace(con)
+    _render_sidebar(trust_question)
+    st.stop()
 
 if not LIVE_MODE:
     render_keyless(con)
@@ -2398,7 +2740,7 @@ clicked = None
 if not st.session_state.transcript:
     cols = st.columns(len(EXAMPLES))
     for col, ex in zip(cols, EXAMPLES, strict=True):
-        if col.button(ex, use_container_width=True):
+        if col.button(ex, width="stretch"):
             clicked = ex
 
 
@@ -2565,7 +2907,7 @@ def render_entry(entry, index: int):
             if entry["rows"] is not None:
                 _result_readout(entry["sql"], entry["rows"],
                                 truncated=bool(entry["truncated"]))
-                st.dataframe(entry["rows"], use_container_width=True, hide_index=True)
+                st.dataframe(entry["rows"], width="stretch", hide_index=True)
             elif entry["error"]:
                 st.error(f"Query error: {entry['error']}")
             if entry.get("usage"):
@@ -2651,6 +2993,9 @@ if question:
                  if (result.result and result.result.ok and result.result.rows) else None),
         "truncated": bool(result.result and result.result.truncated),
         "error": result.result.error if (result.result and not result.result.ok) else "",
+        "policy_denied": bool(result.result and result.result.policy_denied),
+        "timed_out": bool(result.timed_out),
+        "timeout_stage": result.timeout_stage,
         "usage": result.usage,
         "elapsed_ms": elapsed_ms,
         "tables": result.tables,

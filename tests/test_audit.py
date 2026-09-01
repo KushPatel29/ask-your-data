@@ -112,12 +112,24 @@ def test_the_summary_reports_only_what_really_happened():
     assert s["stage_p50_ms"]["plan"] in (4.0, 6.0)
 
 
+def test_timeout_stage_survives_the_audit_boundary():
+    rec = _one(outcome="timeout", timeout_stage="SQL generation")
+    assert rec.outcome == "timeout"
+    assert rec.timeout_stage == "SQL generation"
+
+
 def test_session_summary_does_not_mix_other_browser_actors():
     _one(actor="session-a", question="a")
     _one(actor="session-b", question="b")
     _one(actor="session-a", question="c")
     summary = audit.summarise(actor="session-a")
     assert summary["turns"] == 2
+
+
+def test_long_oidc_subject_uses_the_same_bounded_key_for_record_and_summary():
+    subject = "oidc-user-" + "x" * 400
+    _one(actor=subject)
+    assert audit.summarise(actor=subject)["turns"] == 1
 
 
 def test_percentiles_are_nearest_rank_so_every_number_really_happened():
@@ -144,6 +156,13 @@ def test_the_trail_documents_what_it_does_not_prove():
     assert len(limits) >= 3
     assert "not an authenticated identity" in joined
     assert "row values are never written" in joined
+
+
+def test_authenticated_trail_describes_verified_oidc_without_overclaiming():
+    joined = " ".join(audit.describe_limits(authenticated=True)).lower()
+    assert "verified oidc subject" in joined
+    assert "not a durable identity ledger" in joined
+    assert "not an authenticated identity" not in joined
 
 
 def test_with_no_sink_configured_nothing_is_written_to_disk(monkeypatch, tmp_path):

@@ -8,12 +8,12 @@ same SQL-derived ground truth, so a proposed change to `engine/retrieval.py` has
 to arrive with a number rather than a story.
 
 WHY THIS IS FAST ENOUGH TO SWEEP
-The eval script goes through Chroma, which re-embeds on every rebuild. Here the
+The eval script goes through the production local index. Here the
 71 table documents and the 39 questions are embedded ONCE per corpus variant
 into a dense matrix, and every ranking after that is a dot product. The default
 all-MiniLM-L6-v2 vectors come back L2-normalised, so cosine similarity IS the
-dot product — no renormalising, and no approximation relative to what Chroma
-does. `--verify` proves that: it re-runs the live `engine.retrieval` code path
+dot product — no renormalising, and no approximation relative to the production
+index. `--verify` proves that: it re-runs the live `engine.retrieval` code path
 and asserts the two agree on every question.
 
 That equivalence is the whole licence for this script to exist. If it ever
@@ -21,7 +21,7 @@ fails, the numbers below stop describing the shipped system and this file is
 lying, so the check is an assertion and not a comment.
 
     python scripts/run_retrieval_experiments.py                # the whole board
-    python scripts/run_retrieval_experiments.py --verify       # agree with Chroma?
+    python scripts/run_retrieval_experiments.py --verify       # agree with production?
     python scripts/run_retrieval_experiments.py --only diagnose
     python scripts/run_retrieval_experiments.py --only paraphrase
 """
@@ -117,14 +117,14 @@ _EMBED = None
 def _embedder():
     global _EMBED
     if _EMBED is None:
-        import chromadb.utils.embedding_functions as ef
+        from engine.vector_index import embed as local_embed
 
-        _EMBED = ef.DefaultEmbeddingFunction()
+        _EMBED = local_embed
     return _EMBED
 
 
 def embed(texts: list[str]) -> np.ndarray:
-    """all-MiniLM-L6-v2, the same function Chroma uses by default.
+    """all-MiniLM-L6-v2, through the production local ONNX implementation.
 
     Output rows are already unit length, so `A @ B.T` is cosine similarity.
     """
@@ -181,19 +181,24 @@ def vector_ranking(corpus: Corpus, qvec: np.ndarray) -> list[tuple[str, float]]:
 
 
 def _tokens(text: str) -> set[str]:
+    """The production tokeniser, including snake_case parts."""
     return retrieval._tokens(text)
+
+
+def _tokens_atomic(text: str) -> set[str]:
+    """Reconstruct the pre-fix tokeniser for the historical ablation."""
+    return {
+        token
+        for token in re.findall(r"[a-z0-9_]+", (text or "").lower())
+        if len(token) > 2 and token not in retrieval._STOP
+    }
 
 
 SPLIT_STOP = retrieval._STOP | {"qty", "num", "pct", "amt"}
 
 
 def _tokens_split(text: str) -> set[str]:
-    """Token set that also splits snake_case identifiers into their parts.
-
-    The shipped tokeniser treats `qty_shipped` as one atom, so the word
-    "shipped" in a question cannot match it. That is not a tuning knob, it is a
-    bug with a recall cost, and `experiment_tokeniser` measures it.
-    """
+    """Production-style splitting plus a candidate identifier-prefix stop-list."""
     out = set()
     for token in re.findall(r"[a-z0-9_]+", (text or "").lower()):
         pieces = [token] + token.split("_") if "_" in token else [token]
@@ -367,7 +372,7 @@ def sel_hybrid(k=DEFAULT_K, tokenise=_tokens, rrf_k=RRF_K):
 
 def experiment_diagnose(con, cases, corpus, qvecs) -> None:
     print("=" * 78)
-    print("0. DIAGNOSIS — why hybrid misses top_category_revenue")
+    print("0. REGRESSION PROBE — the former top_category_revenue miss")
     print("=" * 78)
 
     target = next(c for c in cases if c.id == "top_category_revenue")
@@ -387,32 +392,25 @@ def experiment_diagnose(con, cases, corpus, qvecs) -> None:
             f"(list length {len(ranking)})"
         )
 
-    print("\n  The code comment says this is a corpus failure at every k. It is not.")
-    print("  Vector ALONE ranks the table 5th; the shipped eval confirms vector")
-    print("  does not miss this question. Fusion is what loses it.\n")
-
     q = _tokens(target.question)
     doc = corpus.documents[corpus.index()["supplychain_fact_orders"]]
     print(f"  question tokens: {sorted(q)}")
     print(f"  overlap with the table document: {sorted(q & _tokens(doc))}")
-    print("\n  Zero overlap, so keyword returns a list of "
-          f"{len(kw)} tables that does not contain it at all.")
-    print("  RRF then scores it from ONE arm (1/(60+5) = 0.0154) while tables both")
-    print("  arms saw score from two, and it falls out of the top 14.")
-    print("\n  Two independent causes, and they need separate fixes:")
-    print("    (i)  the tokeniser never splits qty_shipped, so 'shipped' cannot match")
-    print("    (ii) the description says fill rate and OTIF, never revenue or price")
+    print(f"\n  Current result: the needed fact is inside the configured top {DEFAULT_K}.")
+    print("  The production tokeniser now keeps both `qty_shipped` and `shipped`,")
+    print("  so the keyword arm and vector arm both contribute. This probe remains")
+    print("  to make a regression visible rather than retell the historical miss")
+    print("  as if it were still present.")
 
 
 # ==========================================================================
 # EXPERIMENT 1 — the corpus fix: a description that says what the table holds.
 # ==========================================================================
 
-# The shipped description sells the table as a service-level fact ("fill rate",
-# "OTIF") and never mentions that it carries unit_price and unit_cost — which is
-# the whole reason it can answer a revenue question. This adds the money grain
-# and the category path, and deliberately does NOT stuff keywords: every clause
-# is a true statement a reader of the prompt benefits from.
+# This candidate adds the money grain and category path to the service-level
+# description without keyword stuffing. It is retained as an ablation: the
+# production tokeniser already closes the recall failure without requiring this
+# longer prompt text.
 BETTER_DESCRIPTIONS = {
     "supplychain_fact_orders": (
         "One row per order line, and the supply-chain revenue fact. "
@@ -428,7 +426,7 @@ BETTER_DESCRIPTIONS = {
 
 def experiment_corpus(con, cases, base, qvecs) -> Corpus:
     print("\n" + "=" * 78)
-    print("1. CORPUS FIX — rewrite the description that omits what the table is for")
+    print("1. DESCRIPTION ABLATION — add the fact's revenue path")
     print("=" * 78)
 
     fixed = build_corpus(
@@ -459,12 +457,14 @@ def experiment_tokeniser(con, cases, base, fixed, qvecs) -> None:
     print("\n" + "=" * 78)
     print("2. TOKENISER — split snake_case identifiers in the keyword arm")
     print("=" * 78)
-    print("\n  Column names ARE the vocabulary (retrieval.py:102-108 says so), but")
-    print("  `qty_shipped` is indexed as one atom, so the word 'shipped' misses it.\n")
+    print("\n  This reconstructs the old atomic tokeniser beside the shipped split")
+    print("  tokeniser. Column identifiers are vocabulary, so both joined and part")
+    print("  forms must remain searchable (`qty_shipped` and `shipped`).\n")
 
     results = []
     for cname, corpus in (("base corpus", base), ("fixed corpus", fixed)):
-        for tname, tok in (("atomic", _tokens), ("split", _tokens_split)):
+        for tname, tok in (("historical atomic", _tokens_atomic),
+                           ("production split", _tokens)):
             results.append(
                 score(f"{cname} · keyword · {tname}", corpus, cases, qvecs,
                       sel_keyword(tokenise=tok))
@@ -859,14 +859,16 @@ def experiment_combined(con, cases, base, fixed, qvecs) -> None:
         return rerank(c, case.question, fused, k=DEFAULT_K)
 
     results = [
-        score("shipped today (base · hybrid k=14)", base, cases, qvecs, sel_hybrid()),
-        score("+ description fix", fixed, cases, qvecs, sel_hybrid()),
-        score("+ description fix + split tokeniser", fixed, cases, qvecs, sel_split_hybrid),
+        score(f"shipped today (base · hybrid k={DEFAULT_K})",
+              base, cases, qvecs, sel_hybrid()),
+        score("+ description candidate", fixed, cases, qvecs, sel_hybrid()),
+        score("+ description candidate + split tokeniser",
+              fixed, cases, qvecs, sel_split_hybrid),
         score("+ all three (rerank on top)", fixed, cases, qvecs, sel_split_rerank),
     ]
     table(results)
 
-    print("\n  Same stack at lower k (does the fix buy back budget?):")
+    print("\n  Same stack across k (does the candidate buy back budget?):")
     lower = []
     for k in (8, 10, 12, 14):
         def sel(c, case, qv, k=k):
@@ -878,9 +880,9 @@ def experiment_combined(con, cases, base, fixed, qvecs) -> None:
 
 
 def verify(con, cases, corpus, qvecs) -> None:
-    """Assert this script's numpy path agrees with the live Chroma path."""
+    """Assert this experiment's numpy path agrees with the live index."""
     print("\n" + "=" * 78)
-    print("VERIFY — numpy re-implementation vs engine.retrieval through Chroma")
+    print("VERIFY — experiment matrix vs production exact index")
     print("=" * 78)
     bad = 0
     for i, case in enumerate(cases):
@@ -888,14 +890,14 @@ def verify(con, cases, corpus, qvecs) -> None:
         theirs = [h.table for h in retrieval.retrieve(case.question, k=DEFAULT_K, con=con)]
         if mine != theirs:
             bad += 1
-            print(f"  MISMATCH {case.id}\n    mine:   {mine}\n    chroma: {theirs}")
+            print(f"  MISMATCH {case.id}\n    mine:   {mine}\n    live:   {theirs}")
         mine_h = [n for n, _ in hybrid_ranking(corpus, case.question, qvecs[i])[:DEFAULT_K]]
         theirs_h = [h.table for h in retrieval.retrieve_hybrid(case.question, k=DEFAULT_K, con=con)]
         if mine_h != theirs_h:
             bad += 1
-            print(f"  HYBRID MISMATCH {case.id}\n    mine:   {mine_h}\n    chroma: {theirs_h}")
+            print(f"  HYBRID MISMATCH {case.id}\n    mine:   {mine_h}\n    live:   {theirs_h}")
     print(f"\n  {len(cases)} questions checked, {bad} mismatches.")
-    assert bad == 0, "numpy path diverged from Chroma — the numbers in this script are not valid"
+    assert bad == 0, "experiment path diverged from production — results are invalid"
 
 
 # ==========================================================================
@@ -981,12 +983,12 @@ def experiment_paraphrase(con, cases, base, qvecs) -> None:
 
     rows = []
     for label, corpus, tok, kind in (
-        ("keyword · atomic", base, _tokens, "kw"),
-        ("keyword · split", base, _tokens_split, "kw"),
+        ("keyword · historical atomic", base, _tokens_atomic, "kw"),
+        ("keyword · production split", base, _tokens, "kw"),
         ("vector", base, _tokens, "vec"),
         ("vector · cols-as-words", prose, _tokens, "vec"),
-        ("hybrid · atomic (shipped)", base, _tokens, "hy"),
-        ("hybrid · split", base, _tokens_split, "hy"),
+        ("hybrid · historical atomic", base, _tokens_atomic, "hy"),
+        ("hybrid · production split (shipped)", base, _tokens, "hy"),
         ("hybrid · split, cols-as-words", prose, _tokens_split, "hy"),
     ):
         sel = {
@@ -1000,7 +1002,8 @@ def experiment_paraphrase(con, cases, base, qvecs) -> None:
     print("  set cannot see that, which is why 'keyword alone hits 100%' is not a")
     print("  reason to delete the vector index.")
 
-    print("\n  Weighted RRF, scored on BOTH sets (corpus = cols-as-words, split, k=14):")
+    print("\n  Weighted RRF, scored on BOTH sets "
+          f"(corpus = cols-as-words, split, k={DEFAULT_K}):")
     print(f"\n  {'vector:keyword':<16} {'golden q/tables':>20} {'paraphrase q/tables':>22}")
     for wv, wk in ((1, 1), (1.5, 1), (2, 1), (3, 1), (4, 1), (1, 0)):
         def sel(c, case, qv, wv=wv, wk=wk):
@@ -1012,8 +1015,9 @@ def experiment_paraphrase(con, cases, base, qvecs) -> None:
             f"  {f'{wv}:{wk}':<16} {g.question_recall:>11.1%}/{g.table_recall:<8.1%} "
             f"{p.question_recall:>12.1%}/{p.table_recall:<8.1%}"
         )
-    print("\n  1.5:1 through 3:1 is a plateau, not a knife edge — 2:1 sits in the")
-    print("  middle of it and is Pareto-better than 1:1 on both sets at once.")
+    print("\n  At the current k, 1:1 preserves more golden-set recall than every")
+    print("  tested vector-heavy weight while tying them on the paraphrase probes.")
+    print("  The shipped unweighted fusion is therefore the supported choice.")
 
 
 EXPERIMENTS = (

@@ -2,7 +2,7 @@
 The retrieval contract.
 
 These run without an API key, like almost everything else here: the embedding
-model is all-MiniLM-L6-v2 running locally through Chroma's ONNX backend, so
+model is all-MiniLM-L6-v2 running locally through the exact ONNX index, so
 retrieval is fully testable offline. That is a deliberate property of the
 design, not a happy accident - a demo that cannot be evaluated without someone
 else's billing account cannot be evaluated by a reviewer.

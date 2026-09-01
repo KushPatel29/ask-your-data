@@ -17,17 +17,21 @@ Design choices that keep this honest:
   prior turns — question, the SQL used, the answer — are passed back as context.
   The caller owns the history, so the Assistant itself stays stateless and
   thread-safe.
-- **Retrieved schema grounding.** A local embedding index selects the nine
-  tables most relevant to the current question instead of sending all 36 on
+- **Retrieved schema grounding.** A local embedding index selects the ten
+  tables most relevant to the current question instead of sending all 71 on
   every turn. Tables used by prior-turn SQL are always retained for follow-ups.
 
 The model is asked for structured output via a tool, so we get clean SQL (or a
 refusal) rather than having to scrape it out of prose.
 """
 
+import inspect
 import os
 import re
 from dataclasses import dataclass, field
+
+from engine.access import AccessScope
+from engine.deadline import DeadlineExpired, RequestDeadline
 
 # No `import anthropic` anywhere below, and that absence is the point: after the
 # provider seam this module has no vendor SDK dependency at all. The Anthropic
@@ -35,7 +39,12 @@ from dataclasses import dataclass, field
 # the model never touches the reasoning loop.
 from engine.exemplars import exemplar_block
 from engine.limits import MAX_QUESTION_CHARS
-from engine.providers import AnthropicProvider, ProviderUnavailable, build_provider
+from engine.providers import (
+    AnthropicProvider,
+    ProviderBudgetExpired,
+    ProviderUnavailable,
+    build_provider,
+)
 from engine.query import QueryResult, run_query
 from engine.retrieval import schema_catalog_for
 from engine.verify import Verifier, correction_message
@@ -144,6 +153,8 @@ class AskResult:
     tables: list = field(default_factory=list)
     retrieval_context: str = ""
     schema_tokens: int = 0
+    timed_out: bool = False
+    timeout_stage: str = ""
 
     @property
     def ok(self):
@@ -200,12 +211,32 @@ def _tables_used_by_history(history: list[Turn], known_tables: tuple[str, ...]) 
     )
 
 
+def _provider_call(call, deadline: RequestDeadline, stage: str, **kwargs):
+    """Pass the remaining request budget when the provider supports it."""
+    remaining = deadline.require(stage)
+    try:
+        parameters = inspect.signature(call).parameters.values()
+    except (TypeError, ValueError):
+        # A C-extension or dynamically generated callable may not expose a
+        # Python signature. The post-call deadline still fail-closes it.
+        parameters = ()
+    if any(p.name == "timeout_s" or p.kind == inspect.Parameter.VAR_KEYWORD
+           for p in parameters):
+        kwargs["timeout_s"] = remaining
+    try:
+        response = call(**kwargs)
+    except ProviderBudgetExpired as exc:
+        raise DeadlineExpired(stage, deadline.timeout_s) from exc
+    deadline.require(stage)
+    return response
+
+
 class Assistant:
     """Stateless NL->SQL assistant. Pass `history` (a list of Turn) to enable
     follow-up questions; the caller owns and appends to it."""
 
     def __init__(self, con, client=None, model: str = MODEL, catalog_builder=None,
-                 provider=None):
+                 provider=None, access: AccessScope | None = None):
         self.con = con
         # The provider is the seam that makes the model swappable. An injected
         # client still forces Anthropic, because that is what the test harness
@@ -221,17 +252,20 @@ class Assistant:
         self.model = model
         self.catalog_builder = catalog_builder or schema_catalog_for
         self.known_tables = tuple(table_names(con))
+        self.access = access
         self.verifier = Verifier(con)
 
     def _system_for(self, question: str, history: list[Turn]) -> list[dict]:
         """Stable rules plus the retrieved schema for this turn."""
         context = _retrieval_context(question, history)
         required = _tables_used_by_history(history, self.known_tables)
-        catalog = self.catalog_builder(
-            context,
-            self.con,
-            include_tables=required,
-        )
+        catalog_kwargs = {"include_tables": required}
+        if self.access is not None:
+            catalog_kwargs.update(
+                allowed_tables=self.access.allowed_tables,
+                denied_columns=self.access.denied_by_table,
+            )
+        catalog = self.catalog_builder(context, self.con, **catalog_kwargs)
         blocks = [
             {"type": "text", "text": SYSTEM_RULES},
             {"type": "text", "text": SCHEMA_BLOCK.format(catalog=catalog)},
@@ -257,7 +291,9 @@ class Assistant:
         blocks[-1] = {**blocks[-1], "cache_control": {"type": "ephemeral"}}
         return blocks
 
-    def ask(self, question: str, history: list = None) -> AskResult:
+    def ask(self, question: str, history: list = None,
+            deadline: RequestDeadline | None = None) -> AskResult:
+        deadline = deadline or RequestDeadline.configured()
         question = str(question or "").strip()
         if not question:
             return AskResult(question, refused=True, reason="question is empty")
@@ -271,6 +307,21 @@ class Assistant:
         messages = _history_messages(history)
         messages.append({"role": "user", "content": question})
         retrieval_context = _retrieval_context(question, history)
+        try:
+            # Do not begin local model loading/retrieval after a caller-supplied
+            # deadline has already expired. ONNX inference is local and has no
+            # cancellation primitive, so the second check below catches an
+            # overrun immediately after the stage completes.
+            deadline.require("schema retrieval")
+        except DeadlineExpired as exc:
+            return AskResult(
+                question,
+                refused=True,
+                reason=str(exc),
+                retrieval_context=retrieval_context,
+                timed_out=True,
+                timeout_stage=exc.stage,
+            )
         system = self._system_for(question, history)
         schema_text = "\n".join(
             str(block.get("text", "")) for block in system
@@ -288,16 +339,34 @@ class Assistant:
             result.schema_tokens = max(1, len(schema_text) // 4)
             return result
 
+        try:
+            deadline.require("schema retrieval")
+        except DeadlineExpired as exc:
+            return done(AskResult(
+                question,
+                refused=True,
+                reason=str(exc),
+                timed_out=True,
+                timeout_stage=exc.stage,
+            ))
+
         usage, corrections = {}, []
         sql, explanation, result = "", "", None
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
-                resp = self.provider.create_tool_call(
-                    system=system, messages=messages,
-                    tools=TOOLS, max_tokens=MAX_OUTPUT_TOKENS,
+                resp = _provider_call(
+                    self.provider.create_tool_call, deadline, "SQL generation",
+                    system=system, messages=messages, tools=TOOLS,
+                    max_tokens=MAX_OUTPUT_TOKENS,
                 )
             except ProviderUnavailable as e:
                 raise AssistantUnavailable(str(e)) from e
+            except DeadlineExpired as exc:
+                return done(AskResult(
+                    question, refused=True, reason=str(exc), attempts=attempt,
+                    corrections=corrections, usage=usage,
+                    timed_out=True, timeout_stage=exc.stage,
+                ))
             for key, value in (resp.usage or {}).items():
                 usage[key] = usage.get(key, 0) + value
             tool_use = resp.tool_call
@@ -344,7 +413,16 @@ class Assistant:
             # nothing downstream can see. The measured case: a join across two
             # of the eleven independent synthetic domains returns 5,400 rows -
             # no error, not empty, just meaningless.
-            findings = self.verifier.check_sql(sql)
+            try:
+                deadline.require("verification")
+                findings = self.verifier.check_sql(sql, question)
+                deadline.require("verification")
+            except DeadlineExpired as exc:
+                return done(AskResult(
+                    question, sql=sql, explanation=explanation, refused=True,
+                    reason=str(exc), attempts=attempt, corrections=corrections, usage=usage,
+                    timed_out=True, timeout_stage=exc.stage,
+                ))
             blocking = [f for f in findings if f.blocking]
             if blocking:
                 note = correction_message(blocking)
@@ -363,13 +441,34 @@ class Assistant:
                                       corrections=corrections, usage=usage,
                                       findings=findings))
 
-            result = run_query(self.con, sql)
+            result = run_query(self.con, sql, access=self.access, deadline=deadline)
+            if result.policy_denied:
+                return done(AskResult(
+                    question, sql=sql, explanation=explanation, result=result,
+                    refused=True, reason=result.error, attempts=attempt,
+                    corrections=corrections, usage=usage, findings=findings,
+                    timed_out=True, timeout_stage=result.timeout_stage,
+                ))
+            if result.timed_out:
+                return done(AskResult(
+                    question, sql=sql, explanation=explanation, result=result,
+                    refused=True, reason=result.error, attempts=attempt,
+                    corrections=corrections, usage=usage, findings=findings,
+                ))
             if result.ok:
                 # Post-execution checks: shapes that only the returned rows can
                 # reveal (an empty set, a rate outside its own range). These are
                 # advisory - they travel with the answer rather than blocking it.
                 findings = findings + self.verifier.check_result(sql, result, question)
-                answer = self._summarize(question, result, usage)
+                try:
+                    answer = self._summarize(question, result, usage, deadline)
+                except DeadlineExpired as exc:
+                    return done(AskResult(
+                        question, sql=sql, explanation=explanation, result=result,
+                        refused=True, reason=str(exc), attempts=attempt,
+                        corrections=corrections, usage=usage, findings=findings,
+                        timed_out=True, timeout_stage=exc.stage,
+                    ))
                 return done(AskResult(question, sql=sql, explanation=explanation,
                                       answer=answer, result=result, usage=usage,
                                       attempts=attempt, corrections=corrections,
@@ -388,11 +487,13 @@ class Assistant:
         return done(AskResult(question, sql=sql, explanation=explanation, result=result,
                               attempts=MAX_ATTEMPTS, corrections=corrections, usage=usage))
 
-    def _summarize(self, question: str, result: QueryResult, usage: dict) -> str:
+    def _summarize(self, question: str, result: QueryResult, usage: dict,
+                   deadline: RequestDeadline) -> str:
         """Turn the result table into one or two plain-English sentences, grounded
         strictly in the returned rows."""
         try:
-            resp = self.provider.complete(
+            resp = _provider_call(
+                self.provider.complete, deadline, "answer summarization",
                 max_tokens=400,
                 system=("Answer the user's question in one or two sentences using ONLY "
                         "the SQL result provided. Never invent or round beyond what is "

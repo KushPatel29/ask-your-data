@@ -11,7 +11,7 @@ questions:
            the entire catalogue in the context window on every question.
   keyword  token overlap between the question and the table document. The
            honest baseline: if this wins, the embeddings are dead weight.
-  vector   Chroma + all-MiniLM-L6-v2 (384-d, ONNX, local, keyless).
+  vector   exact cosine + all-MiniLM-L6-v2 (384-d, ONNX, local, keyless).
 
 GROUND TRUTH COMES FROM THE REFERENCE SQL, NOT FROM MY OPINION
 `evals/golden_questions.yaml` pairs each question with the SQL that correctly

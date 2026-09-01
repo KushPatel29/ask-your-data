@@ -12,14 +12,14 @@
 FROM python:3.12-slim
 
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements.lock ./
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock
 
 RUN groupadd --system app && useradd --system --gid app --create-home app
 COPY --chown=app:app . .
 
-# Measured, not guessed: baseline 18 MB, + DuckDB warehouse 185 MB, + the Chroma
-# schema index 275 MB. Streamlit's own overhead sits on top of that. Retrieval
+# Measured, not guessed: baseline 18 MB, + DuckDB warehouse 185 MB, + the ONNX
+# embedding session and schema matrix. Streamlit's own overhead sits on top. Retrieval
 # is warmed once at startup so the first visitor does not pay model load time;
 # production sizing must leave headroom above the measured working set.
 #

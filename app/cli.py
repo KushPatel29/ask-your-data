@@ -95,9 +95,10 @@ def _has_key() -> bool:
     return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
 
 
-def _planner_runner(con):
+def _planner_runner(con, access_scope):
     """Build the compiler path. Imports nothing that needs a key or a network."""
     from engine import planner
+    from engine.deadline import RequestDeadline
     from engine.query import run_query
     from engine.semantics import Layer
 
@@ -116,19 +117,23 @@ def _planner_runner(con):
             return []
 
     def ask(question, history=None):
+        request_deadline = RequestDeadline.configured()
         result = planner.plan_question(question, layer, retrieved=hits(question))
-        ran = run_query(con, result.sql) if result.ok else None
+        ran = (run_query(con, result.sql, access=access_scope, deadline=request_deadline)
+               if result.ok else None)
         show_plan(result, ran)
-        _record(question, result=result, ran=ran, engine="plan")
+        _record(question, result=result, ran=ran, engine="plan",
+                actor=access_scope.principal.subject,
+                role=",".join(sorted(access_scope.principal.roles)) or "none")
         return result
 
     return ask
 
 
-def _model_runner(con):
+def _model_runner(con, access_scope):
     from engine.assistant import Assistant, AssistantUnavailable
 
-    assistant = Assistant(con)
+    assistant = Assistant(con, access=access_scope)
 
     def ask(question, history=None):
         try:
@@ -139,13 +144,15 @@ def _model_runner(con):
                   "  with --plan to use the keyless compiler instead.\n")
             return None
         show(result)
-        _record(question, result=result, engine="model")
+        _record(question, result=result, engine="model",
+                actor=access_scope.principal.subject,
+                role=",".join(sorted(access_scope.principal.roles)) or "none")
         return result
 
     return ask
 
 
-def _record(question, *, result, engine, ran=None):
+def _record(question, *, result, engine, ran=None, actor="cli", role="demo"):
     """The terminal is an entry point too.
 
     An audit trail that covers the web app and not the CLI has a hole in it
@@ -157,11 +164,18 @@ def _record(question, *, result, engine, ran=None):
     from engine import audit
 
     refused = getattr(result, "refused", False) or not getattr(result, "ok", False)
+    timed_out = bool(
+        getattr(result, "timed_out", False) or getattr(ran, "timed_out", False)
+    )
+    timeout_stage = (
+        getattr(result, "timeout_stage", "")
+        or getattr(ran, "timeout_stage", "")
+    )
     try:
         audit.record(
-            actor="cli", engine=engine, question=question,
+            actor=actor, role=role, engine=engine, question=question,
             sql=getattr(result, "sql", "") or "",
-            outcome=("refused" if refused else
+            outcome=("timeout" if timed_out else "refused" if refused else
                      ("error" if ran is not None and not ran.ok else "answered")),
             refusal_kind=getattr(result, "kind", "") or "",
             reason=getattr(result, "reason", "") or "",
@@ -170,6 +184,7 @@ def _record(question, *, result, engine, ran=None):
             attempts=int(getattr(result, "attempts", 1) or 1),
             coverage=getattr(getattr(result, "plan", None), "coverage", None),
             elapsed_ms=float(getattr(result, "elapsed_ms", 0.0) or 0.0),
+            timeout_stage=timeout_stage,
         )
     except Exception:  # noqa: BLE001 - an observer must never break the observed
         pass
@@ -185,9 +200,23 @@ def main():
         print("  --model needs ANTHROPIC_API_KEY. Drop the flag to use the compiler.")
         return 2
 
+    from engine import access
+
     con = build_warehouse()
+    try:
+        if access.auth_mode() == access.AUTH_OIDC:
+            token = os.environ.get("ASK_ACCESS_TOKEN", "").strip()
+            principal = access.authenticate_headers({"Authorization": f"Bearer {token}"})
+        else:
+            principal = access.Principal.demo("cli")
+        query_access = access.access_scope(principal)
+        access.validate_scope_schema(con, query_access)
+    except (access.AuthenticationError, access.PolicyConfigurationError) as exc:
+        print(f"  Access denied: {exc}")
+        return 2
     use_model = force_model or (_has_key() and not force_plan)
-    ask = _model_runner(con) if use_model else _planner_runner(con)
+    ask = (_model_runner(con, query_access) if use_model
+           else _planner_runner(con, query_access))
     engine_name = "the model" if use_model else "the keyless compiler"
 
     if argv:

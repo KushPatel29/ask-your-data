@@ -92,6 +92,18 @@ WHAT IS HERE, AND WHY EACH EARNED IT
                       difference is still checked (measured: a 194 that a
                       subtraction-anywhere test went silent on).
 
+  intent_order        A question explicitly says top/highest/most or
+                      bottom/lowest/least, but the SQL orders the result in the
+                      opposite direction. Question-aware and blocking.
+
+  required_business_  A question explicitly asks for current/active workforce
+  filter              but the employee population is not constrained to
+                      is_active = 1. Question-aware and blocking.
+
+  governed_metric_    "Denial rate" has a committed business definition whose
+  filter              denominator excludes Pending. SQL missing both Paid and
+                      Denied from that population is blocked.
+
   ambiguous_entity    Four base names exist in more than one domain (dim_customer
                       in 3, dim_product in 4, dim_supplier in 2, fact_orders in 3),
                       so "the top customer" genuinely does not name a table. This
@@ -156,6 +168,19 @@ _CHANGE_WORDS = re.compile(
     re.IGNORECASE,
 )
 _SHARE_ALIAS = re.compile(r"(?:^|_)(rate|pct|percent|percentage|share|ratio)(?:$|_)",
+                          re.IGNORECASE)
+_TOP_WORDS = re.compile(
+    r"\b(top|highest|most|largest|greatest|best|biggest|maximum|max)\b", re.IGNORECASE,
+)
+_BOTTOM_WORDS = re.compile(
+    r"\b(bottom|lowest|least|smallest|fewest|worst|minimum|min)\b", re.IGNORECASE,
+)
+_ACTIVE_WORKFORCE = re.compile(
+    r"\b(?:active|current)\s+(?:employee|employees|staff|workforce|headcount)\b|"
+    r"\b(?:employee|employees|staff|workforce|headcount)\s+(?:active|currently employed)\b",
+    re.IGNORECASE,
+)
+_DENIAL_RATE = re.compile(r"\b(?:claim\s+)?denial(?:s)?\s+rate\b|\brate\s+of\s+denials\b",
                           re.IGNORECASE)
 
 
@@ -449,7 +474,7 @@ class Verifier:
 
     # ---- pre-execution --------------------------------------------------
 
-    def check_sql(self, sql: str) -> list[Finding]:
+    def check_sql(self, sql: str, question: str = "") -> list[Finding]:
         """Structural checks. Parse plus, for fan-out only, cached key probes.
 
         Measured on the 39 golden queries: 0 findings, ~0.5 ms each.
@@ -459,18 +484,81 @@ class Verifier:
             # Unparseable SQL is the executor's problem, not this module's.
             return []
         binding, tables = _relations(ast)
+        intent_findings = self._intent_conformance(ast, tables, question)
         self_join_findings = self._self_join_fanout(ast)
         if len(tables) < 2:
-            return self_join_findings
+            return intent_findings + self_join_findings
         findings = self._cross_domain(ast, binding, tables)
         findings += self._cartesian(ast)
         findings += self._fanout(ast, binding, tables)
         findings += self_join_findings
+        findings += intent_findings
         # `cross_domain_reference` exists to say "two domains appear here but are
         # not combined". Once `_cartesian` has proved they ARE combined, the note
         # contradicts the error sitting beside it, so it is dropped.
         if any(f.severity == ERROR for f in findings):
             findings = [f for f in findings if f.check != "cross_domain_reference"]
+        return findings
+
+    def _intent_conformance(self, ast, tables: set[str], question: str) -> list[Finding]:
+        """Block three explicit, measured question-to-plan mismatches."""
+        question = str(question or "")
+        findings: list[Finding] = []
+
+        wants_desc = bool(_TOP_WORDS.search(question))
+        wants_asc = bool(_BOTTOM_WORDS.search(question))
+        if wants_desc != wants_asc:
+            order = next((node for node in _walk(ast)
+                          if node.get("type") == "ORDER_MODIFIER" and node.get("orders")), None)
+            if order is not None:
+                actual = str(order["orders"][0].get("type", ""))
+                mismatch = ((wants_desc and actual == "ASCENDING")
+                            or (wants_asc and actual == "DESCENDING"))
+                if mismatch:
+                    expected = "descending" if wants_desc else "ascending"
+                    intent = "top/highest" if wants_desc else "bottom/lowest"
+                    findings.append(Finding(
+                        "intent_order", ERROR,
+                        f"the question asks for the {intent} result, but SQL sorts the "
+                        f"first ranking key in the opposite direction. Order it {expected}."))
+
+        if ("hr_fact_employees" in tables and _ACTIVE_WORKFORCE.search(question)
+                and "inactive" not in question.lower()):
+            active = False
+            for node in _walk(ast):
+                where = node.get("where_clause")
+                if not isinstance(where, dict):
+                    continue
+                for candidate in _walk(where):
+                    if (candidate.get("class") != "COMPARISON"
+                            or candidate.get("type") != "COMPARE_EQUAL"):
+                        continue
+                    sides = (candidate.get("left"), candidate.get("right"))
+                    column = next((side for side in sides if isinstance(side, dict)
+                                   and side.get("class") == "COLUMN_REF"
+                                   and (side.get("column_names") or [""])[-1] == "is_active"), None)
+                    constant = next((side for side in sides if isinstance(side, dict)
+                                     and side.get("class") == "CONSTANT"), None)
+                    value = ((constant or {}).get("value") or {}).get("value")
+                    if column is not None and value in (1, True, "1", "true", "TRUE"):
+                        active = True
+            if not active:
+                findings.append(Finding(
+                    "required_business_filter", ERROR,
+                    "the question asks for current/active workforce, but the employee "
+                    "population is not constrained with is_active = 1."))
+
+        if "healthcare_fact_claims" in tables and _DENIAL_RATE.search(question):
+            constants = {
+                str((node.get("value") or {}).get("value", "")).lower()
+                for node in _walk(ast) if node.get("class") == "CONSTANT"
+            }
+            if not {"paid", "denied"}.issubset(constants):
+                findings.append(Finding(
+                    "governed_metric_filter", ERROR,
+                    "claim denial rate is Denied / (Paid + Denied); Pending claims must "
+                    "be excluded, so the denominator must explicitly include both Paid "
+                    "and Denied statuses."))
         return findings
 
     def _cross_domain(self, ast, binding, tables) -> list[Finding]:

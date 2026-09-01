@@ -72,6 +72,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
@@ -106,6 +107,10 @@ class ProviderUnavailable(RuntimeError):
     the existing `AssistantUnavailable` so the UI story does not change."""
 
 
+class ProviderBudgetExpired(ProviderUnavailable):
+    """A multi-call provider exhausted the one budget assigned to its turn."""
+
+
 class Provider(Protocol):
     def create_tool_call(
         self,
@@ -114,6 +119,7 @@ class Provider(Protocol):
         messages: list[dict],
         tools: list[dict],
         max_tokens: int,
+        timeout_s: float | None = None,
     ) -> ProviderResponse: ...
 
     def complete(
@@ -122,6 +128,7 @@ class Provider(Protocol):
         system: str,
         messages: list[dict],
         max_tokens: int,
+        timeout_s: float | None = None,
     ) -> ProviderResponse: ...
 
     def health(self) -> dict: ...
@@ -306,7 +313,11 @@ class AnthropicProvider:
         self.client = client or anthropic.Anthropic()
         self.model = model or os.environ.get("ASK_YOUR_DATA_MODEL", "claude-opus-5")
 
-    def create_tool_call(self, *, system, messages, tools, max_tokens) -> ProviderResponse:
+    def create_tool_call(self, *, system, messages, tools, max_tokens,
+                         timeout_s=None) -> ProviderResponse:
+        request = {}
+        if timeout_s is not None:
+            request["timeout"] = timeout_s
         try:
             msg = self.client.messages.create(
                 model=self.model,
@@ -315,6 +326,7 @@ class AnthropicProvider:
                 tools=tools,
                 tool_choice={"type": "any"},
                 messages=messages,
+                **request,
             )
         except self._anthropic.APIError as e:
             raise ProviderUnavailable(str(e)) from e
@@ -336,7 +348,7 @@ class AnthropicProvider:
         call = ToolCall(block.name, payload) if block else None
         return ProviderResponse(tool_call=call, usage=usage, text=text)
 
-    def complete(self, *, system, messages, max_tokens) -> ProviderResponse:
+    def complete(self, *, system, messages, max_tokens, timeout_s=None) -> ProviderResponse:
         """Plain text, no tools - the summarize call.
 
         Separate from create_tool_call because that one forces
@@ -344,10 +356,14 @@ class AnthropicProvider:
         sentence is the wrong contract: it would make the summary the argument
         of a function the model has no reason to call.
         """
+        request = {}
+        if timeout_s is not None:
+            request["timeout"] = timeout_s
         try:
             msg = self.client.messages.create(
                 model=self.model, max_tokens=max_tokens,
                 system=system, messages=messages,
+                **request,
             )
         except self._anthropic.APIError as e:
             raise ProviderUnavailable(str(e)) from e
@@ -436,7 +452,7 @@ class OpenAICompatProvider:
 
     # -- transport ---------------------------------------------------------
 
-    def _post(self, path: str, payload: dict) -> dict:
+    def _post(self, path: str, payload: dict, timeout_s: float | None = None) -> dict:
         url = f"{self.base_url}{path}"
         data = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json"}
@@ -444,13 +460,29 @@ class OpenAICompatProvider:
             headers["Authorization"] = f"Bearer {self.api_key}"
         req = urllib.request.Request(url, data=data, headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            timeout = self.timeout if timeout_s is None else min(self.timeout, timeout_s)
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
                 return json.loads(resp.read().decode("utf-8") or "{}")
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", "replace")[:400]
             raise ProviderUnavailable(f"{url} returned {e.code}: {body}") from e
         except Exception as e:
             raise ProviderUnavailable(f"{url} unreachable: {e}") from e
+
+    def _post_with_budget(
+        self,
+        path: str,
+        payload: dict,
+        timeout_s: float | None,
+        started_at: float,
+    ) -> dict:
+        """Share one allowance across mode fallbacks and repair attempts."""
+        if timeout_s is None:
+            return self._post(path, payload)
+        remaining = timeout_s - (time.monotonic() - started_at)
+        if remaining <= 0:
+            raise ProviderBudgetExpired("model provider exhausted its request budget")
+        return self._post(path, payload, remaining)
 
     # -- prompt shaping ----------------------------------------------------
 
@@ -497,7 +529,9 @@ class OpenAICompatProvider:
 
     # -- the contract ------------------------------------------------------
 
-    def create_tool_call(self, *, system, messages, tools, max_tokens) -> ProviderResponse:
+    def create_tool_call(self, *, system, messages, tools, max_tokens,
+                         timeout_s=None) -> ProviderResponse:
+        started_at = time.monotonic()
         modes = ({"tools": ["tools"], "schema": ["schema"], "prompt": ["prompt"]}
                  .get(self.mode, ["tools", "schema", "prompt"]))
         last_text, usage, repairs = "", {}, 0
@@ -526,7 +560,11 @@ class OpenAICompatProvider:
                 }
 
             try:
-                body = self._post("/v1/chat/completions", payload)
+                body = self._post_with_budget(
+                    "/v1/chat/completions", payload, timeout_s, started_at
+                )
+            except ProviderBudgetExpired:
+                raise
             except ProviderUnavailable:
                 if mode == modes[-1]:
                     raise
@@ -562,7 +600,11 @@ class OpenAICompatProvider:
                 ]
                 payload["messages"] = self._messages(system, retry, tools, contract=True)
                 try:
-                    body = self._post("/v1/chat/completions", payload)
+                    body = self._post_with_budget(
+                        "/v1/chat/completions", payload, timeout_s, started_at
+                    )
+                except ProviderBudgetExpired:
+                    raise
                 except ProviderUnavailable:
                     break
                 text, _ = self._text_and_calls(body)
@@ -575,7 +617,7 @@ class OpenAICompatProvider:
         # rather than executing anything.
         return ProviderResponse(None, usage, last_text, repairs)
 
-    def complete(self, *, system, messages, max_tokens) -> ProviderResponse:
+    def complete(self, *, system, messages, max_tokens, timeout_s=None) -> ProviderResponse:
         """Plain text from an OpenAI-compatible server. No tools, no contract
         preamble - nothing here needs to be parsed back into a structure."""
         head = system if isinstance(system, str) else self._flatten_system(system)
@@ -590,7 +632,9 @@ class OpenAICompatProvider:
         }
         # Same OpenAI-compatible route as create_tool_call(). The missing /v1
         # made local SQL generation succeed and the answer-summary call fail.
-        body = self._post("/v1/chat/completions", payload)
+        body = self._post_with_budget(
+            "/v1/chat/completions", payload, timeout_s, time.monotonic()
+        )
         text, _calls = self._text_and_calls(body)
         return ProviderResponse(tool_call=None, usage=self._usage(body), text=text or "")
 
