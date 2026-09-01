@@ -9,7 +9,7 @@
 # So the default command now serves Streamlit, and CI overrides it to run the
 # suite (`docker run --rm ask-your-data pytest tests/ -v`). Both jobs still
 # happen; only the default changed.
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 COPY requirements.txt requirements.lock ./
