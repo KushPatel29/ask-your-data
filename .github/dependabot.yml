@@ -5,10 +5,36 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # The interpreter is not an ordinary dependency and must not be bumped by
+      # a bot that cannot see what depends on it.
+      #
+      # Dependabot opened `Bump python from 3.12-slim to 3.14-slim` and its own
+      # Security workflow failed on the result. That is not a flake: this app
+      # ships onnxruntime and tokenizers, which are compiled wheels published
+      # per CPython ABI, and a base image ahead of those publishers has no
+      # wheels to install — pip falls back to building from source inside a
+      # slim image with no toolchain, and the build dies. The same trap has
+      # already cost this portfolio a broken deploy once, on a managed host
+      # that silently defaulted a new app to the newest interpreter.
+      #
+      # `.python-version` says 3.12 and the CI matrix runs 3.12, so a Dockerfile
+      # on a different interpreter would also mean the container that is
+      # supposed to be the reproducible proof is not running what CI proved.
+      #
+      # Raising this is a deliberate act: bump `.python-version`, the CI matrix
+      # and this ignore together, after checking that onnxruntime and tokenizers
+      # publish wheels for the target ABI.
+      - dependency-name: python
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
