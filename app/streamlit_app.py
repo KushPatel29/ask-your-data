@@ -2810,9 +2810,32 @@ def render_keyless(connection) -> None:
         st.rerun()
 
     st.divider()
+    # The 39 pre-registered questions belong HERE as well as in Trust center,
+    # and the workspace split is what took them away. They sat under the chat
+    # box for most of this app's life; moving evidence out of the answer flow
+    # was right for the guard readouts and the audit ledger, and wrong for
+    # these, because they are not evidence about a turn — they are the fastest
+    # way for a visitor to see the thing work on a question with a known
+    # answer. Behind a pointer in another workspace they read as missing, and
+    # a reader who has to be told where the worked examples went has already
+    # lost the thread.
+    #
+    # Collapsed, so the answer flow above still owns the page, and rendered in
+    # exactly one workspace per run — Ask and Trust center are mutually
+    # exclusive, so the two copies never share a widget key.
+    with st.expander(
+        "Worked examples — 39 questions whose SQL is committed and re-run by CI"
+    ):
+        st.caption(
+            "A different kind of evidence from the box above, and labelled as such: "
+            "nothing here is written by the model OR by the compiler. Picking a "
+            "question runs its committed reference SQL live and shows whether the "
+            "result still matches the value CI asserts."
+        )
+        render_demo_mode(connection)
     st.caption(
-        "Need control evidence, session telemetry, or the reproducible accuracy suite? "
-        "Open **Trust center** above."
+        "Control evidence, session telemetry and access scope live under "
+        "**Trust center** above."
     )
     last = (st.session_state.transcript[-1]["question"]
             if st.session_state.transcript else None)
