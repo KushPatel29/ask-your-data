@@ -13,6 +13,7 @@ TTS half into the STT half, and the numbers live in the module docstring.
 from __future__ import annotations
 
 import io
+import sys
 import wave
 
 import pytest
@@ -208,3 +209,40 @@ def test_a_model_that_fails_its_checksum_is_discarded_not_cached(tmp_path):
     with pytest.raises(voice.VoiceUnavailable):
         local_voice._verify(bad, local_voice.TTS_SHA256[bad.name])
     assert not bad.exists()
+
+
+def test_the_app_survives_the_voice_packages_being_absent(monkeypatch):
+    """The load-bearing safety claim of this module, asserted rather than hoped.
+
+    These are two heavy optional wheels. A deployment that cannot install them
+    — a platform without a manylinux build, an air-gapped mirror, a pinned
+    resolver — must still answer questions. So the failure mode has to be a
+    quiet False and a rail that says "unavailable", never an exception on a
+    page that was only ever going to show a Listen button.
+
+    The remote seam has to keep working through the same failure, because a
+    self-hosted endpoint has nothing to do with whether CTranslate2 imports.
+    """
+    import builtins
+
+    real_import = builtins.__import__
+
+    def blocked(name, *args, **kwargs):
+        if name.split(".")[0] in ("faster_whisper", "piper"):
+            raise ImportError(f"simulated: {name} is not installed")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", blocked)
+    for module in [m for m in list(sys.modules) if m.split(".")[0] in ("faster_whisper", "piper")]:
+        monkeypatch.delitem(sys.modules, module, raising=False)
+
+    assert local_voice.installed() == local_voice.Engines(stt=False, tts=False)
+    assert local_voice.available() is False
+
+    client, label = voice.resolve(environ={})
+    assert (client, label) == (None, "")
+    assert "unavailable" in voice.describe_engine(label)
+
+    remote, remote_label = voice.resolve(
+        environ={"ASK_VOICE_BASE_URL": "http://localhost:8000"})
+    assert remote_label == "self-hosted" and remote is not None
