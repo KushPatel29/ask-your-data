@@ -3,19 +3,11 @@ Adversarial review of the safety and correctness boundaries.
 
 Every test here was written by trying to break the app and recording what
 actually happened, measured against DuckDB 1.5.5 and the real 71-table
-warehouse. Tests split into two kinds:
-
-  * Plain tests   - a property that HOLDS today. These are regression locks on
-                    behaviour the design already gets right (cursor isolation,
-                    the verifier's zero false positives on the golden set).
-  * xfail(strict) - a property that SHOULD hold and currently does NOT. The
-                    assertion states the DESIRED behaviour, so the day someone
-                    fixes the underlying issue the test flips to XPASS and
-                    fails the run, prompting removal of the marker. Nothing
-                    here is skipped and nothing is red on a clean checkout.
-
-The xfail bodies are deliberately written as the attack itself, so the file
-doubles as the proof-of-concept for each finding.
+warehouse. Every case is now a passing regression lock on behaviour the design
+gets right (cursor isolation, read-only enforcement, authorization, and the
+verifier's zero false positives on the golden set). Several began as strict
+expected failures during the adversarial audit; retaining their attack payloads
+here makes this file both the proof-of-concept archive and the release gate.
 """
 
 import threading

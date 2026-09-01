@@ -15,6 +15,7 @@ import os
 import queue
 import threading
 import urllib.request
+from urllib.parse import urlsplit
 
 ENV_WEBHOOK_URL = "ASK_N8N_WEBHOOK_URL"
 ENV_WEBHOOK_SECRET = "ASK_N8N_WEBHOOK_SECRET"
@@ -30,6 +31,21 @@ _status = {"queued": 0, "delivered": 0, "failed": 0, "dropped": 0, "last_error":
 def webhook_url(environ: dict[str, str] | None = None) -> str:
     env = os.environ if environ is None else environ
     return str(env.get(ENV_WEBHOOK_URL, "") or "").strip()
+
+
+def _valid_webhook_url(value: str) -> bool:
+    try:
+        parsed = urlsplit(value)
+        return (
+            parsed.scheme in {"http", "https"}
+            and bool(parsed.hostname)
+            and parsed.username is None
+            and parsed.password is None
+            and not parsed.query
+            and not parsed.fragment
+        )
+    except ValueError:
+        return False
 
 
 def _value(record, name: str, default=None):
@@ -120,6 +136,14 @@ def publish(record, environ: dict[str, str] | None = None) -> bool:
     env = os.environ if environ is None else environ
     url = webhook_url(env)
     if not url:
+        return False
+    if not _valid_webhook_url(url):
+        with _lock:
+            _status["failed"] += 1
+            _status["last_error"] = (
+                f"{ENV_WEBHOOK_URL} must be an HTTP(S) URL without embedded "
+                "credentials, query parameters, or a fragment"
+            )
         return False
     secret = str(env.get(ENV_WEBHOOK_SECRET, "") or "")
     if len(secret) < MIN_WEBHOOK_SECRET_CHARS:

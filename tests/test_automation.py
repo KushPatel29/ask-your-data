@@ -55,3 +55,18 @@ def test_weak_webhook_secret_fails_before_starting_delivery():
     }
     assert automation.publish(_record(), environ=configured) is False
     assert "at least 32" in automation.status()["last_error"]
+
+
+def test_webhook_rejects_non_http_and_credential_bearing_urls():
+    secret = "s" * 32
+    for url in (
+        "file:///tmp/ops.json",
+        "https://user:password@n8n.example/webhook",
+        "https://n8n.example/webhook?token=secret",
+    ):
+        configured = {
+            automation.ENV_WEBHOOK_URL: url,
+            automation.ENV_WEBHOOK_SECRET: secret,
+        }
+        assert automation.publish(_record(), environ=configured) is False
+        assert "must be an HTTP(S) URL" in automation.status()["last_error"]

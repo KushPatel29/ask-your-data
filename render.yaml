@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: ask-your-data
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /_stcore/health
+    envVars:
+      # The public portfolio contains synthetic data and is intentionally
+      # anonymous. Enterprise deployments override this with OIDC plus a
+      # synced policy secret; the application fails closed when those values
+      # are incomplete.
+      - key: ASK_AUTH_MODE
+        value: disabled
+      - key: ASK_REQUEST_TIMEOUT_S
+        value: "45"

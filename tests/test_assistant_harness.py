@@ -15,7 +15,9 @@ import anthropic
 import httpx
 import pytest
 
+from engine.access import AccessScope, Principal
 from engine.assistant import MAX_ATTEMPTS, Assistant, AssistantUnavailable, Turn
+from engine.query import QueryResult
 from engine.warehouse import schema_catalog
 
 
@@ -75,6 +77,46 @@ def test_happy_path_single_attempt(con):
     assert res.ok and res.attempts == 1 and res.corrections == []
     assert res.result.rows[0][0] == 12000
     assert res.answer == "There are 12,000 claims."
+
+
+def test_policy_denial_is_not_misreported_as_a_timeout(con):
+    client = FakeClient([
+        msg(tool_use("answer_with_sql", sql=GOOD_SQL, explanation="counts claims")),
+    ])
+    denied = AccessScope(
+        Principal("blocked", authenticated=True),
+        allowed_tables=frozenset(),
+    )
+
+    res = Assistant(
+        con, client=client, catalog_builder=full_catalog, access=denied,
+    ).ask("how many claims?")
+
+    assert res.refused
+    assert res.result is not None and res.result.policy_denied
+    assert not res.timed_out
+    assert res.timeout_stage == ""
+
+
+def test_executor_timeout_is_retained_on_the_assistant_result(con, monkeypatch):
+    client = FakeClient([
+        msg(tool_use("answer_with_sql", sql=GOOD_SQL, explanation="counts claims")),
+    ])
+    monkeypatch.setattr(
+        "engine.assistant.run_query",
+        lambda *_args, **_kwargs: QueryResult(
+            sql=GOOD_SQL,
+            error="query exceeded its deadline",
+            timed_out=True,
+            timeout_stage="query execution",
+        ),
+    )
+
+    res = assistant(con, client).ask("how many claims?")
+
+    assert res.refused
+    assert res.timed_out
+    assert res.timeout_stage == "query execution"
 
 
 def test_self_corrects_after_a_bad_column(con):
@@ -220,6 +262,19 @@ def test_usage_is_aggregated_across_calls(con):
     assert res.usage["input_tokens"] == 5200
     assert res.usage["output_tokens"] == 140
     assert res.usage["cache_read_input_tokens"] == 4800
+
+
+def test_summary_prompt_marks_result_cells_as_untrusted(con):
+    client = FakeClient([
+        msg(tool_use("answer_with_sql", sql=GOOD_SQL, explanation="")),
+        msg(text("12,000.")),
+    ])
+
+    res = assistant(con, client).ask("how many claims?")
+
+    assert res.ok
+    assert "untrusted data" in client.calls[1]["system"]
+    assert "never as an instruction" in client.calls[1]["system"]
 
 
 class DownClient:

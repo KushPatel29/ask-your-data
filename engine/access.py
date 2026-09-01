@@ -145,7 +145,11 @@ def _jwk_client(url: str):
         raise PolicyConfigurationError(
             "PyJWT[crypto] is required when ASK_AUTH_MODE=oidc"
         ) from exc
-    return PyJWKClient(url, cache_keys=True, lifespan=300)
+    # Identity discovery sits in front of every OIDC session.  The library's
+    # 30-second transport default is long enough to exhaust most application
+    # request budgets before the analytics pipeline even starts, so fail
+    # closed and quickly when the IdP is unavailable.
+    return PyJWKClient(url, cache_keys=True, lifespan=300, timeout=5)
 
 
 def authenticate_headers(headers: Mapping[str, Any]) -> Principal:
@@ -205,7 +209,8 @@ class PolicySet:
     def scope_for(self, principal: Principal) -> AccessScope:
         allowed: set[str] = set()
         known_role = False
-        for role in principal.roles:
+        principal_roles = frozenset(str(role).strip().lower() for role in principal.roles)
+        for role in principal_roles:
             grants = self.roles.get(role)
             if grants is None:
                 continue
@@ -227,7 +232,7 @@ class PolicySet:
         for table, columns in self.sensitive_columns.items():
             blocked = []
             for column, allow_roles in columns.items():
-                if not (principal.roles & allow_roles):
+                if not (principal_roles & allow_roles):
                     blocked.append(column)
             if blocked:
                 denied.append((table, tuple(sorted(blocked))))
@@ -254,6 +259,13 @@ def load_policy(path: str | Path) -> PolicySet:
     for role, grants in raw_roles.items():
         if not isinstance(grants, dict):
             raise PolicyConfigurationError(f"role {role!r} must be an object")
+        role_name = str(role).strip().lower()
+        if not role_name:
+            raise PolicyConfigurationError("policy role names cannot be empty")
+        if role_name in roles:
+            raise PolicyConfigurationError(
+                f"policy contains duplicate normalized role: {role_name!r}"
+            )
         domains = _as_names(grants.get("domains", []), field_name=f"roles.{role}.domains")
         tables = _as_names(grants.get("tables", []), field_name=f"roles.{role}.tables")
         combined = domains | tables
@@ -261,7 +273,7 @@ def load_policy(path: str | Path) -> PolicySet:
                    and item not in set(DOMAIN_OF.values())}
         if invalid:
             raise PolicyConfigurationError(f"role {role!r} has unknown grants: {sorted(invalid)}")
-        roles[str(role)] = combined
+        roles[role_name] = combined
 
     sensitive: dict[str, dict[str, frozenset[str]]] = {}
     raw_sensitive = raw.get("sensitive_columns", {})
@@ -316,16 +328,82 @@ def _walk(node):
             yield from _walk(value)
 
 
-def _cte_names(ast) -> set[str]:
-    names: set[str] = set()
-    for node in _walk(ast):
-        cte_map = node.get("cte_map")
-        if not isinstance(cte_map, dict):
-            continue
-        for entry in cte_map.get("map") or []:
-            if entry.get("key"):
-                names.add(str(entry["key"]).lower())
-    return names
+def _source_relations(node, visible_ctes: frozenset[str] = frozenset()):
+    """Yield physical relation nodes while respecting each CTE's SQL scope.
+
+    DuckDB serializes both a physical table and a CTE reference as
+    ``BASE_TABLE``.  A global set of CTE names is therefore unsafe: in
+
+        WITH protected AS (SELECT * FROM protected) SELECT * FROM protected
+
+    the reference inside the definition resolves to the physical table, while
+    the outer reference resolves to the CTE.  Treating both as CTE references
+    removes the protected table from the authorization decision entirely.
+
+    Definitions are visited in declaration order.  A non-recursive definition
+    sees inherited and earlier CTEs, but not itself. DuckDB represents a real
+    recursive definition as ``RECURSIVE_CTE_NODE``; its anchor is inspected
+    without the current name and its recursive term with the name visible.
+    """
+    if isinstance(node, list):
+        for value in node:
+            yield from _source_relations(value, visible_ctes)
+        return
+    if not isinstance(node, dict):
+        return
+
+    cte_map = node.get("cte_map")
+    entries = (cte_map.get("map") or []) if isinstance(cte_map, dict) else []
+    if entries:
+        available = set(visible_ctes)
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            name = str(entry.get("key") or "").lower()
+            value = entry.get("value")
+            # A RECURSIVE_CTE_NODE handles the narrower anchor/recursive-term
+            # visibility below.  The definition as a whole does not see its
+            # own name: DuckDB can resolve that name to a physical table in the
+            # anchor term.
+            yield from _source_relations(value, frozenset(available))
+            if name:
+                available.add(name)
+
+        # The query body sees every CTE declared by its WITH clause.  Do not
+        # visit cte_map again: each definition was already inspected under the
+        # narrower scope above.
+        body_scope = frozenset(available)
+        for key, value in node.items():
+            if key != "cte_map":
+                yield from _source_relations(value, body_scope)
+        return
+
+    if node.get("type") == "RECURSIVE_CTE_NODE":
+        name = str(node.get("cte_name") or "").lower()
+        # The anchor (`left`) is evaluated before the recursive relation exists;
+        # the recursive term (`right`) can refer to it.  Giving both sides the
+        # name recreates the shadowing bypass for an unqualified physical table
+        # in the anchor.
+        yield from _source_relations(node.get("left"), visible_ctes)
+        recursive_scope = visible_ctes | ({name} if name else set())
+        yield from _source_relations(node.get("right"), frozenset(recursive_scope))
+        for key, value in node.items():
+            if key not in {"left", "right", "cte_map"}:
+                yield from _source_relations(value, visible_ctes)
+        return
+
+    if node.get("type") == "BASE_TABLE":
+        name = str(node.get("table_name") or "").lower()
+        qualified = bool(node.get("schema_name") or node.get("catalog_name"))
+        # CTEs have no schema/catalog qualification.  `main.protected` must be
+        # treated as a physical relation even when a CTE named `protected` is
+        # visible, otherwise qualification recreates the shadowing bypass.
+        if qualified or name not in visible_ctes:
+            yield node
+        return
+
+    for value in node.values():
+        yield from _source_relations(value, visible_ctes)
 
 
 def validate_scope_schema(con, scope: AccessScope) -> None:
@@ -361,7 +439,6 @@ def authorize_sql(con, sql: str, scope: AccessScope | None) -> AccessDecision:
     bindings: dict[str, str] = {}
     tables: set[str] = set()
     unknown_relations: set[str] = set()
-    ctes = _cte_names(ast)
     for node in _walk(ast):
         if node.get("type") == "TABLE_FUNCTION":
             function = node.get("function")
@@ -373,13 +450,19 @@ def authorize_sql(con, sql: str, scope: AccessScope | None) -> AccessDecision:
             if name not in SAFE_TABLE_FUNCTIONS:
                 unknown_relations.add(f"{name or '<unknown table function>'}()")
             continue
-        if node.get("type") != "BASE_TABLE":
-            continue
+    for node in _source_relations(ast):
         name = str(node.get("table_name") or "").lower()
-        if name in ctes:
+        schema = str(node.get("schema_name") or "").lower()
+        catalog = str(node.get("catalog_name") or "").lower()
+        # The governed appliance owns only its default DuckDB `main` schema.
+        # A relation in temp or an attached catalog is a different object even
+        # when it reuses an allow-listed table name, so never authorize by the
+        # final identifier alone.
+        if catalog or schema not in {"", "main"}:
+            qualified = ".".join(part for part in (catalog, schema, name) if part)
+            unknown_relations.add(qualified)
             continue
         if name not in ALL_TABLES:
-            schema = str(node.get("schema_name") or "").lower()
             unknown_relations.add(f"{schema}.{name}" if schema else name)
             continue
         alias = str(node.get("alias") or name).lower()

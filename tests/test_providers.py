@@ -1,7 +1,16 @@
 """Provider transport contracts that need no running model server."""
 
+import pytest
+
 from engine import providers
-from engine.providers import OpenAICompatProvider, ProviderUnavailable
+from engine.assistant import Assistant
+from engine.providers import (
+    AnthropicProvider,
+    OpenAICompatProvider,
+    ProviderUnavailable,
+    build_provider,
+    model_provider_configured,
+)
 
 
 def test_openai_compatible_summary_uses_the_versioned_route(monkeypatch):
@@ -63,3 +72,51 @@ def test_openai_fallbacks_share_one_decreasing_request_budget(monkeypatch):
     assert response.tool_call is not None
     assert response.tool_call.name == "cannot_answer"
     assert timeouts == [10.0, 6.0, 1.5]
+
+
+def test_local_provider_is_enabled_without_an_anthropic_key():
+    assert model_provider_configured({
+        "ASK_PROVIDER": "ollama",
+        "ASK_LOCAL_BASE_URL": "http://model.internal:11434",
+    })
+    assert not model_provider_configured({"ASK_PROVIDER": "anthropic"})
+    assert model_provider_configured({
+        "ASK_PROVIDER": "anthropic",
+        "ANTHROPIC_API_KEY": "test-key",
+    })
+
+
+def test_provider_configuration_typos_fail_closed(monkeypatch):
+    with pytest.raises(ProviderUnavailable, match="unsupported ASK_PROVIDER"):
+        model_provider_configured({"ASK_PROVIDER": "ollmaa"})
+    with pytest.raises(ProviderUnavailable, match="unsupported model provider"):
+        build_provider(name="claud")
+
+    monkeypatch.setenv("ASK_LOCAL_MODE", "grammer")
+    with pytest.raises(ProviderUnavailable, match="ASK_LOCAL_MODE"):
+        OpenAICompatProvider(base_url="http://local.test")
+
+    monkeypatch.delenv("ASK_LOCAL_MODE", raising=False)
+    with pytest.raises(ProviderUnavailable, match="ASK_LOCAL_BASE_URL"):
+        OpenAICompatProvider(base_url="file:///etc/passwd")
+    with pytest.raises(ProviderUnavailable, match="embedded credentials"):
+        OpenAICompatProvider(base_url="https://user:secret@model.example")
+
+
+def test_explicit_supported_provider_names_build_expected_adapters():
+    assert isinstance(build_provider(name="local"), OpenAICompatProvider)
+    # Supplying a client avoids constructing a real SDK client while proving
+    # the normalized selector reaches the intended adapter.
+    assert isinstance(build_provider(name="claude", client=object()), AnthropicProvider)
+
+
+def test_assistant_does_not_override_the_local_model_with_anthropic_default(con, monkeypatch):
+    monkeypatch.setenv("ASK_PROVIDER", "ollama")
+    monkeypatch.setenv("ASK_LOCAL_BASE_URL", "http://model.internal:11434")
+    monkeypatch.setenv("ASK_LOCAL_MODEL", "qwen-local-sql")
+
+    assistant = Assistant(con)
+
+    assert isinstance(assistant.provider, OpenAICompatProvider)
+    assert assistant.provider.model == "qwen-local-sql"
+    assert assistant.model == "qwen-local-sql"

@@ -77,6 +77,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 # --------------------------------------------------------------------------
 # The contract
@@ -422,6 +423,28 @@ Tool schemas:
 Newlines inside the SQL string must be escaped as \\n. Reply with the JSON object only."""
 
 
+def _validated_base_url(value: str) -> str:
+    raw = str(value or "").strip().rstrip("/")
+    try:
+        parsed = urlsplit(raw)
+        valid = (
+            parsed.scheme in {"http", "https"}
+            and bool(parsed.hostname)
+            and parsed.username is None
+            and parsed.password is None
+            and not parsed.query
+            and not parsed.fragment
+        )
+    except ValueError:
+        valid = False
+    if not valid:
+        raise ProviderUnavailable(
+            "ASK_LOCAL_BASE_URL must be an HTTP(S) endpoint without embedded "
+            "credentials, query parameters, or a fragment"
+        )
+    return raw
+
+
 class OpenAICompatProvider:
     """Any server speaking POST {base_url}/v1/chat/completions.
 
@@ -441,10 +464,15 @@ class OpenAICompatProvider:
     def __init__(self, *, base_url: str | None = None, model: str | None = None,
                  mode: str = "auto", timeout: int = 120, max_repairs: int = 1,
                  temperature: float = 0.0, api_key: str | None = None):
-        self.base_url = (base_url or os.environ.get("ASK_LOCAL_BASE_URL")
-                         or "http://localhost:11434").rstrip("/")
+        self.base_url = _validated_base_url(
+            base_url or os.environ.get("ASK_LOCAL_BASE_URL") or "http://localhost:11434"
+        )
         self.model = model or os.environ.get("ASK_LOCAL_MODEL", "qwen2.5-coder:7b")
         self.mode = (os.environ.get("ASK_LOCAL_MODE") or mode).lower()
+        if self.mode not in {"auto", "tools", "schema", "prompt"}:
+            raise ProviderUnavailable(
+                "ASK_LOCAL_MODE must be one of auto, tools, schema, or prompt"
+            )
         self.timeout = timeout
         self.max_repairs = max_repairs
         self.temperature = temperature
@@ -658,11 +686,55 @@ class OpenAICompatProvider:
 # Selection
 # --------------------------------------------------------------------------
 
+ANTHROPIC_PROVIDER_NAMES = frozenset({"anthropic", "claude"})
+LOCAL_PROVIDER_NAMES = frozenset(
+    {"local", "ollama", "llamacpp", "llama_cpp", "vllm", "openai_compat"}
+)
+
+
+def configured_provider_name(environ: dict[str, str] | None = None) -> str:
+    """Return one validated provider name; configuration typos fail closed."""
+    env = os.environ if environ is None else environ
+    token = str(env.get("ASK_PROVIDER", "anthropic") or "anthropic").strip().lower()
+    if token not in ANTHROPIC_PROVIDER_NAMES | LOCAL_PROVIDER_NAMES:
+        raise ProviderUnavailable(
+            f"unsupported ASK_PROVIDER {token!r}; choose anthropic or an "
+            "OpenAI-compatible local provider"
+        )
+    return token
+
+
+def model_provider_configured(environ: dict[str, str] | None = None) -> bool:
+    """Whether an entry point should activate model-authored SQL.
+
+    A local OpenAI-compatible server is explicitly selected with ASK_PROVIDER
+    and commonly has no API key.  Entry points used to look only for an
+    Anthropic key, leaving the provider implementation unreachable even when a
+    local endpoint was fully configured.
+    """
+    env = os.environ if environ is None else environ
+    token = configured_provider_name(env)
+    if token in LOCAL_PROVIDER_NAMES:
+        return True
+    return bool(env.get("ANTHROPIC_API_KEY") or env.get("ANTHROPIC_AUTH_TOKEN"))
+
+
+def local_provider_configured(environ: dict[str, str] | None = None) -> bool:
+    return configured_provider_name(environ) in LOCAL_PROVIDER_NAMES
+
 def build_provider(name: str | None = None, **kwargs) -> Provider:
     """Pick a provider. Default stays Anthropic: nothing about existing
     behaviour changes unless ASK_PROVIDER is set deliberately."""
-    token = (name or os.environ.get("ASK_PROVIDER") or "anthropic").strip().lower()
-    if token in {"local", "ollama", "llamacpp", "llama_cpp", "vllm", "openai_compat"}:
+    if name is None:
+        token = configured_provider_name()
+    else:
+        token = str(name).strip().lower()
+        if token not in ANTHROPIC_PROVIDER_NAMES | LOCAL_PROVIDER_NAMES:
+            raise ProviderUnavailable(
+                f"unsupported model provider {token!r}; choose anthropic or an "
+                "OpenAI-compatible local provider"
+            )
+    if token in LOCAL_PROVIDER_NAMES:
         return OpenAICompatProvider(**kwargs)
     return AnthropicProvider(**kwargs)
 

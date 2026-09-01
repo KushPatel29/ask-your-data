@@ -4,13 +4,14 @@ Ask questions from the terminal.
     python -m app.cli "which payer type collects the least of what it's billed?"
     python -m app.cli                    # interactive REPL
     python -m app.cli --plan "..."       # force the keyless compiler
-    python -m app.cli --model "..."      # force the model (needs a key)
+    python -m app.cli --model "..."      # force the configured model provider
 
-With ANTHROPIC_API_KEY set, a language model writes the SQL. Without one, the
-deterministic compiler in `engine/planner.py` writes it instead -- no key, no
-network, no cost, and a refusal rather than a guess when it cannot bind the
-question. The warehouse, the guard and the executor are the same either way, and
-the header on every answer says which engine ran.
+With an Anthropic key or ASK_PROVIDER set to a local OpenAI-compatible server, a
+language model writes the SQL. Without either, the deterministic compiler in
+`engine/planner.py` writes it instead -- no key, no network, no cost, and a
+refusal rather than a guess when it cannot bind the question. The warehouse,
+guard and executor are the same either way, and every answer says which engine
+ran.
 """
 
 import os
@@ -20,6 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from engine import providers  # noqa: E402
 from engine.warehouse import build_warehouse  # noqa: E402
 
 
@@ -89,10 +91,6 @@ def show_plan(result, ran):
         print(f"\n  words this warehouse has no vocabulary for: "
               f"{', '.join(sorted(result.unbound))}")
     print()
-
-
-def _has_key() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
 
 
 def _planner_runner(con, access_scope):
@@ -196,8 +194,17 @@ def main():
     force_model = "--model" in argv
     argv = [a for a in argv if a not in ("--plan", "--model")]
 
-    if force_model and not _has_key():
-        print("  --model needs ANTHROPIC_API_KEY. Drop the flag to use the compiler.")
+    try:
+        model_configured = providers.model_provider_configured()
+    except providers.ProviderUnavailable as exc:
+        print(f"  Model provider configuration error: {exc}")
+        return 2
+
+    if force_model and not model_configured:
+        print(
+            "  --model needs ANTHROPIC_API_KEY or an explicit local ASK_PROVIDER. "
+            "Drop the flag to use the compiler."
+        )
         return 2
 
     from engine import access
@@ -214,9 +221,13 @@ def main():
     except (access.AuthenticationError, access.PolicyConfigurationError) as exc:
         print(f"  Access denied: {exc}")
         return 2
-    use_model = force_model or (_has_key() and not force_plan)
-    ask = (_model_runner(con, query_access) if use_model
-           else _planner_runner(con, query_access))
+    use_model = force_model or (model_configured and not force_plan)
+    try:
+        ask = (_model_runner(con, query_access) if use_model
+               else _planner_runner(con, query_access))
+    except providers.ProviderUnavailable as exc:
+        print(f"  Model provider configuration error: {exc}")
+        return 2
     engine_name = "the model" if use_model else "the keyless compiler"
 
     if argv:

@@ -8,11 +8,10 @@ turns as context. Every answer shows the plain-English result, the SQL the model
 wrote, and the returned rows — so a reader can always check the number against
 the query.
 
-With ANTHROPIC_API_KEY set, that is what runs. Without one there is no model, so
-the app falls back to DEMO MODE: the questions from the project's accuracy
-contract, each executing its reference SQL live against DuckDB. That is a
-genuinely different thing from the model writing SQL, and the UI says so rather
-than blurring the two.
+With an Anthropic key or an explicitly configured local OpenAI-compatible
+provider, that is what runs. Without one the deterministic compiler writes SQL
+locally. That is genuinely different from a model writing SQL, and the UI says
+so rather than blurring the two.
 
 WHAT THIS FILE PUTS ON SCREEN, AND WHY IT IS CHEAP
 The readouts in app/ui.py need more than the fused ranking: the fusion panel
@@ -89,6 +88,7 @@ from engine import (  # noqa: E402
     demo_mode,
     exemplars,
     planner,
+    providers,
     retrieval,
     voice,
 )
@@ -171,7 +171,12 @@ def _count_question() -> None:
     st.session_state.asked = _questions_asked() + 1
 
 
-LIVE_MODE = demo_mode.has_api_key() or bool(_session_key())
+try:
+    SERVER_MODEL_ENABLED = providers.model_provider_configured()
+except providers.ProviderUnavailable as exc:
+    st.error(f"Model provider configuration error: {exc}")
+    st.stop()
+LIVE_MODE = SERVER_MODEL_ENABLED or bool(_session_key())
 
 
 @st.cache_resource
@@ -1128,6 +1133,16 @@ def _render_key_control() -> None:
     API by the same client `engine/assistant.py` already used. The input is
     `type="password"` so it does not sit on screen in a screen-share.
     """
+    if providers.local_provider_configured() and not _session_key():
+        st.caption(
+            "Model: server-configured OpenAI-compatible local provider "
+            f"(`{providers.configured_provider_name()}`)."
+        )
+        st.caption(
+            "Questions and retrieved schema stay on the configured model endpoint; "
+            "the same verifier, data policy, SQL guard, and executor remain in force."
+        )
+        return
     if demo_mode.has_api_key():
         st.caption("Model: configured by the server environment.")
         return

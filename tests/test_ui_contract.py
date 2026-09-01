@@ -56,6 +56,18 @@ def test_the_hostile_string_actually_reached_the_output(rendered):
     assert escaped >= 4, "the hostile fixture stopped reaching the components"
 
 
+def test_status_rail_allows_formatting_but_escapes_other_markup(rendered):
+    ui, _panels = rendered
+    ui.st.take()
+    ui.status_rail([
+        ("provider", '<s>local</s><br><em>ready</em><img src=x onerror="alert(1)">'),
+    ])
+    body = ui.st.take()
+    assert "<s>local</s><br><em>ready</em>" in body
+    assert "<img" not in body
+    assert "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;" in body
+
+
 # --------------------------------------------------------------------------
 # Colour.
 # --------------------------------------------------------------------------

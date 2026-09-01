@@ -1157,9 +1157,9 @@ def status_rail(cells: list[tuple[str, str]]) -> None:
     `cells` is a list of (label, value) pairs; the value may carry three inline
     tags, which exist so the caller can mark up a value without knowing any
     class names: <em> for a de-emphasised qualifier, <s> for the machine accent,
-    <u> for the alert colour. Everything else the caller passes is escaped by
-    the caller - this function does not escape, because the whole point of the
-    tags is that they survive.
+    <u> for the alert colour. The component escapes the entire value first and
+    restores only those six exact tags. That keeps the compact markup without
+    making every future caller part of the XSS boundary.
 
     The rail is deliberately NOT position:sticky. Streamlit's own fixed header
     is the only thing that could tell it what `top` to stick to, and its height
@@ -1167,9 +1167,16 @@ def status_rail(cells: list[tuple[str, str]]) -> None:
     this file is not allowed to take. A rail that overlaps the toolbar on the
     next Streamlit release is worse than one that scrolls.
     """
+    def safe_value(value: str) -> str:
+        escaped = html.escape(str(value))
+        for tag in ("em", "s", "u", "br"):
+            escaped = escaped.replace(f"&lt;{tag}&gt;", f"<{tag}>")
+            escaped = escaped.replace(f"&lt;/{tag}&gt;", f"</{tag}>")
+        return escaped
+
     groups = "".join(
         f'<div class="ayd-cellgrp"><span class="k">{html.escape(label)}</span>'
-        f'<span class="v">{value}</span></div>'
+        f'<span class="v">{safe_value(value)}</span></div>'
         for label, value in cells
     )
     st.markdown(f'<div class="ayd-rail ayd-hud">{groups}</div>', unsafe_allow_html=True)

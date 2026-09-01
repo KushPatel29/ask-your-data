@@ -92,6 +92,18 @@ def test_extra_identity_group_does_not_erase_a_mapped_role(policy_file: Path):
     assert not any(table.startswith("hr_") for table in scope.allowed_tables)
 
 
+def test_role_matching_is_case_insensitive_and_normalized(tmp_path: Path):
+    policy = tmp_path / "case-policy.yaml"
+    policy.write_text(POLICY.replace("healthcare_analyst:", "Healthcare_Analyst:"),
+                      encoding="utf-8")
+
+    scope = load_policy(policy).scope_for(
+        Principal("subject", roles=frozenset({"HEALTHCARE_ANALYST"}), authenticated=True)
+    )
+
+    assert "healthcare_fact_claims" in scope.allowed_tables
+
+
 def test_role_limits_relations_before_execution(con, policy_file: Path):
     scope = load_policy(policy_file).scope_for(
         Principal("subject", roles=frozenset({"healthcare_analyst"}), authenticated=True)
@@ -141,6 +153,23 @@ def test_information_schema_cannot_bypass_catalogue_policy(con, policy_file: Pat
     )
     assert result.policy_denied
     assert "outside the governed catalogue" in result.error
+
+
+@pytest.mark.parametrize(
+    "relation",
+    ["temp.healthcare_fact_claims", "other.main.healthcare_fact_claims"],
+)
+def test_allowlisted_name_in_an_unmanaged_schema_or_catalog_is_denied(
+    con, policy_file: Path, relation: str,
+):
+    scope = load_policy(policy_file).scope_for(
+        Principal("subject", roles=frozenset({"healthcare_analyst"}), authenticated=True)
+    )
+
+    decision = authorize_sql(con, f"SELECT COUNT(*) FROM {relation}", scope)
+
+    assert not decision.allowed
+    assert "outside the governed catalogue" in decision.reason
 
 
 def test_policy_column_typo_fails_schema_validation(con, policy_file: Path):
@@ -241,3 +270,74 @@ def test_table_functions_cannot_bypass_relation_policy(con, policy_file, sql, hi
     decision = authorize_sql(con, sql, scope)
     assert not decision.allowed
     assert hidden in decision.reason
+
+
+def test_cte_cannot_shadow_an_unauthorized_governed_table(con, policy_file):
+    scope = load_policy(policy_file).scope_for(
+        Principal("subject", roles=frozenset({"healthcare_analyst"}), authenticated=True)
+    )
+    sql = """
+        WITH hr_fact_employees AS (
+            SELECT employee_id FROM hr_fact_employees
+        )
+        SELECT COUNT(*) FROM hr_fact_employees
+    """
+
+    decision = authorize_sql(con, sql, scope)
+
+    assert not decision.allowed
+    assert "hr_fact_employees" in decision.reason
+
+    qualified = authorize_sql(
+        con,
+        "WITH hr_fact_employees AS ("
+        "SELECT employee_id FROM main.hr_fact_employees"
+        ") SELECT COUNT(*) FROM hr_fact_employees",
+        scope,
+    )
+    assert not qualified.allowed
+    assert "hr_fact_employees" in qualified.reason
+
+    recursive = authorize_sql(
+        con,
+        "WITH RECURSIVE hr_fact_employees(employee_id) AS ("
+        "SELECT employee_id FROM hr_fact_employees "
+        "UNION ALL SELECT employee_id FROM hr_fact_employees WHERE 1=0"
+        ") SELECT COUNT(*) FROM hr_fact_employees",
+        scope,
+    )
+    assert not recursive.allowed
+    assert "hr_fact_employees" in recursive.reason
+
+
+def test_cte_cannot_shadow_an_unknown_physical_relation(con, policy_file):
+    scope = load_policy(policy_file).scope_for(
+        Principal("subject", roles=frozenset({"healthcare_analyst"}), authenticated=True)
+    )
+    sql = "WITH outside AS (SELECT * FROM outside) SELECT * FROM outside"
+
+    decision = authorize_sql(con, sql, scope)
+
+    assert not decision.allowed
+    assert "outside the governed catalogue" in decision.reason
+
+
+def test_legitimate_and_recursive_ctes_remain_available(con, policy_file):
+    scope = load_policy(policy_file).scope_for(
+        Principal("subject", roles=frozenset({"healthcare_analyst"}), authenticated=True)
+    )
+    ordinary = run_query(
+        con,
+        "WITH claims AS (SELECT claim_id FROM healthcare_fact_claims) "
+        "SELECT COUNT(*) FROM claims",
+        access=scope,
+    )
+    recursive = run_query(
+        con,
+        "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM n WHERE x < 3) "
+        "SELECT SUM(x) FROM n",
+        access=scope,
+    )
+
+    assert ordinary.ok and ordinary.rows == [(12000,)]
+    assert recursive.ok and recursive.rows == [(6,)]
