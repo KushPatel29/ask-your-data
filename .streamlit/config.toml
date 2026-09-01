@@ -14,9 +14,27 @@ headless = true
 enableCORS = true
 enableXsrfProtection = true
 xsrfCookieSameSite = "lax"
-# Reject arbitrary websocket Host headers while retaining the two supported
-# managed platforms and local development. Ports are ignored by Streamlit.
-allowedHosts = ["localhost", "127.0.0.1", "*.onrender.com", "*.streamlit.app"]
+# server.allowedHosts is DELIBERATELY NOT SET HERE, and that is a deployment
+# decision rather than an oversight.
+#
+# It is an allow-list on the WebSocket Host header, so a value that does not
+# match what the platform's proxy forwards does not degrade — it 403s the
+# socket, and a Streamlit app whose socket is refused renders as a permanent
+# "Please wait…" with nothing in the page to say why. Streamlit's own default
+# is an empty list precisely "to preserve compatibility with dynamically
+# configured reverse proxies and custom domains", which is exactly what a
+# managed host is.
+#
+# The public deployment is Streamlit Community Cloud, whose internal forwarded
+# Host is not a value this repository can verify from outside it. Pinning an
+# unverifiable allow-list in the committed config would put a recruiter-facing
+# link one proxy change away from a blank page, to defend synthetic data behind
+# no login against DNS rebinding.
+#
+# So the control moves to where the hostname IS known: STREAMLIT_SERVER_ALLOWED_HOSTS
+# is set in the Dockerfile, which is what Render and any self-hosted or
+# enterprise deployment runs. Same control, applied by whoever can check it.
+# See tests/test_streamlit_security_config.py, which asserts both halves.
 # Voice is the only upload surface and engine/voice.py enforces the same 12 MB
 # ceiling after receipt. Matching it here prevents buffering larger payloads.
 maxUploadSize = 12

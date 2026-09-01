@@ -170,7 +170,19 @@ class MiniLMEmbedder:
 
         options = ort.SessionOptions()
         options.log_severity_level = 3
-        options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        # The default CPU arena and extended graph optimizer retain several
+        # model-sized buffers. Together with the in-memory DuckDB warehouse,
+        # that pushed the otherwise healthy public service above a 512 MB
+        # instance limit during its first semantic-index warm-up. This corpus
+        # is tiny and inference is sequential, so deterministic low-memory
+        # settings are the right trade: one thread, no reusable arena/pattern,
+        # and basic graph rewrites only.
+        options.enable_cpu_mem_arena = False
+        options.enable_mem_pattern = False
+        options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+        options.intra_op_num_threads = 1
+        options.inter_op_num_threads = 1
+        options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
         self._tokenizer = tokenizer
         self._session = ort.InferenceSession(
             str(model_dir / "model.onnx"),

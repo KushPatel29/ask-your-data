@@ -26,9 +26,19 @@ COPY --chown=app:app . .
 # The suite is NOT run here. Building the warehouse once per test module and then
 # adding the embedding model is what pushed the old image past 512 MB; that work
 # belongs on a CI runner with real memory, not on the box serving the demo.
+# STREAMLIT_SERVER_ALLOWED_HOSTS lives here rather than in .streamlit/config.toml,
+# and the split is the point. The allow-list 403s a WebSocket whose Host header
+# it does not match, and a Streamlit app with a refused socket renders as a
+# permanent "Please wait…" with nothing on the page to explain it — so it may
+# only be pinned by a deployment that can verify what its own proxy forwards.
+# This image is that deployment. Streamlit Community Cloud, which serves the
+# public demo, is not: its internal forwarded Host is not knowable from this
+# repository, so the committed config leaves Streamlit's compatibility default
+# in place there. Override this value for any other host.
 ENV PORT=10000 \
     PYTHONUNBUFFERED=1 \
     STREAMLIT_SERVER_HEADLESS=true \
+    STREAMLIT_SERVER_ALLOWED_HOSTS="localhost,127.0.0.1,*.onrender.com" \
     STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
 EXPOSE 10000

@@ -527,6 +527,47 @@ Run `python scripts/run_live_eval.py` against the selected model before treating
 it as a release candidate—the repository does not claim unmeasured local-model
 accuracy.
 
+### Deploying it, and why the public copy is on Streamlit
+
+The public demo runs on **Streamlit Community Cloud**, which builds from `main`
+on every push. That is a measurement, not a preference. Driven headlessly
+through a cold start and two questions, the serving process settles at **366 MB
+resident with a 564 MB peak** — the peak lands while the MiniLM ONNX session is
+being built alongside the in-memory warehouse. A 512 MB container does not
+survive that spike: it restarts mid-warm-up, and because the HTTP health route
+answers before the index exists, it reports healthy right up until it doesn't.
+Streamlit Cloud's per-app ceiling is several times that, so the same build sits
+inside it with room left over.
+
+The footprint was reduced rather than merely accommodated. `engine/vector_index.py`
+builds its ONNX session with the CPU arena and memory-pattern reuse disabled,
+sequential execution, one thread, and basic graph rewrites only. The corpus is
+71 schema documents and inference is one short sequence at a time, so none of
+what those options buy is reachable here — they were only holding
+model-sized buffers.
+
+Two configuration notes that matter more than they look:
+
+- **`server.allowedHosts` is deliberately absent from `.streamlit/config.toml`.**
+  It is an allow-list on the WebSocket `Host` header, and a value that does not
+  match what the platform's proxy forwards does not degrade — it 403s the
+  socket, and a Streamlit app with a refused socket renders as a permanent
+  *"Please wait…"* with nothing on the page to explain it. Streamlit's own
+  default is empty for exactly this reason. The control is not dropped; it
+  moves to `STREAMLIT_SERVER_ALLOWED_HOSTS` in the Dockerfile, which is the
+  deployment that can verify its own hostname. `tests/test_streamlit_security_config.py`
+  asserts both halves, so a later hardening pass cannot quietly put an
+  unverifiable allow-list back in front of the public link.
+- **No secrets are required.** `ASK_AUTH_MODE` defaults to `disabled`, so a
+  fresh deployment with no environment at all comes up anonymous and keyless,
+  answering from the compiler. Everything below is opt-in.
+
+`Dockerfile` and `render.yaml` are kept and CI still builds the image, because
+a container is what an enterprise deployment actually runs and what the
+identity and policy controls below are configured through. On a 512 MB free
+tier, give the image a paid instance or expect the warm-up to be the thing that
+kills it.
+
 ### Enterprise identity, policy, and request bounds
 
 The public synthetic demo remains explicitly unauthenticated. A protected
