@@ -346,6 +346,16 @@ TABLE_COUNT = len(set(table_names(con)) & set(ACCESS.allowed_tables))
 ACCESS_DOMAINS = {name.split("_", 1)[0] for name in ACCESS.allowed_tables}
 POOL = max(retrieval.DEFAULT_K * 2, 12)  # the depth retrieve_hybrid reads each ranking to
 
+# The interpreter this repository is proven on, read from the file that pins it
+# rather than typed here — the point of the rail is that nothing on it is
+# hand-maintained. Missing on an exotic checkout is not worth an exception on
+# page load, so it degrades to the running version and the rail simply agrees
+# with itself.
+try:
+    PINNED_PYTHON = (ROOT / ".python-version").read_text(encoding="utf-8").strip()
+except OSError:
+    PINNED_PYTHON = ".".join(__import__("platform").python_version_tuple()[:2])
+
 # The rules Verifier can actually produce a finding for on this app's paths, in
 # the order engine/verify.py's own docstring argues them, each with the severity
 # that module assigns it. Drawn as a board for the same reason the guard draws
@@ -402,13 +412,29 @@ def _status_rail() -> None:
     then it is worse than no rail, because it is a confident wrong answer about
     what the machine is doing.
     """
+    import platform
+
     import duckdb
 
     index = ("<s>ready</s>" if RETRIEVAL_READY
              else "<u>fallback</u>")
+    # The interpreter the deployment actually got, set against the one the
+    # suite was proven on. These are the same decision in two places and they
+    # drift silently: a managed host picks the Python version in a dropdown at
+    # app-creation time and does not read `.python-version`, so a new
+    # deployment can come up on an interpreter CI never ran — and the first
+    # symptom is a wheel that will not install, or worse, one that does.
+    # `tests/test_runtime_pinning.py` holds the repository's three copies of
+    # this to one answer; the rail is what carries it onto the deployed page,
+    # where the version is otherwise invisible.
+    running = ".".join(platform.python_version_tuple()[:2])
+    pinned = PINNED_PYTHON
+    runtime = (f"python <em>{running}</em>" if running == pinned
+               else f"python <u>{running}</u><br><em>pinned {pinned}</em>")
     ui.status_rail([
         ("warehouse", f"<s>{TABLE_COUNT}</s> tables <em>· {len(ACCESS_DOMAINS)} domains</em>"),
         ("engine", f"duckdb <em>{duckdb.__version__}</em>"),
+        ("runtime", runtime),
         ("index", f"MiniLM-L6-v2 · {index}<br><em>exact cosine · onnx · local</em>"),
         ("retrieval", f"hybrid rrf · k={retrieval.DEFAULT_K}<br>"
                       f"<em>pool {POOL} · rrf_k={retrieval.RRF_K}</em>"),

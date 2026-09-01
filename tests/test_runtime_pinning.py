@@ -83,3 +83,22 @@ def test_a_bot_cannot_raise_the_interpreter_on_its_own():
     assert "dependency-name: python" in config
     assert "version-update:semver-minor" in config
     assert "version-update:semver-major" in config
+
+
+def test_the_rail_reports_the_interpreter_the_deployment_really_got():
+    """A managed host picks the Python version in a dropdown at app-creation
+    time and does not read `.python-version`, so a new deployment can come up
+    on an interpreter CI never ran. The three files above agree with each other
+    inside the repository; only the rail can say what the DEPLOYMENT got.
+
+    Asserted at source level because the value is read at import time from a
+    module that starts Streamlit on import.
+    """
+    source = (ROOT / "app" / "streamlit_app.py").read_text(encoding="utf-8")
+    assert "PINNED_PYTHON" in source
+    assert '.python-version' in source, "the pin must be read, never typed"
+    assert '("runtime", runtime)' in source, "the rail must carry it"
+    # A mismatch has to be visible as a mismatch. `<u>` is the rail's alert
+    # form; `<em>` is its muted form. Rendering a wrong interpreter in the
+    # muted form would put the fact on the page and still hide it.
+    assert 'python <u>{running}</u>' in source
