@@ -16,8 +16,31 @@ import re
 import tomllib
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 PINNED = (ROOT / ".python-version").read_text(encoding="utf-8").strip()
+
+
+def _repo_file(relative: str) -> str:
+    """Read a file that exists in the repository but not in the built image.
+
+    `.dockerignore` excludes `.github`, and it should: CI configuration is not
+    something the runtime needs and shipping it would only widen the image.
+    But the suite runs INSIDE that image as well — CI builds the container and
+    runs pytest in it, which is the point of the docker job — so a test that
+    reads a repo-only path fails there for a reason that has nothing to do with
+    what it is checking. That is exactly what happened: the tests job went
+    green, the docker job went red, and the finding was my own test.
+
+    Skipping is the honest outcome rather than a dodge, and the condition is
+    narrow enough to say so: it fires only when the file is ABSENT, so a
+    present-but-wrong config still fails everywhere it can be seen.
+    """
+    path = ROOT / relative
+    if not path.is_file():
+        pytest.skip(f"{relative} is not part of the runtime image (see .dockerignore)")
+    return path.read_text(encoding="utf-8")
 
 
 def test_the_pinned_interpreter_is_a_concrete_minor_version():
@@ -36,7 +59,7 @@ def test_the_container_runs_the_interpreter_the_suite_was_proven_on():
 
 
 def test_ci_runs_the_interpreter_the_container_ships():
-    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    ci = _repo_file(".github/workflows/ci.yml")
     versions = re.findall(r'python-version:\s*"?([0-9.]+)"?', ci)
     assert versions, "CI must state its interpreter"
     for version in versions:
@@ -56,7 +79,7 @@ def test_a_bot_cannot_raise_the_interpreter_on_its_own():
     """The bump has to be a deliberate act, taken with the wheel availability
     of onnxruntime and tokenizers actually checked — not a green checkmark on a
     diff that changes one line and breaks the image."""
-    config = (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    config = _repo_file(".github/dependabot.yml")
     assert "dependency-name: python" in config
     assert "version-update:semver-minor" in config
     assert "version-update:semver-major" in config
