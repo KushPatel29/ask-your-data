@@ -301,19 +301,43 @@ def _voice_api_key() -> str:
     return str(st.session_state.get("voice_byok", "") or voice.server_api_key()).strip()
 
 
-def _voice_client():
-    """One voice client per browser endpoint/key, never shared across visitors."""
+def _voice_engine():
+    """(client, label) for the speech engine this session will use.
+
+    Resolution lives in engine/voice.resolve so the precedence is testable
+    without Streamlit: an explicitly configured endpoint or key wins, then the
+    in-process open models, then nothing. What changed for the app is that the
+    third case is now rare — voice used to require an operator, and the public
+    deployment has none.
+
+    Never raises. A misconfigured remote provider must cost the page its voice
+    control, not its ability to answer questions, so the failure is captured
+    and shown beside the control that caused it.
+    """
     key = _voice_api_key()
     endpoint = voice.base_url()
-    if not key and not endpoint:
-        return None
-    fingerprint = hashlib.sha256(f"{endpoint}\0{key}".encode("utf-8")).hexdigest()
+    fingerprint = hashlib.sha256(
+        f"{endpoint}\0{key}\0{voice.engine_preference()}".encode("utf-8")
+    ).hexdigest()
     if st.session_state.get("_voice_key_fingerprint") != fingerprint:
-        st.session_state["_voice_client"] = voice.OpenAIVoice(
-            api_key=key, base_url=endpoint,
-        )
+        st.session_state.pop("_voice_error", None)
+        try:
+            client, label = voice.resolve(key)
+        except voice.VoiceUnavailable as exc:
+            client, label = None, ""
+            st.session_state["_voice_error"] = str(exc)
+        st.session_state["_voice_client"] = client
+        st.session_state["_voice_label"] = label
         st.session_state["_voice_key_fingerprint"] = fingerprint
-    return st.session_state["_voice_client"]
+    return st.session_state.get("_voice_client"), st.session_state.get("_voice_label", "")
+
+
+def _voice_client():
+    return _voice_engine()[0]
+
+
+def _voice_label() -> str:
+    return _voice_engine()[1]
 
 
 try:
@@ -449,13 +473,11 @@ def _status_rail() -> None:
         # boundary that is set before any question is asked. The count comes
         # from the roster below, which a test holds against engine/verify.py.
         ("verifier", f"structural<br><em>{len(VERIFY_CHECKS)} rules · deterministic</em>"),
-        ("voice", (
-            "stt → review → tts<br><em>faster-whisper · Kokoro · local</em>"
-            if voice.local_endpoint_configured() else
-            "stt → review → tts<br><em>OpenAI · cloud</em>"
-            if _voice_api_key() else
-            "optional<br><em>configure local voice or cloud key</em>"
-        )),
+        # Which speech engine really resolved, not which one is configurable.
+        # The rail used to answer "is an endpoint or key set", so on the public
+        # deployment it said "optional · configure local voice or cloud key"
+        # while voice was, in fact, running on models inside this process.
+        ("voice", voice.describe_engine(_voice_label())),
         ("row cap", f"{MAX_ROWS:,} <em>/ query</em>"),
         ("deadline", f"{deadline.configured_timeout_s():g}s <em>/ request</em>"),
     ])
@@ -1222,12 +1244,21 @@ LOCAL_VOICE_OPTIONS = {
 }
 
 
+# The in-process Piper model IS one voice, so offering a menu of four would be
+# a control that does nothing — the worst kind, because it invites the reader
+# to believe the other three exist.
+IN_PROCESS_VOICE_OPTIONS = {"Lessac · neutral": "en_US-lessac-low"}
+
+
 def _voice_options() -> dict[str, str]:
-    return LOCAL_VOICE_OPTIONS if voice.local_endpoint_configured() else VOICE_OPTIONS
+    label = _voice_label()
+    if label == "local":
+        return IN_PROCESS_VOICE_OPTIONS
+    return LOCAL_VOICE_OPTIONS if label == "self-hosted" else VOICE_OPTIONS
 
 
 def _voice_ready() -> bool:
-    return bool(voice.local_endpoint_configured() or _voice_api_key())
+    return _voice_client() is not None
 
 
 def _clear_voice_key() -> None:
@@ -1240,7 +1271,17 @@ def _clear_voice_key() -> None:
 def _render_voice_control() -> None:
     """Voice provider settings, deliberately separate from the SQL model key."""
     st.markdown("**Voice input & playback**")
-    if voice.local_endpoint_configured():
+    if st.session_state.get("_voice_error"):
+        st.error(st.session_state["_voice_error"])
+    if _voice_label() == "local":
+        st.caption(
+            "Voice runs **in this process** on open models — faster-whisper "
+            "`tiny.en` transcribes and Piper `en_US-lessac-low` speaks. No API "
+            "key, no account, and no second service: the recording and the "
+            "answer text never leave the server. Both models download once on "
+            "first use and are cached with a pinned checksum."
+        )
+    elif voice.local_endpoint_configured():
         st.caption(
             "Free self-hosted voice is enabled: faster-whisper transcribes and "
             "Kokoro generates speech. Audio and answer text go only to the "
@@ -1278,9 +1319,24 @@ def _render_voice_control() -> None:
                  key="voice_language", index=0)
     st.selectbox("Answer voice", tuple(_voice_options()),
                  key="voice_name", index=0)
-    st.caption(
-        f"STT `{voice.configured_stt_model()}` · TTS `{voice.configured_tts_model()}` · "
-        "playback is AI-generated speech."
+    stt_model, tts_model = _voice_models()
+    st.caption(f"STT `{stt_model}` · TTS `{tts_model}` · playback is AI-generated speech.")
+
+
+def _voice_models() -> tuple[str, str]:
+    """(stt, tts) as the RESOLVED engine names them.
+
+    voice.configured_*_model() reads the environment, which describes the
+    remote seam. When speech is running in this process those functions
+    describe a provider nobody is talking to, so the readouts asked the client
+    that actually answered.
+    """
+    client = _voice_client()
+    if client is None:
+        return voice.configured_stt_model(), voice.configured_tts_model()
+    return (
+        getattr(client, "stt_model", voice.configured_stt_model()),
+        getattr(client, "tts_model", voice.configured_tts_model()),
     )
 
 
@@ -1297,15 +1353,13 @@ def _voice_name() -> str:
 def _voice_question() -> str:
     """Record, transcribe, and confirm one question; never auto-run a transcript."""
     ready = _voice_ready()
-    ui.voice_dock(
-        ready=ready,
-        stt_model=voice.configured_stt_model(),
-        tts_model=voice.configured_tts_model(),
-    )
+    stt_model, tts_model = _voice_models()
+    ui.voice_dock(ready=ready, stt_model=stt_model, tts_model=tts_model)
     if not ready:
         st.caption(
-            "Configure the free local speech service or add an OpenAI key under "
-            "Voice input & playback to record."
+            "Speech is unavailable in this deployment. Install the voice extras "
+            "for in-process open models, or configure an endpoint or key under "
+            "Voice input & playback."
         )
         return ""
 
@@ -1380,6 +1434,7 @@ def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn") ->
     audio_key = f"voice_audio_{identity}"
     error_key = f"voice_audio_error_{identity}"
     button_key = f"listen_{namespace}_{index}_{identity}"
+    mime_key = f"voice_audio_mime_{identity}"
     if audio_key not in st.session_state:
         if st.button("Listen to answer", key=button_key,
                      icon=":material/volume_up:"):
@@ -1387,6 +1442,11 @@ def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn") ->
                 try:
                     speech = _voice_client().synthesize(answer, voice=selected)
                     st.session_state[audio_key] = speech.audio
+                    # The remote provider returns MP3 and the in-process voice
+                    # returns WAV. Hard-coding audio/mpeg played a RIFF file as
+                    # an MP3, which some browsers refuse outright and others
+                    # render as a player that never starts.
+                    st.session_state[mime_key] = speech.mime_type
                     cached = [
                         key for key in st.session_state
                         if key.startswith("voice_audio_")
@@ -1400,11 +1460,14 @@ def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn") ->
     if st.session_state.get(error_key):
         st.error(st.session_state[error_key])
     if st.session_state.get(audio_key):
-        st.audio(st.session_state[audio_key], format="audio/mpeg")
-        st.caption(
-            f"AI-generated voice · {selected} · {voice.configured_tts_model()}. "
-            "Generated on demand and kept in session memory only."
-        )
+        st.audio(st.session_state[audio_key],
+                 format=st.session_state.get(mime_key, "audio/mpeg"))
+        client = _voice_client()
+        model = getattr(client, "tts_model", voice.configured_tts_model())
+        where = ("Synthesized in this process — the answer text never left the "
+                 "server." if _voice_label() == "local" else
+                 "Generated on demand and kept in session memory only.")
+        st.caption(f"AI-generated voice · {model}. {where}")
 
 
 def _audit_turn(entry: dict, *, engine: str, coverage=None, metric: str = "") -> None:

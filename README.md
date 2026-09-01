@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-855%20%C2%B7%20854%20run%20without%20an%20API%20key-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-880%20%C2%B7%20879%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
@@ -14,9 +14,10 @@ type your own question. No API key required, and none is configured on the
 deployment: without one, the SQL is written by a **deterministic compiler**
 (`engine/planner.py`) that binds your words to the warehouse's own columns,
 values and join graph. Bring your own key in the sidebar to let a language model
-write SQL. Voice can run entirely locally with faster-whisper and Kokoro through
-Speaches, or use OpenAI as an optional cloud fallback. Same guard, same verifier,
-same executor whether the question was typed or spoken.
+write SQL. **Voice needs no key either** — faster-whisper and Piper run inside the
+same process, so you can ask out loud and hear the answer back on the deployed
+app with nothing configured. Same guard, same verifier, same executor whether the
+question was typed or spoken.
 
 The interface is organized around three jobs: **Ask** keeps the governed answer
 flow focused, **Data catalog** searches authorized tables/columns/values, and
@@ -595,7 +596,55 @@ readiness assessment are in
 [`docs/SLO_AND_RUNBOOK.md`](docs/SLO_AND_RUNBOOK.md), and
 [`docs/ENTERPRISE_READINESS_2026.md`](docs/ENTERPRISE_READINESS_2026.md).
 
-### Free local voice and optional n8n operations
+### Voice with no API key, running inside the process
+
+Ask a question out loud and hear the answer back, on the public deployment,
+with nothing configured. Both halves are open models running **in this
+process** — no key, no account, no second service, and the recording and the
+answer text never leave the server:
+
+| | model | weights | why this one |
+|---|---|---|---|
+| speech → text | faster-whisper `tiny.en` (CTranslate2, int8) | ~40 MB | see below |
+| text → speech | Piper `en_US-lessac-low` (VITS on onnxruntime) | ~63 MB | onnxruntime was already a dependency, so this adds a model rather than a runtime |
+
+This replaced a real but unreachable feature. The Compose stack below has always
+offered free voice through a self-hosted Speaches container, and it still does —
+but Streamlit Community Cloud runs one process with nowhere to put a second
+container, so every visitor to the demo saw *"Recordings are sent only after
+voice is enabled"*. Voice was a feature you had to already be an operator to use.
+
+**`tiny.en`, and the measurement that chose it.** Against speech synthesized by
+the TTS half above, `tiny.en` and `base.en` produced *identical* transcripts —
+and `base.en` took 41.8 s to load against 0.9 s. What earns the accuracy is not
+the model size, it is the decoder prompt: unprompted, `tiny.en` writes
+`Self-pay`, and `self pay` binds no WHERE clause. Naming `Self-Pay` in the
+prompt fixes it.
+
+**The elegant version of that prompt does not work, and it was tried three ways.**
+`engine/semantics.py` already extracts 797 value phrases from the warehouse, and
+biasing the decoder with them would have been derived rather than hand-written —
+this repo's whole preference. Ranking them longest-first pulled a 200-character
+clinical query narrative into the prompt and produced *"about 19% of **it**
+allowed amount"*; bounding the length spent the budget on `models staging stg
+warehousessql`; ranking by source-column cardinality, the most principled of the
+three, filled up on columns holding one distinct value — `true`, `pass`,
+`success` — and heard *"Softpay"*. The reason is structural: the lexicon is
+normalised to lower case so the compiler can match it, and **case is exactly what
+the prompt was for**. So the vocabulary is curated, which is what
+`DOMAIN_KEYWORDS` was always for.
+
+**What it costs, measured:** the resident floor goes from 330 MB to 465 MB with
+the voice loaded and 611 MB with both. Speech roughly doubles it — and both
+engines are lazy, so a visitor who never presses Listen pays none of it. Every
+answer carries a Listen control; nothing autoplays.
+
+`engine/local_voice.py` is optional at import. If the wheels are missing or a
+model cannot be fetched, `available()` returns False and the app falls back to
+the remote seam or reports voice unconfigured — a deployment that cannot install
+CTranslate2 still answers questions.
+
+### Self-hosted voice and optional n8n operations
 
 The included Compose stack runs the app with a versioned CPU Speaches image and a
 self-hosted n8n instance:
@@ -640,7 +689,8 @@ engine/
   exemplars.py      the few-shot bank, selected by RRF over solved questions
   providers.py      the model seam: Anthropic, or any OpenAI-compatible endpoint
   metrics.py        exact matching + contracts for policy-owned definitions
-  voice.py          bounded Speaches/OpenAI STT/TTS; no alternate query path
+  voice.py          the speech seam: engine choice, bounds, no alternate query path
+  local_voice.py    in-process open STT/TTS - faster-whisper + Piper, no key
   automation.py     bounded, privacy-minimized n8n operational event queue
   assistant.py      NL -> SQL -> self-correction -> grounded answer + telemetry
 app/

@@ -61,6 +61,16 @@ DOMAIN_KEYWORDS = (
     "subledger",
     "reconciliation",
     "dbt",
+    # Values, not concepts, and the distinction earns its place: these are
+    # literals the planner binds a WHERE clause against, so their spelling is
+    # load-bearing in a way that a topic word's is not. Measured with the local
+    # model: unprompted it writes `Self-pay`, and `self pay` binds nothing.
+    "Self-Pay",
+    "Medicare",
+    "Medicaid",
+    "Commercial",
+    "Denied",
+    "Voluntary",
 )
 
 
@@ -255,3 +265,81 @@ class OpenAIVoice:
         if not audio:
             raise VoiceUnavailable("The speech provider returned no audio. Try again.")
         return Speech(audio=audio, model=self.tts_model, voice=voice)
+
+
+# ---------------------------------------------------------------------------
+# Choosing an engine
+# ---------------------------------------------------------------------------
+
+ENV_ENGINE = "ASK_VOICE_ENGINE"          # local | remote | auto (default)
+ENGINE_LOCAL = "local"
+ENGINE_REMOTE = "remote"
+ENGINE_AUTO = "auto"
+
+
+def engine_preference(environ: dict[str, str] | None = None) -> str:
+    env = os.environ if environ is None else environ
+    mode = str(env.get(ENV_ENGINE, ENGINE_AUTO) or ENGINE_AUTO).strip().lower()
+    return mode if mode in (ENGINE_LOCAL, ENGINE_REMOTE, ENGINE_AUTO) else ENGINE_AUTO
+
+
+def resolve(api_key: str = "", *, environ: dict[str, str] | None = None):
+    """Return (client, label) for the best speech engine available, or (None, "").
+
+    Precedence, and the reasoning for each step:
+
+    1. An explicitly configured REMOTE endpoint or key wins. Someone who set
+       `ASK_VOICE_BASE_URL` or pasted a key has told the app what they want,
+       and silently preferring a local model over an operator's choice is the
+       kind of helpfulness that reads as a bug.
+    2. Otherwise the in-process open models, if their packages are installed.
+       This is what makes voice reachable on the public deployment, where
+       there is no second container to run and no key to spend.
+    3. Otherwise nothing, and the interface says voice is unconfigured — the
+       behaviour this app had before local speech existed.
+
+    `ASK_VOICE_ENGINE` overrides the whole thing in either direction, because a
+    deployment that wants to prove one path is running should not have to
+    uninstall a package to do it.
+    """
+    env = os.environ if environ is None else environ
+    preference = engine_preference(env)
+    key = str(api_key or "").strip() or server_api_key(env)
+    endpoint = base_url(env)
+    remote_configured = bool(key or endpoint)
+
+    def _local():
+        # Imported here, never at module scope: engine/local_voice.py pulls in
+        # optional packages, and this module has to keep working on a
+        # deployment that could not install them.
+        from engine import local_voice
+
+        if not local_voice.available():
+            return None, ""
+        return local_voice.LocalVoice(), "local"
+
+    if preference == ENGINE_LOCAL:
+        return _local()
+    if preference == ENGINE_REMOTE or remote_configured:
+        if not remote_configured:
+            return None, ""
+        return OpenAIVoice(api_key=key, base_url=endpoint), (
+            "self-hosted" if endpoint else "cloud"
+        )
+    return _local()
+
+
+def describe_engine(label: str) -> str:
+    """One line for the status rail, naming what is really running."""
+    if label == "local":
+        from engine import local_voice
+
+        return (
+            f"in-process · open models<br><em>{local_voice.STT_MODEL} · "
+            f"{local_voice.TTS_VOICE} · no key</em>"
+        )
+    if label == "self-hosted":
+        return "stt → review → tts<br><em>faster-whisper · Kokoro · self-hosted</em>"
+    if label == "cloud":
+        return "stt → review → tts<br><em>OpenAI · cloud</em>"
+    return "unavailable<br><em>install the voice extras or configure an endpoint</em>"

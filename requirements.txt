@@ -8,4 +8,11 @@ onnxruntime>=1.29.0,<2
 tokenizers>=0.23.1,<1
 PyYAML>=6.0
 PyJWT[crypto]>=2.13.0,<3
+# Speech that needs no API key and no second service. Both run in-process on
+# open models: faster-whisper (CTranslate2) transcribes, Piper (onnxruntime,
+# already required above) speaks. engine/local_voice.py imports them lazily and
+# reports voice as unavailable if either is missing, so a deployment that
+# cannot install them still answers questions.
+faster-whisper>=1.2,<2
+piper-tts>=1.7,<2
 pytest>=8.0
