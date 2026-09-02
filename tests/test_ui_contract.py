@@ -974,3 +974,80 @@ def test_speech_plays_whatever_format_the_engine_returned():
     assert "speech.mime_type" in source
     assert 'format=st.session_state.get(mime_key' in source.replace("\n", "").replace(" ", "") \
         or "mime_key" in source
+
+
+# --------------------------------------------------------------------------
+# Speaking without being asked twice.
+#
+# An assistant that has to be told to talk on every turn is not talking. But
+# Streamlit re-runs the whole script on every interaction, so "speak the
+# answer" and "speak EVERY answer again each time anything is clicked" are one
+# line apart, and the second is intolerable.
+# --------------------------------------------------------------------------
+
+def test_only_the_caller_decides_which_answer_speaks():
+    """`autospeak` is a parameter, not a decision the renderer makes.
+
+    Every previous turn is re-rendered on every run. A renderer that decided
+    for itself would replay the whole conversation whenever the reader touched
+    a control, and the worked-examples panel — which renders its default
+    question even while collapsed — would make the page talk on load.
+    """
+    import ast
+
+    tree = ast.parse(_app_source())
+    fn = next(node for node in ast.walk(tree)
+              if isinstance(node, ast.FunctionDef) and node.name == "_render_answer_audio")
+    args = [a.arg for a in fn.args.kwonlyargs]
+    assert "autospeak" in args
+
+
+def test_a_transcript_turn_speaks_only_when_it_is_the_newest():
+    import ast
+
+    source = _app_source()
+    tree = ast.parse(source)
+    fn = next(node for node in ast.walk(tree)
+              if isinstance(node, ast.FunctionDef) and node.name == "_is_latest_turn")
+    assert "len(st.session_state" in ast.unparse(fn)
+    # every transcript renderer passes it
+    assert source.count("autospeak=_is_latest_turn(index)") >= 4
+
+
+def test_the_worked_examples_speak_only_when_one_is_chosen():
+    """The panel renders its default question on every run, including while
+    collapsed. An absent marker means "not looked at", not "chosen"."""
+    source = _app_source()
+    assert 'seen_before = "_contract_spoken" in st.session_state' in source
+    assert "autospeak=picked" in source
+
+
+def test_an_answer_is_played_at_most_once():
+    """The player stays on screen so it can be replayed deliberately; what it
+    must not do is start again by itself on the next rerun."""
+    import ast
+
+    tree = ast.parse(_app_source())
+    fn = next(node for node in ast.walk(tree)
+              if isinstance(node, ast.FunctionDef) and node.name == "_render_answer_audio")
+    body = ast.unparse(fn)
+    assert "played_key" in body
+    assert "autoplay=play_now" in body
+    assert "not st.session_state.get(played_key)" in body
+
+
+def test_the_mute_choice_is_not_stored_only_in_the_widget_key():
+    """Streamlit drops a widget's session_state entry on any run where the
+    widget is not rendered, and the toggle lives in a panel several paths do
+    not draw. Probed live, the key alternated ABSENT / True / ABSENT between
+    runs — so reading it directly meant speech switched itself back on."""
+    source = _app_source()
+    assert '_autospeak_pref' in source
+    assert 'st.session_state.get("_autospeak_pref", True)' in source
+
+
+def test_speech_can_be_turned_off_at_all():
+    """Default-on is a cost decision — the first spoken answer takes the
+    process from 330 MB to 465 MB — so the control to stop it has to exist."""
+    source = _app_source()
+    assert "Speak answers automatically" in source

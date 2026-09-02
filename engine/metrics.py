@@ -84,6 +84,31 @@ class MetricAnswer:
             return f"{int(value):,}"
         return f"{float(value):,.1f}"
 
+    @property
+    def sentence(self) -> str:
+        """The certified answer as a sentence, built from the registry entry.
+
+        A governed metric arrives with more than a number: `metrics.yaml` gives
+        it a label an owner wrote and a unit. The turn was rendering the bare
+        scalar — "8.2" — which is the same defect the compiler path had before
+        engine/narrate.py, in the one place the app is most confident.
+
+        Nothing is invented. The label and the unit are committed fields; the
+        value is whatever the query just returned. `percent` is the only unit
+        rendered as a symbol, because it is the only one where the SQL itself
+        did the multiplication.
+        """
+        if not self.ok:
+            return "—"
+        rendered = self.headline
+        if (self.metric.unit or "").strip().lower() in ("percent", "percentage", "%"):
+            rendered = f"{rendered}%"
+        label = (self.metric.label or self.metric.name.replace("_", " ")).strip()
+        # "The Claim denial rate is" reads as a proper noun that is not one.
+        if label[:1].isupper() and not label.split(" ")[0].isupper():
+            label = label[0].lower() + label[1:]
+        return f"The {label} is {rendered}."
+
 
 def _words(text: str) -> tuple[str, ...]:
     return tuple(re.findall(r"[a-z0-9]+", str(text or "").lower()))

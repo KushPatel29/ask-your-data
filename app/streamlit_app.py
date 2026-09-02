@@ -1360,6 +1360,17 @@ def _render_voice_control() -> None:
         st.session_state["voice_name"] = next(iter(options))
     st.selectbox("Answer voice", tuple(options),
                  key="voice_name", index=0)
+    # On by default, because an assistant that has to be asked to speak every
+    # time is not really talking. Off is a real option and has to be reachable:
+    # the first spoken answer takes the process from 330 MB to 465 MB, and a
+    # reader on a shared machine may simply not want sound.
+    st.toggle("Speak answers automatically", key="voice_autospeak",
+              value=_autospeak_on(),
+              help="Answers are read aloud as they arrive. Turn this off to "
+                   "keep a Listen control instead.")
+    # Mirrored into a plain key so the choice survives the widget being
+    # unrendered. See the note in _autospeak_on.
+    st.session_state["_autospeak_pref"] = bool(st.session_state["voice_autospeak"])
     stt_model, tts_model = _voice_models()
     st.caption(f"STT `{stt_model}` · TTS `{tts_model}` · playback is AI-generated speech.")
 
@@ -1464,8 +1475,58 @@ def _voice_question() -> str:
     return ""
 
 
-def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn") -> None:
-    """Generate speech on demand and keep it only for this browser session."""
+def _autospeak_on() -> bool:
+    """Whether answers should speak themselves. On by default; a real toggle.
+
+    Default-on is a deliberate cost decision, not an oversight. Speech is lazy
+    — a session that never gets an answer never loads the model — but the first
+    spoken answer takes the process from 330 MB to 465 MB and pays a one-time
+    model load. Every visitor who asks anything now pays that, so the control
+    to turn it off has to exist and has to be findable.
+    """
+    # Read from the MIRROR, not from the widget key.
+    #
+    # Streamlit drops a widget's session_state entry on any run where that
+    # widget is not rendered, and the toggle lives in the sidebar's voice
+    # panel — which several paths do not draw. Probed on a live session, the
+    # key alternated ABSENT / True / ABSENT between runs. Reading the widget
+    # key directly therefore meant a reader who turned speech OFF would have
+    # it turn itself back on the moment the panel was not on screen, which is
+    # the one thing a mute control must never do.
+    return bool(st.session_state.get("_autospeak_pref", True))
+
+
+def _is_latest_turn(index: int) -> bool:
+    """Whether this transcript entry is the one the reader just created.
+
+    Streamlit re-runs the whole script on every interaction, so every previous
+    answer is re-rendered each time. Without this, touching any control would
+    replay the entire conversation.
+    """
+    return index == len(st.session_state.get("transcript", [])) - 1
+
+
+def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn",
+                         autospeak: bool = False) -> None:
+    """Speak an answer, and keep the audio only for this browser session.
+
+    `autospeak` is passed by the CALLER rather than decided here, and that is
+    the whole design. Streamlit re-runs the entire script on every interaction,
+    so a renderer that decided for itself would re-synthesize and re-play every
+    previous answer each time the reader touched anything — and the worked-
+    examples panel, which renders its default question even while collapsed,
+    would make the page start talking on load with nobody having asked it to.
+
+    So only the turn the reader just created asks to be spoken, and it is
+    spoken exactly ONCE: `voice_played_` records that this audio has already
+    autoplayed, and every later rerun renders the same player inert. The
+    control stays on screen so it can be replayed deliberately.
+
+    Autoplay is a request, not a guarantee. Browsers block audio that starts
+    without a user gesture, so a click or a typed question plays, and a cold
+    `?q=` deep link renders a player that waits. Nothing is claimed on screen
+    that the browser might not do.
+    """
     if not answer or not _voice_ready():
         return
     selected = _voice_name()
@@ -1477,33 +1538,47 @@ def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn") ->
     error_key = f"voice_audio_error_{identity}"
     button_key = f"listen_{namespace}_{index}_{identity}"
     mime_key = f"voice_audio_mime_{identity}"
+    played_key = f"voice_played_{identity}"
+
+    def synthesize() -> None:
+        with st.spinner("Reading the answer aloud…"):
+            try:
+                speech = _voice_client().synthesize(answer, voice=selected)
+                st.session_state[audio_key] = speech.audio
+                # The remote provider returns MP3 and the in-process voice
+                # returns WAV. Hard-coding audio/mpeg played a RIFF file as
+                # an MP3, which some browsers refuse outright and others
+                # render as a player that never starts.
+                st.session_state[mime_key] = speech.mime_type
+                cached = [
+                    key for key in st.session_state
+                    if key.startswith("voice_audio_")
+                    and not key.startswith("voice_audio_error_")
+                ]
+                for old_key in cached[:-3]:
+                    st.session_state.pop(old_key, None)
+                st.session_state.pop(error_key, None)
+            except voice.VoiceUnavailable as exc:
+                st.session_state[error_key] = str(exc)
+
+    wants_speech = autospeak and _autospeak_on()
+    if audio_key not in st.session_state and wants_speech:
+        synthesize()
     if audio_key not in st.session_state:
+        # Either speaking is switched off, or synthesis failed. Either way the
+        # answer is on screen and listening stays one click away.
         if st.button("Listen to answer", key=button_key,
                      icon=":material/volume_up:"):
-            with st.spinner("Generating answer audio..."):
-                try:
-                    speech = _voice_client().synthesize(answer, voice=selected)
-                    st.session_state[audio_key] = speech.audio
-                    # The remote provider returns MP3 and the in-process voice
-                    # returns WAV. Hard-coding audio/mpeg played a RIFF file as
-                    # an MP3, which some browsers refuse outright and others
-                    # render as a player that never starts.
-                    st.session_state[mime_key] = speech.mime_type
-                    cached = [
-                        key for key in st.session_state
-                        if key.startswith("voice_audio_")
-                        and not key.startswith("voice_audio_error_")
-                    ]
-                    for old_key in cached[:-3]:
-                        st.session_state.pop(old_key, None)
-                    st.session_state.pop(error_key, None)
-                except voice.VoiceUnavailable as exc:
-                    st.session_state[error_key] = str(exc)
+            synthesize()
     if st.session_state.get(error_key):
         st.error(st.session_state[error_key])
     if st.session_state.get(audio_key):
+        play_now = wants_speech and not st.session_state.get(played_key)
+        if play_now:
+            st.session_state[played_key] = True
         st.audio(st.session_state[audio_key],
-                 format=st.session_state.get(mime_key, "audio/mpeg"))
+                 format=st.session_state.get(mime_key, "audio/mpeg"),
+                 autoplay=play_now)
         client = _voice_client()
         model = getattr(client, "tts_model", voice.configured_tts_model())
         where = ("Synthesized in this process — the answer text never left the "
@@ -1667,7 +1742,7 @@ def _metric_turn(question: str, metric, match_ms: float,
     if ran.ok and ran.rows:
         entry["rows"] = pd.DataFrame(ran.rows, columns=ran.columns)
         entry["truncated"] = bool(ran.truncated)
-        entry["answer"] = certified.headline
+        entry["answer"] = certified.sentence
         entry["contract_match"] = certified.matches_contract
     elif ran.ok:
         entry["answer"] = "No rows matched."
@@ -2089,9 +2164,21 @@ def render_demo_mode(connection) -> None:
     # never seen this app should land on a worked example, not an empty panel.
     choice = st.selectbox(
         "Pick a question", list(labels), index=0,
+        key="contract_choice",
         help="Runs the reference SQL for this question against the warehouse now.",
     )
     active = labels[choice]
+    # Speak this one only when the reader CHOSE it. This panel renders its
+    # default question on every run — including while it is still collapsed and
+    # nobody has opened it — so autospeaking whatever `index=0` happens to be
+    # would make the page start talking on load. Comparing against the previous
+    # run's selection is what separates "the reader picked this" from "Streamlit
+    # re-ran the script".
+    # The FIRST render records the default without speaking it — an absent key
+    # means "this panel has not been looked at", not "the reader chose this".
+    seen_before = "_contract_spoken" in st.session_state
+    picked = seen_before and st.session_state["_contract_spoken"] != active["id"]
+    st.session_state["_contract_spoken"] = active["id"]
     bundle = _retrieval_bundle(active["question"])
 
     # Timed separately from execution so each pipeline cell reports its own
@@ -2144,7 +2231,7 @@ def render_demo_mode(connection) -> None:
             # are the questions a first-time visitor actually clicks, so they
             # were the worst place in the app to have speech missing.
             _render_answer_audio(result.sentence, abs(hash(active["id"])) % 10_000,
-                                 namespace="contract")
+                                 namespace="contract", autospeak=picked)
             if not result.matches_contract:
                 st.warning(
                     "This does not match the contract's expected value — the "
@@ -2371,7 +2458,8 @@ def render_manual_entry(entry, index: int) -> None:
                     executed=True if entry["ran"] else "fail", timings=timings)
         if entry["answer"]:
             ui.answer(entry["answer"])
-            _render_answer_audio(entry["answer"], index, namespace="manual")
+            _render_answer_audio(entry["answer"], index, namespace="manual",
+                                 autospeak=_is_latest_turn(index))
         st.code(entry["sql"], language="sql", wrap_lines=True)
         _evidence_block(entry, {})
         _result_block(entry, index)
@@ -2401,7 +2489,8 @@ def render_metric_entry(entry, index: int) -> None:
                 verified_note=(f"Expected {metric.expect} in metrics.yaml; the committed "
                                "definition produced the same value live."),
             )
-            _render_answer_audio(entry["answer"], index, namespace="metric")
+            _render_answer_audio(entry["answer"], index, namespace="metric",
+                                 autospeak=_is_latest_turn(index))
         if entry["ran"] and not entry.get("contract_match"):
             st.error(
                 f"Definition drift: metrics.yaml expects {metric.expect}, but the live "
@@ -2469,7 +2558,8 @@ def render_plan_entry(entry, index: int) -> None:
                     executed=True if entry["ran"] else "fail", timings=timings)
         if entry["answer"]:
             ui.answer(entry["answer"])
-            _render_answer_audio(entry["answer"], index, namespace="plan")
+            _render_answer_audio(entry["answer"], index, namespace="plan",
+                                 autospeak=_is_latest_turn(index))
         elif entry["error"]:
             st.error(f"Query error: {entry['error']}")
         ui.plan_trace(trace["rationale"], coverage=trace["coverage"],
@@ -3014,7 +3104,8 @@ def render_entry(entry, index: int):
         _show_grounding(bundle)
         if entry["answer"]:
             ui.answer(entry["answer"])
-            _render_answer_audio(entry["answer"], index, namespace="model")
+            _render_answer_audio(entry["answer"], index, namespace="model",
+                                 autospeak=_is_latest_turn(index))
         else:
             # The loop spent every attempt and the last query still failed, so
             # there is no answer to headline. This used to call ui.answer("")

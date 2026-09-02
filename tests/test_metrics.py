@@ -74,3 +74,45 @@ def test_invalid_registry_sql_is_rejected_at_load_time(tmp_path: Path):
     )
     with pytest.raises(metrics.MetricRegistryError, match="unsafe SQL"):
         metrics.load_metrics(path)
+
+
+def test_a_certified_metric_answers_in_a_sentence(con):
+    """The governed path was rendering the bare scalar — "8.2" — which is the
+    same defect the compiler path had before engine/narrate.py, in the one
+    place the app is most confident about its number."""
+    registry = metrics.load_metrics()
+    denial = next(m for m in registry if m.name == "denial_rate")
+    answered = metrics.answer(con, denial)
+
+    assert answered.sentence == "The claim denial rate is 8.2%."
+    assert answered.headline == "8.2", "the bare value is still available"
+
+
+def test_every_certified_sentence_carries_its_own_live_value(con):
+    for metric in metrics.load_metrics():
+        answered = metrics.answer(con, metric)
+        assert answered.ok, metric.name
+        assert answered.headline in answered.sentence, metric.name
+        assert answered.sentence.endswith("."), metric.name
+        assert len(answered.sentence.split()) >= 4, metric.name
+
+
+def test_percent_is_the_only_unit_rendered_as_a_symbol(con):
+    """It is the only one where the SQL itself did the multiplication. A
+    currency symbol would be a claim the warehouse never makes."""
+    registry = metrics.load_metrics()
+    for metric in registry:
+        sentence = metrics.answer(con, metric).sentence
+        if (metric.unit or "").lower().startswith("percent"):
+            assert "%" in sentence, metric.name
+        else:
+            assert "$" not in sentence and "%" not in sentence, metric.name
+
+
+def test_a_failed_metric_query_narrates_nothing(con):
+    from engine.query import QueryResult
+
+    metric = metrics.load_metrics()[0]
+    broken = metrics.MetricAnswer(
+        metric=metric, result=QueryResult(sql=metric.sql, error="boom"))
+    assert broken.sentence == "—"
