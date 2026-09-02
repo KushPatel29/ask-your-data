@@ -49,8 +49,10 @@ its audio control.
 
 Measured on this machine, warm: synthesis 0.086-0.123 s for 3.0-4.2 s of speech
 (34-35x faster than real time), transcription 0.02-0.32 s for a short question.
-Cold, each pays a one-time model download and a first-call warm-up, which is
-why both are lazy and neither is touched at import.
+Cold, each pays a one-time model download and a first-call warm-up. Neither is
+touched at IMPORT — that would put 21.5s in front of the first page render —
+but the voice is warmed on a background thread once a container serves a page.
+See prewarm(), and the cost note further down.
 
 ONNXRUNTIME WAS ALREADY HERE
 Piper is a VITS graph on the same onnxruntime the schema index uses, so TTS
@@ -63,13 +65,23 @@ Resident set of one process, each step cumulative:
     + Piper TTS loaded                             465 MB
     + faster-whisper STT loaded                    611 MB
 
-So speech roughly doubles the floor, and that is the honest headline. Two
-things keep it acceptable rather than reckless. Both engines are LAZY, so a
-visitor who never presses Listen and never records pays none of it — the app
-sits at 330 MB exactly as it did before this module existed. And the ceiling
-that actually bit this project was Render's 512 MB free tier, which the app had
-already outgrown at a 564 MB peak; the public deployment is Streamlit Community
-Cloud, which has several times that.
+So speech roughly doubles the floor, and that is the honest headline.
+
+The STT half is still lazy: a visitor who never records pays nothing for it.
+The TTS half is NOT, any more — `prewarm()` loads it on a background thread as
+soon as a container serves its first page, so every container that serves
+anybody carries 465 MB whether or not sound is ever used. That is a deliberate
+trade and it is worth stating plainly, because the earlier version of this
+paragraph claimed the opposite: answers speak by default, a cold first
+synthesis costs 21.5s against 0.17s warm, and a browser will only start audio
+by itself within about five seconds of the click that asked for it. Lazily
+loaded, the first answer of every container missed that window and silently
+refused to play. Paying 135 MB up front is what makes the feature work at all;
+ASK_VOICE_PREWARM=0 declines it.
+
+The ceiling that actually bit this project was Render's 512 MB free tier, which
+the app had already outgrown at a 564 MB peak; the public deployment is
+Streamlit Community Cloud, which has several times that.
 
 On disk it is about 80 MB of wheels and 103 MB of weights, the weights fetched
 once per container into the same cache the schema index uses.
@@ -502,6 +514,56 @@ class LocalVoice:
             voice=voice or TTS_VOICE,
             mime_type="audio/wav",
         )
+
+
+_PREWARM: threading.Thread | None = None
+
+
+def prewarm() -> bool:
+    """Load the voice in the background so the FIRST answer can speak.
+
+    Autoplay is why this exists, and the numbers are the argument. Measured on
+    a cold cache: the first synthesis costs 21.5 s (download, then load, then
+    the forward pass) and every one after it costs 0.17 s. Chrome only lets
+    audio start by itself inside a transient user-activation window of roughly
+    five seconds after a click — so on a cold container the first answer's
+    audio element arrived long after the click that earned it, and the browser
+    refused to play it. Silently: there is no error, just a player that never
+    starts. Every later answer worked, which is exactly the "some answers do
+    not autoplay" shape.
+
+    Loading at import would be worse than the problem — it would put 21.5 s in
+    front of the first page render. So this runs on a daemon thread: boot is
+    untouched, and by the time a visitor has read the page and typed something
+    the model is resident.
+
+    Returns whether a warm-up was STARTED, not whether it finished. Nothing
+    waits on it; a question that arrives first simply pays the load itself, on
+    the same lock, exactly as it did before.
+
+    It costs 135 MB in every container that serves anybody, including visitors
+    who never ask for sound. That is the real price of speaking by default, and
+    ASK_VOICE_PREWARM=0 turns it off for a deployment that would rather have
+    the memory.
+    """
+    global _PREWARM
+    if os.environ.get("ASK_VOICE_PREWARM", "1").strip().lower() in ("0", "false", "no"):
+        return False
+    if not installed().tts:
+        return False
+    with _LOCK:
+        if _TTS is not None or (_PREWARM is not None and _PREWARM.is_alive()):
+            return False
+
+        def _load() -> None:
+            try:
+                LocalVoice()._text_to_speech()
+            except Exception:  # noqa: BLE001 - a warm-up must never take the app down
+                pass
+
+        _PREWARM = threading.Thread(target=_load, name="ayd-voice-prewarm", daemon=True)
+        _PREWARM.start()
+    return True
 
 
 def reset() -> None:

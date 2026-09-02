@@ -355,6 +355,30 @@ except access.PolicyConfigurationError as exc:
     st.error(f"Access denied: {exc}")
     st.stop()
 RETRIEVAL_READY = warm_retrieval(con)
+
+
+@st.cache_resource(show_spinner=False)
+def _warm_voice() -> bool:
+    """Start loading the speech voice in the background, once per container.
+
+    Not for speed in the abstract — for autoplay. A cold first synthesis costs
+    21.5s against 0.17s warm, and a browser only lets audio start by itself
+    within about five seconds of the click that asked for it. So on a cold
+    container the first answer's audio arrived long after its click and the
+    browser refused to play it, silently, while every later answer worked.
+
+    @st.cache_resource so it fires once per container rather than once per
+    session, and the thread is what keeps it off the boot path.
+    """
+    from engine import local_voice
+
+    try:
+        return local_voice.prewarm()
+    except Exception:  # noqa: BLE001 - never let a warm-up break the page
+        return False
+
+
+VOICE_WARMING = _warm_voice()
 layer = get_layer(con)
 PLANNER_READY = layer is not None
 verifier = get_verifier(con)

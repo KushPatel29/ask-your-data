@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-946%20%C2%B7%20945%20run%20without%20an%20API%20key-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-961%20%C2%B7%20960%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
@@ -640,10 +640,22 @@ normalised to lower case so the compiler can match it, and **case is exactly wha
 the prompt was for**. So the vocabulary is curated, which is what
 `DOMAIN_KEYWORDS` was always for.
 
+**Answers speak themselves.** Ask a question and the answer is read aloud as it
+arrives — no Listen click — on every path: the compiler, the certified metrics,
+hand-written SQL, and all 39 worked examples. A toggle in the voice panel turns
+it off, and each answer plays exactly once: the player stays for deliberate
+replay but never restarts itself on a Streamlit rerun.
+
 **What it costs, measured:** the resident floor goes from 330 MB to 465 MB with
-the voice loaded and 611 MB with both. Speech roughly doubles it — and both
-engines are lazy, so a visitor who never presses Listen pays none of it. Every
-answer carries a Listen control; nothing autoplays.
+the voice loaded and 611 MB with both. Transcription stays lazy — record nothing
+and you pay nothing for it — but the **voice is loaded up front**, on a
+background thread, in every container that serves a page. That is what makes
+autoplay work rather than a nicety: a cold first synthesis costs 21.5s against
+0.17s warm, and a browser only lets audio start by itself within roughly five
+seconds of the click that asked for it. Loaded lazily, the first answer of every
+container missed that window and refused to play, silently, while every later
+answer worked. Measured after the change, on a cold container: click to playing
+audio in 1.4s. `ASK_VOICE_PREWARM=0` declines the 135 MB.
 
 `engine/local_voice.py` is optional at import. If the wheels are missing or a
 model cannot be fetched, `available()` returns False and the app falls back to

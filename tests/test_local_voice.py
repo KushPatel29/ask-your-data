@@ -337,3 +337,57 @@ def test_the_interface_reads_the_pin_from_the_engine_rather_than_restating_it():
     source = (ROOT / "app" / "streamlit_app.py").read_text(encoding="utf-8")
     assert "local_voice.stt_is_pinned()" in source
     assert "local_voice_pinned()" in source
+
+
+# ---------------------------------------------------------------------------
+# Warming the voice, which is what makes autoplay work at all.
+# ---------------------------------------------------------------------------
+
+def test_prewarm_does_not_run_at_import():
+    """21.5s in front of the first page render would be worse than the problem
+    it solves. The module must stay inert until something asks."""
+    import ast
+    from pathlib import Path
+
+    source = (Path(local_voice.__file__)).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    top_level_calls = [n for n in tree.body if isinstance(n, ast.Expr)
+                       and isinstance(n.value, ast.Call)]
+    assert not top_level_calls, "nothing may execute at import"
+
+
+def test_prewarm_is_a_background_thread_and_never_blocks(monkeypatch):
+    """It returns whether a warm-up was STARTED, not whether it finished.
+    Nothing waits on it; a question that arrives first pays the load itself on
+    the same lock, exactly as before."""
+    import inspect
+
+    source = inspect.getsource(local_voice.prewarm)
+    assert "daemon=True" in source
+    assert ".join(" not in source, "a warm-up that blocks is not a warm-up"
+
+
+def test_prewarm_can_be_declined_by_a_deployment(monkeypatch):
+    """It costs 135 MB in every container that serves anybody, including
+    visitors who never ask for sound."""
+    local_voice.reset()
+    monkeypatch.setenv("ASK_VOICE_PREWARM", "0")
+    assert local_voice.prewarm() is False
+
+
+def test_prewarm_is_skipped_when_the_engine_is_not_installed(monkeypatch):
+    monkeypatch.setenv("ASK_VOICE_PREWARM", "1")
+    monkeypatch.setattr(local_voice, "installed",
+                        lambda: local_voice.Engines(stt=False, tts=False))
+    local_voice.reset()
+    assert local_voice.prewarm() is False
+
+
+def test_the_app_warms_the_voice_once_per_container():
+    """@st.cache_resource rather than per session: the weights are read-only
+    and identical for every visitor."""
+    source = (ROOT / "app" / "streamlit_app.py").read_text(encoding="utf-8")
+    assert "local_voice.prewarm()" in source
+    assert "def _warm_voice()" in source
+    index = source.index("def _warm_voice()")
+    assert "@st.cache_resource" in source[max(0, index - 200):index]
