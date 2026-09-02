@@ -928,3 +928,49 @@ def test_every_streamlit_data_cache_has_a_hard_entry_bound():
              if line.strip().startswith("@st.cache_data")]
     assert lines
     assert all("max_entries=" in line for line in lines), lines
+
+
+def test_every_path_that_renders_an_answer_also_offers_to_speak_it():
+    """Voice is not a feature of one renderer.
+
+    There are five places an answer reaches the page — the compiler turn, the
+    certified metric, a hand-written query, the model turn, and the worked
+    examples — and the last of those shipped without speech for its whole life.
+    They are the questions a first-time visitor actually clicks, so it was the
+    worst place in the app to have the control missing.
+
+    Asserted at source level and paired: every `ui.answer(` call must have a
+    `_render_answer_audio(` within a few lines of it. A new renderer that
+    forgets speech fails here rather than being noticed by someone scrolling.
+    """
+    import ast
+
+    source = _app_source()
+    tree = ast.parse(source)
+    answer_lines, audio_lines = [], []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        target = node.func
+        name = getattr(target, "attr", None) or getattr(target, "id", None)
+        if name == "answer" and getattr(getattr(target, "value", None), "id", "") == "ui":
+            answer_lines.append(node.lineno)
+        elif name == "_render_answer_audio":
+            audio_lines.append(node.lineno)
+
+    assert len(answer_lines) >= 5, f"expected every renderer, found {len(answer_lines)}"
+    for line in answer_lines:
+        assert any(0 < spoken - line <= 12 for spoken in audio_lines), (
+            f"ui.answer at line {line} has no _render_answer_audio after it — "
+            "that answer cannot be listened to")
+
+
+def test_speech_plays_whatever_format_the_engine_returned():
+    """The in-process voice returns WAV and the remote provider returns MP3.
+    Hard-coding audio/mpeg handed the browser a RIFF file labelled as an MP3,
+    which some refuse outright and others render as a player that never
+    starts."""
+    source = _app_source()
+    assert "speech.mime_type" in source
+    assert 'format=st.session_state.get(mime_key' in source.replace("\n", "").replace(" ", "") \
+        or "mime_key" in source
