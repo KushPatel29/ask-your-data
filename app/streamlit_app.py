@@ -1277,19 +1277,44 @@ def _clear_voice_key() -> None:
     st.session_state.pop("_voice_key_fingerprint", None)
 
 
+def local_voice_pinned() -> bool:
+    """Whether the running speech models are the checksum-pinned ones.
+
+    Asked of engine/local_voice.py rather than recomputed here: the interface
+    must not be able to claim a control the engine is not applying, which is
+    exactly the drift this caption had — it told every visitor both models were
+    checksum-pinned while only the voice was.
+    """
+    try:
+        from engine import local_voice
+
+        return bool(local_voice.stt_is_pinned())
+    except Exception:  # noqa: BLE001 - a caption must never break the sidebar
+        return False
+
+
 def _render_voice_control() -> None:
     """Voice provider settings, deliberately separate from the SQL model key."""
     st.markdown("**Voice input & playback**")
     if st.session_state.get("_voice_error"):
         st.error(st.session_state["_voice_error"])
     if _voice_label() == "local":
-        _stt, tts_model = _voice_models()
+        stt_model, tts_model = _voice_models()
+        stt_model_label = stt_model.replace("faster-whisper ", "")
         st.caption(
             "Voice runs **in this process** on open models — faster-whisper "
-            f"`tiny.en` transcribes and `{tts_model}` supplies the male voice. No API "
-            "key, no account, and no second service: the recording and the "
-            "answer text never leave the server. Both models download once on "
-            "first use and are cached with a pinned checksum."
+            f"`{stt_model_label}` transcribes and `{tts_model}` supplies the male "
+            "voice. No API key, no account, and no second service: the recording "
+            "and the answer text never leave the server. "
+            + (
+                "Both download once on first use and are verified against a "
+                "checksum pinned in this release — the speech model to an "
+                "immutable Hub revision, the voice to its two artifacts."
+                if local_voice_pinned()
+                else "The voice is checksum-pinned; the speech model has been "
+                     "overridden with ASK_LOCAL_STT_MODEL, so it is fetched "
+                     "unpinned and this release cannot vouch for its weights."
+            )
         )
     elif voice.local_endpoint_configured():
         st.caption(
@@ -2077,7 +2102,7 @@ def render_demo_mode(connection) -> None:
     guard_ms = 1000 * (time.perf_counter() - guard_started)
 
     exec_started = time.perf_counter()
-    result = demo_mode.answer(connection, active)
+    result = demo_mode.answer(connection, active, access=ACCESS)
     exec_ms = 1000 * (time.perf_counter() - exec_started)
 
     # The verifier runs here too. No model wrote this SQL, but the checks are

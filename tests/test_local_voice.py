@@ -15,10 +15,13 @@ from __future__ import annotations
 import io
 import sys
 import wave
+from pathlib import Path
 
 import pytest
 
 from engine import local_voice, voice
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 class FakeSTT:
@@ -262,3 +265,75 @@ def test_the_app_survives_the_voice_packages_being_absent(monkeypatch):
     remote, remote_label = voice.resolve(
         environ={"ASK_VOICE_BASE_URL": "http://localhost:8000"})
     assert remote_label == "self-hosted" and remote is not None
+
+
+# ---------------------------------------------------------------------------
+# Supply chain. Both halves execute weights fetched over the network.
+# ---------------------------------------------------------------------------
+
+def test_both_speech_models_are_pinned_not_just_the_voice():
+    """The interface told every visitor "both models ... are cached with a
+    pinned checksum" while only the voice was.
+
+    `WhisperModel("tiny.en")` resolves through huggingface_hub to whatever the
+    repository's `main` points at today, so the weights this process executes
+    could change with no commit here. The claim covered both halves; now the
+    control does.
+    """
+    assert local_voice.STT_REVISION and len(local_voice.STT_REVISION) == 40
+    assert local_voice.STT_REPO == "Systran/faster-whisper-tiny.en"
+    assert set(local_voice.STT_SHA256) == {
+        "config.json", "model.bin", "tokenizer.json", "vocabulary.txt",
+    }
+    assert all(len(d) == 64 for d in local_voice.STT_SHA256.values())
+
+
+def test_the_revision_is_actually_requested_when_the_model_is_the_pinned_one():
+    """A digest list nobody passes to the loader is decoration."""
+    import inspect
+
+    source = inspect.getsource(local_voice._load_stt)
+    assert 'kwargs["revision"] = STT_REVISION' in source
+    assert "_verify_stt_snapshot" in source
+
+
+def test_an_overridden_stt_model_is_reported_as_unpinned_rather_than_refused():
+    """ASK_LOCAL_STT_MODEL exists so an operator can trade accuracy for size,
+    and pinning cannot follow them to a model this release never measured.
+
+    Failing closed would be the wrong trade — the weights come from the same
+    Hub either way and the choice is theirs. What must not happen is the
+    interface going on claiming a checksum it no longer has.
+    """
+    assert local_voice.stt_is_pinned() is (
+        local_voice.STT_MODEL == local_voice.DEFAULT_STT_MODEL)
+
+
+def test_a_tampered_snapshot_file_is_rejected_and_discarded(tmp_path):
+    """Same rule the voice already follows: a mismatch is a hard failure, and
+    the file is removed so one bad download does not become a permanent
+    outage by being re-verified and re-rejected forever."""
+    root = (tmp_path / f"models--{local_voice.STT_REPO.replace('/', '--')}"
+            / "snapshots" / local_voice.STT_REVISION)
+    root.mkdir(parents=True)
+    bad = root / "config.json"
+    bad.write_bytes(b'{"tampered": true}')
+
+    with pytest.raises(voice.VoiceUnavailable, match="did not match its pinned checksum"):
+        local_voice._verify_stt_snapshot(tmp_path)
+    assert not bad.exists()
+
+
+def test_an_unrecognised_cache_layout_is_not_treated_as_tampering(tmp_path):
+    """huggingface_hub may lay the cache out differently, or an operator may
+    pre-seed the directory. That is not evidence of tampering — but it does
+    mean the digests were not checked, which is what `stt_is_pinned` reports."""
+    local_voice._verify_stt_snapshot(tmp_path)  # must not raise
+
+
+def test_the_interface_reads_the_pin_from_the_engine_rather_than_restating_it():
+    """The caption must not be able to claim a control the engine is not
+    applying — which is exactly the drift this whole finding was."""
+    source = (ROOT / "app" / "streamlit_app.py").read_text(encoding="utf-8")
+    assert "local_voice.stt_is_pinned()" in source
+    assert "local_voice_pinned()" in source

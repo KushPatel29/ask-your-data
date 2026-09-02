@@ -506,8 +506,37 @@ def authorize_sql(con, sql: str, scope: AccessScope | None) -> AccessDecision:
     # SELECT * is denied when any source contains a masked column.  This is
     # intentionally conservative: even ``* EXCLUDE`` is refused because future
     # schema changes must not silently widen an allow decision.
+    #
+    # STAR is not the only way to ask for every column, and the other way did
+    # not look like one.  In DuckDB a bare reference to a RELATION yields the
+    # whole row as a STRUCT:
+    #
+    #     SELECT e FROM hr_fact_employees e        -- every column, masked ones
+    #     SELECT hr_fact_employees FROM hr_fact_employees
+    #     WITH t AS (SELECT e AS whole FROM hr_fact_employees e) SELECT whole FROM t
+    #
+    # All three parse as an ordinary single-part COLUMN_REF, so the loop above
+    # skipped them (the name is not a masked COLUMN) and the STAR check below
+    # never saw a STAR.  Verified against the real warehouse: each returned
+    # `base_salary` inside the struct while the same principal was refused
+    # `SELECT base_salary`.
+    #
+    # The fix is to treat a reference that resolves to a relation the same way
+    # as a star over it, which is what it is.
     if sensitive:
+        masked_relations = {name for name in tables if denied.get(name)}
+        aliases = {alias for alias, table in bindings.items()
+                   if table in masked_relations}
         for node in _walk(ast):
+            if node.get("class") == "COLUMN_REF":
+                names = node.get("column_names") or []
+                if len(names) == 1 and str(names[0]).lower() in aliases:
+                    return AccessDecision(
+                        False,
+                        "a whole-row reference is not allowed on a relation with "
+                        "sensitive columns",
+                        tuple(sorted(tables)),
+                    )
             select_list = node.get("select_list")
             if not isinstance(select_list, list):
                 continue

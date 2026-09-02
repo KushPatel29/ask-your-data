@@ -30,6 +30,7 @@ import os
 import re
 from dataclasses import dataclass, field
 
+from engine import grounding
 from engine.access import AccessScope
 from engine.deadline import DeadlineExpired, RequestDeadline
 
@@ -47,7 +48,7 @@ from engine.providers import (
 )
 from engine.query import QueryResult, run_query
 from engine.retrieval import schema_catalog_for
-from engine.verify import Verifier, correction_message
+from engine.verify import WARN, Finding, Verifier, correction_message
 from engine.warehouse import table_names
 
 # Opus 5. Thinking is ON BY DEFAULT on this model - omitting the parameter runs
@@ -466,6 +467,22 @@ class Assistant:
                 findings = findings + self.verifier.check_result(sql, result, question)
                 try:
                     answer = self._summarize(question, result, usage, deadline)
+                    # Read the sentence back against the rows. The model is
+                    # instructed to use only the result and mostly does — and
+                    # "mostly" is the whole problem, because nothing else in
+                    # this pipeline looks at the PROSE. The guard checks SQL,
+                    # the verifier checks structure, the executor checks the
+                    # database. A summary that says 999 where the query
+                    # returned 12,000 reported a successful turn.
+                    if not grounding.is_grounded(answer, result):
+                        findings = findings + [Finding(
+                            "ungrounded_answer", WARN,
+                            "The model's sentence contained "
+                            + (", ".join(grounding.ungrounded_numbers(answer, result))
+                               or "no numbers from this result")
+                            + ", which the returned rows do not account for. It was "
+                              "replaced with a restatement of the result.")]
+                        answer = grounding.fallback_answer(result)
                 except DeadlineExpired as exc:
                     return done(AskResult(
                         question, sql=sql, explanation=explanation, result=result,

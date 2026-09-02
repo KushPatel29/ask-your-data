@@ -341,3 +341,100 @@ def test_legitimate_and_recursive_ctes_remain_available(con, policy_file):
 
     assert ordinary.ok and ordinary.rows == [(12000,)]
     assert recursive.ok and recursive.rows == [(6,)]
+
+
+# ---------------------------------------------------------------------------
+# Default-deny has to hold at EVERY executor call, not most of them.
+# ---------------------------------------------------------------------------
+
+def test_every_execution_path_submits_an_access_scope():
+    """The policy layer's claim is that it is enforced at the executor. A path
+    that calls run_query without a scope is a hole in that claim rather than an
+    exemption earned by its SQL being committed.
+
+    The 39-question accuracy contract was such a path. It is genuinely safe on
+    the public demo — reviewed SQL, synthetic warehouse — but "safe because of
+    what the caller happens to pass" is not the property the architecture
+    advertises, and with a real policy a restricted principal could read the
+    contract's results over tables they are denied.
+    """
+    import ast
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    offenders = []
+    for relative in ("app/streamlit_app.py", "engine/assistant.py",
+                     "engine/demo_mode.py", "engine/metrics.py"):
+        path = root / relative
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            name = getattr(node.func, "id", None) or getattr(node.func, "attr", None)
+            if name != "run_query":
+                continue
+            if not any(kw.arg == "access" for kw in node.keywords):
+                offenders.append(f"{relative}:{node.lineno}")
+    assert not offenders, f"run_query without an access scope at {offenders}"
+
+
+def test_a_denied_table_is_refused_even_for_committed_contract_sql(con):
+    """The behaviour the wiring above buys: committed SQL is trustworthy, not
+    universally visible."""
+    from engine import demo_mode
+
+    scope = AccessScope(
+        principal=Principal(subject="restricted", roles=frozenset({"analyst"}),
+                            authenticated=True),
+        allowed_tables=frozenset({"hr_fact_employees"}),
+        policy_version="test",
+    )
+    case = next(c for c in demo_mode.load_golden_questions()
+                if c["id"] == "denial_rate")
+
+    allowed = demo_mode.answer(con, case)
+    assert allowed.ok, "with no scope the contract still runs"
+
+    denied = demo_mode.answer(con, case, access=scope)
+    assert not denied.ok
+    assert denied.result.policy_denied
+
+
+@pytest.mark.parametrize("sql", [
+    "SELECT e FROM hr_fact_employees e",
+    "SELECT hr_fact_employees FROM hr_fact_employees",
+    "WITH t AS (SELECT e AS whole FROM hr_fact_employees e) SELECT whole FROM t",
+])
+def test_a_whole_row_reference_cannot_smuggle_a_masked_column(con, sql):
+    """STAR is not the only way to ask for every column.
+
+    In DuckDB a bare reference to a RELATION yields the whole row as a STRUCT,
+    and all three of these parse as an ordinary single-part COLUMN_REF — so the
+    sensitive-column loop skipped them (the name is not a masked column) and the
+    STAR check never saw a STAR. Verified against the real warehouse before the
+    fix: each returned `base_salary` inside the struct while the same principal
+    was refused `SELECT base_salary`.
+    """
+    scope = AccessScope(
+        principal=Principal(subject="a", roles=frozenset({"analyst"}), authenticated=True),
+        allowed_tables=frozenset({"hr_fact_employees"}),
+        denied_columns=(("hr_fact_employees", ("base_salary",)),),
+        policy_version="test",
+    )
+    decision = authorize_sql(con, sql, scope)
+    assert not decision.allowed
+    assert "whole-row" in decision.reason
+
+
+def test_a_whole_row_reference_on_an_unmasked_relation_is_still_fine(con):
+    """The guard on the rule above: the denial is about masking, not about the
+    syntax. A relation with nothing masked has nothing to smuggle."""
+    scope = AccessScope(
+        principal=Principal(subject="a", roles=frozenset({"analyst"}), authenticated=True),
+        allowed_tables=frozenset({"hr_fact_employees", "hr_flight_risk_scores"}),
+        denied_columns=(("hr_fact_employees", ("base_salary",)),),
+        policy_version="test",
+    )
+    assert authorize_sql(con, "SELECT r FROM hr_flight_risk_scores r", scope).allowed
+    assert authorize_sql(
+        con, "SELECT employee_id FROM hr_fact_employees", scope).allowed

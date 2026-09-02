@@ -167,5 +167,12 @@ def match_metric(question: str, registry: tuple[Metric, ...]) -> Metric | None:
     return metric
 
 
-def answer(con, metric: Metric) -> MetricAnswer:
-    return MetricAnswer(metric=metric, result=run_query(con, metric.sql))
+def answer(con, metric: Metric, *, access=None) -> MetricAnswer:
+    """Run a certified definition, under the same policy as everything else.
+
+    A governed metric is exactly the kind of number a restricted principal must
+    not be able to read around, so the executor's default-deny applies here as
+    it does to model- and compiler-authored SQL. The definition being committed
+    makes it trustworthy; it does not make it universally visible.
+    """
+    return MetricAnswer(metric=metric, result=run_query(con, metric.sql, access=access))

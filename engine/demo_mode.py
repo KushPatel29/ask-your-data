@@ -147,13 +147,26 @@ def questions_by_domain(cases: list[dict]) -> dict[str, list[dict]]:
     return grouped
 
 
-def answer(con, case: dict) -> DemoAnswer:
-    """Execute a golden question's reference SQL and wrap the result."""
+def answer(con, case: dict, *, access=None) -> DemoAnswer:
+    """Execute a golden question's reference SQL and wrap the result.
+
+    `access` is threaded through for the same reason every other execution path
+    threads it: the policy layer is supposed to be default-deny AT THE
+    EXECUTOR, and a path that skips it is a hole in that claim rather than an
+    exemption earned by the SQL being committed.
+
+    It genuinely is safe on the public demo — this SQL is reviewed in-repo and
+    the warehouse is synthetic — but "safe because of what the caller happens
+    to pass" is not the property the architecture advertises. With a real
+    policy, a restricted principal must be refused here exactly as they would
+    be anywhere else, and seeing the contract refuse is more informative than
+    seeing it quietly answer.
+    """
     return DemoAnswer(
         question=case["question"],
         domain=case["domain"],
         sql=case["sql"].strip(),
-        result=run_query(con, case["sql"]),
+        result=run_query(con, case["sql"], access=access),
         expected=case["expect"],
         template=str(case.get("answer", "")),
     )

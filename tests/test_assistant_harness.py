@@ -292,3 +292,62 @@ class DownClient:
 def test_api_failure_raises_a_single_friendly_error(con):
     with pytest.raises(AssistantUnavailable):
         assistant(con, DownClient()).ask("how many claims?")
+
+
+# ---------------------------------------------------------------------------
+# The PROSE, which no other boundary in this app was checking.
+#
+# The guard checks SQL, the verifier checks structure, the executor checks the
+# database. The summary — the part a reader quotes and puts in a deck — was
+# covered by a prompt instruction and nothing else, so a model could return a
+# number the query never produced and the turn reported success.
+# ---------------------------------------------------------------------------
+
+def test_a_summary_that_invents_a_number_is_not_served_as_the_answer(con):
+    """The exact reproduction: the SQL returns 12,000, the model says 999."""
+    client = FakeClient([
+        msg(tool_use("answer_with_sql",
+                     sql="SELECT COUNT(*) FROM healthcare_fact_claims",
+                     explanation="count every claim")),
+        msg(text("There are 999 claims in the dataset.")),
+    ])
+    result = assistant(con, client).ask("How many claims are there in total?")
+
+    assert result.ok
+    assert result.result.rows[0][0] == 12000
+    assert "999" not in result.answer, "an invented number reached the reader"
+    assert "12,000" in result.answer
+    assert any(f.check == "ungrounded_answer" for f in result.findings), \
+        "the substitution must be reported, not silent"
+
+
+def test_a_faithful_summary_is_left_exactly_as_the_model_wrote_it(con):
+    """The guard on the rule above. This check exists to catch inventions, and
+    a check that rewrites good prose would be worse than no check — the model
+    path's whole value is a sentence the compiler cannot write."""
+    written = "There are 12,000 claims in the dataset in total."
+    client = FakeClient([
+        msg(tool_use("answer_with_sql",
+                     sql="SELECT COUNT(*) FROM healthcare_fact_claims",
+                     explanation="count every claim")),
+        msg(text(written)),
+    ])
+    result = assistant(con, client).ask("How many claims are there in total?")
+
+    assert result.answer == written
+    assert not any(f.check == "ungrounded_answer" for f in result.findings)
+
+
+def test_an_empty_summary_does_not_render_as_a_blank_answer(con):
+    """An empty string used to pass straight through and paint an empty answer
+    block above a perfectly good SQL listing."""
+    client = FakeClient([
+        msg(tool_use("answer_with_sql",
+                     sql="SELECT COUNT(*) FROM healthcare_fact_claims",
+                     explanation="count every claim")),
+        msg(text("   ")),
+    ])
+    result = assistant(con, client).ask("How many claims are there in total?")
+
+    assert result.answer.strip()
+    assert "12,000" in result.answer

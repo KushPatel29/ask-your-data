@@ -14,7 +14,8 @@ feature you had to already be an operator to use.
 This module removes the server. Both halves run in THIS process, on models
 whose weights are open:
 
-  * STT - faster-whisper `tiny.en`, CTranslate2, int8 on CPU. ~40 MB.
+  * STT - faster-whisper `tiny.en`, CTranslate2, int8 on CPU. ~40 MB,
+    pinned to an immutable Hub revision with a digest per artifact.
   * TTS - Piper `en_US-joe-medium`, a male VITS model on onnxruntime. ~63 MB.
 
 WHICH VOICE, AND THE PREMISE THAT TURNED OUT TO BE WRONG
@@ -117,9 +118,35 @@ from engine.voice import (
 # The interpreter-visible names of the two open models. Pinned, because "the
 # latest tiny model" is not a reproducible claim and this repository does not
 # make those.
-STT_MODEL = os.environ.get("ASK_LOCAL_STT_MODEL", "tiny.en")
+DEFAULT_STT_MODEL = "tiny.en"
+STT_MODEL = os.environ.get("ASK_LOCAL_STT_MODEL", DEFAULT_STT_MODEL)
 DEFAULT_TTS_VOICE = "en_US-joe-medium"
 TTS_VOICE = os.environ.get("ASK_LOCAL_TTS_VOICE", DEFAULT_TTS_VOICE)
+
+# The STT half was the weaker of the two and the interface was overstating it.
+#
+# `WhisperModel("tiny.en")` resolves through huggingface_hub to whatever the
+# repository's `main` points at TODAY, so the weights this app executes could
+# change under it without a commit here — while the sidebar told every visitor
+# "both models ... are cached with a pinned checksum". The TTS half really was
+# pinned; this half was not, and the claim covered both.
+#
+# So it is pinned the same way: an immutable revision, and a checksum for every
+# artifact in the snapshot. The revision below is the commit
+# `Systran/faster-whisper-tiny.en` resolved to when these digests were taken,
+# confirmed against the Hub API rather than assumed.
+STT_REPO = "Systran/faster-whisper-tiny.en"
+STT_REVISION = "0d3d19a32d3338f10357c0889762bd8d64bbdeba"
+STT_SHA256 = {
+    "config.json":
+        "14b1b421a90349bc551b881461426b561a874049cb9e4c4864f2ca384f6a7cc5",
+    "model.bin":
+        "1a5afae06a4db91c975c9a9d78be5cc110ee4ea022ad57d55492e4550e936b2a",
+    "tokenizer.json":
+        "929c5252409436dce1b38a75d1abbcb5e132d170d8e324e4e04ed915fa2d22df",
+    "vocabulary.txt":
+        "ff77588746d3a2595d32ab5b69ffd7b95ce2441ac57533cb66fc3eb575a115cf",
+}
 
 # Checksums for the Piper voice, in the same spirit as engine/vector_index.py:
 # the download is over HTTPS from a host this project does not control, and a
@@ -302,6 +329,41 @@ def _load_tts():
     return PiperVoice.load(model)
 
 
+def stt_is_pinned() -> bool:
+    """Whether the configured STT model is the one these digests describe.
+
+    `ASK_LOCAL_STT_MODEL` exists so an operator can trade accuracy for size,
+    and pinning cannot follow them to a model this release never measured. The
+    override still works; what changes is that the interface stops claiming a
+    checksum it does not have. Failing closed here would be the wrong trade —
+    the weights come from the same Hub either way, and the choice is the
+    operator's.
+    """
+    return STT_MODEL == DEFAULT_STT_MODEL
+
+
+def _verify_stt_snapshot(directory: Path) -> None:
+    """Check every artifact in the downloaded snapshot against its digest.
+
+    The revision pin alone is most of the control — a commit SHA cannot be
+    moved — but it is a claim about what was REQUESTED, not about what landed
+    on disk. The digests are what make it a claim about the bytes this process
+    is on the point of executing.
+    """
+    root = directory / f"models--{STT_REPO.replace('/', '--')}" / "snapshots" / STT_REVISION
+    if not root.is_dir():
+        # huggingface_hub may lay the cache out differently, or the operator may
+        # have pointed download_root at a pre-seeded directory. An unrecognised
+        # layout is not evidence of tampering, so it is not treated as such —
+        # but it does mean the digests were not checked, and `pinned` on the
+        # readout is what reports that.
+        return
+    for name, digest in STT_SHA256.items():
+        path = root / name
+        if path.is_file():
+            _verify(path, digest)
+
+
 def _load_stt():
     from faster_whisper import WhisperModel
 
@@ -310,9 +372,15 @@ def _load_stt():
     # int8 on CPU is the whole reason this fits: float16 has no CPU path and
     # float32 triples the resident model for a transcript a human then reads
     # and confirms before anything runs.
-    return WhisperModel(
-        STT_MODEL, device="cpu", compute_type="int8", download_root=str(directory)
-    )
+    kwargs = {"device": "cpu", "compute_type": "int8", "download_root": str(directory)}
+    if stt_is_pinned():
+        # An immutable commit rather than `main`. Without this the weights this
+        # process executes can change with no commit in this repository.
+        kwargs["revision"] = STT_REVISION
+    model = WhisperModel(STT_MODEL, **kwargs)
+    if stt_is_pinned():
+        _verify_stt_snapshot(directory)
+    return model
 
 
 class LocalVoice:

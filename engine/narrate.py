@@ -520,7 +520,10 @@ def _measure_phrase(plan) -> str:
     # revenue". Saying so twice is not more accurate, only worse.
     if word and label.split(" ")[0] == word:
         word = ""
-    return f"the {word} {label}".strip()
+    # Joined rather than stripped: with `word` emptied above, an f-string
+    # leaves "the  revenue" with two spaces in the middle, which .strip()
+    # cannot reach.
+    return " ".join(part for part in ("the", word, label) if part)
 
 
 def _upper1(text: str) -> str:
@@ -723,7 +726,11 @@ def _grouped_sentence(plan, ran) -> str:
         missing = ran.row_count - 1
         return (f"Only {_label_value(only[0])} has a value for {_bare(phrase)}: "
                 f"{_amount(only[1], kind, unit)}. The other {missing:,} "
-                f"{_singular(dimension) if missing == 1 else plural} "
+                # `dimension` is ALREADY singular - it is what _dimension_label
+                # returns - so singularising it again produced "the other 1
+                # statu". _singular is correct where it is applied to an
+                # already-plural entity noun; it is wrong here.
+                f"{dimension if missing == 1 else plural} "
                 f"{'has' if missing == 1 else 'have'} no value.")
 
     scope = _scope_words(plan, ran, plural)
