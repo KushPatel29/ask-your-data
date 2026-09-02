@@ -49,6 +49,7 @@ class DemoAnswer:
     sql: str
     result: QueryResult
     expected: Any
+    template: str = ""
 
     @property
     def ok(self) -> bool:
@@ -65,6 +66,35 @@ class DemoAnswer:
         if float(value).is_integer():
             return f"{int(value):,}"
         return f"{value:,}"
+
+    @property
+    def sentence(self) -> str:
+        """The answer as a sentence, with the LIVE value substituted in.
+
+        These questions have no compiled Plan to narrate — `engine/narrate.py`
+        reads a plan's bindings, and a golden question carries hand-written
+        reference SQL instead. So the sentence is hand-written too, committed
+        beside the SQL in `evals/golden_questions.yaml`, and it is the same
+        class of artifact: a claim the repository makes in a reviewed file.
+
+        The VALUE is never hand-written. The template carries `{value}` and
+        nothing else substitutable, so the number in the sentence is always the
+        one the query just returned — if the data drifts, the sentence moves
+        with it and `matches_contract` goes false beside it. A sentence with
+        the number typed into it would be the one place in this app where the
+        prose could disagree with the query and nobody would notice.
+        """
+        if not self.ok:
+            return "—"
+        if not self.template:
+            return self.headline
+        try:
+            return self.template.format(value=self.headline)
+        except (KeyError, IndexError, ValueError):
+            # A malformed template must not take the answer down; the bare
+            # value is still true. `load_golden_questions` rejects these at
+            # load time, so reaching here means the file was edited past it.
+            return self.headline
 
     @property
     def matches_contract(self) -> bool:
@@ -90,9 +120,23 @@ def load_golden_questions(path: Path = GOLDEN_PATH) -> list[dict]:
     if not cases:
         raise ValueError(f"{path.name} is empty")
     for case in cases:
-        missing = {"id", "domain", "question", "sql", "expect"} - set(case)
+        missing = {"id", "domain", "question", "sql", "expect", "answer"} - set(case)
         if missing:
             raise ValueError(f"golden question {case.get('id', '?')} missing {sorted(missing)}")
+        # The sentence must carry the placeholder and nothing else: a template
+        # with the number typed into it would let the prose disagree with the
+        # query, which is the one failure this whole file exists to prevent.
+        answer = str(case["answer"])
+        if "{value}" not in answer:
+            raise ValueError(
+                f"golden question {case['id']} has an answer with no {{value}} placeholder"
+            )
+        try:
+            answer.format(value="X")
+        except (KeyError, IndexError, ValueError) as exc:
+            raise ValueError(
+                f"golden question {case['id']} has an unformattable answer: {exc}"
+            ) from exc
     return cases
 
 
@@ -111,6 +155,7 @@ def answer(con, case: dict) -> DemoAnswer:
         sql=case["sql"].strip(),
         result=run_query(con, case["sql"]),
         expected=case["expect"],
+        template=str(case.get("answer", "")),
     )
 
 

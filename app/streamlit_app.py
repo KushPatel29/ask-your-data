@@ -2104,12 +2104,22 @@ def render_demo_mode(connection) -> None:
             ui.pipeline(retrieved=True, generated=False, verified=True,
                         guarded=True, executed=True, timings=timings)
             _show_grounding(bundle)
+            # The SENTENCE, not the bare scalar. `result.headline` is still the
+            # value CI asserts and it is still what the amber badge vouches
+            # for — it is now substituted into a sentence committed beside the
+            # reference SQL, so a worked example reads like an answer instead
+            # of like a cell. The value is never typed into the template.
             ui.answer(
-                result.headline,
+                result.sentence,
                 verified=result.matches_contract,
                 verified_note=("Asserted in evals/golden_questions.yaml "
                                "and re-checked by CI on every push."),
             )
+            # Worked examples get the same voice every other answer has. They
+            # are the questions a first-time visitor actually clicks, so they
+            # were the worst place in the app to have speech missing.
+            _render_answer_audio(result.sentence, abs(hash(active["id"])) % 10_000,
+                                 namespace="contract")
             if not result.matches_contract:
                 st.warning(
                     "This does not match the contract's expected value — the "

@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-880%20%C2%B7%20879%20run%20without%20an%20API%20key-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-911%20%C2%B7%20910%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
@@ -704,7 +704,7 @@ app/
   streamlit_app.py  Ask, Data catalog, and Trust center workspaces
   ui.py             the instrument panel — every readout in this repo
 evals/
-  golden_questions.yaml       question -> reference SQL -> expected answer
+  golden_questions.yaml       question -> reference SQL -> expected answer -> the sentence that reports it
   planner_questions.yaml      the compiler's contract, refusals included
   adversarial_questions.yaml  "delete all claims" -> must refuse or stay read-only
 tests/              guard, warehouse, semantics, planner, golden SQL, fake-client harness

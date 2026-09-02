@@ -15,6 +15,7 @@
 - id: denial_rate
   domain: healthcare
   question: What is the overall claim denial rate?
+  answer: "Across adjudicated claims, {value}% were denied."
   sql: >
     SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'Denied')
       / COUNT(*) FILTER (WHERE status IN ('Paid', 'Denied')), 1)
@@ -24,6 +25,7 @@
 - id: lowest_ncr_payer_type
   domain: healthcare
   question: Which payer type has the lowest net collection rate?
+  answer: "{value} has the lowest net collection rate of any payer type."
   sql: >
     SELECT payer_type FROM (
       SELECT p.payer_type, SUM(paid_amount) / NULLIF(SUM(allowed_amount), 0) AS ncr
@@ -35,24 +37,28 @@
 - id: expected_nrv_total
   domain: healthcare
   question: How much of the open AR do we actually expect to collect (total expected NRV)?
+  answer: "Of the open AR, we expect to collect about {value} in total."
   sql: SELECT ROUND(SUM(expected_nrv)) FROM healthcare_ar_yield_predictions
   expect: 1661141.0
 
 - id: active_employees
   domain: hr
   question: How many active employees are there?
+  answer: "There are {value} active employees."
   sql: SELECT COUNT(*) FROM hr_fact_employees WHERE is_active = 1
   expect: 1483
 
 - id: voluntary_attrition
   domain: hr
   question: How many employees left voluntarily?
+  answer: "{value} employees left voluntarily."
   sql: SELECT COUNT(*) FROM hr_fact_employees WHERE term_type = 'Voluntary'
   expect: 304
 
 - id: top_highrisk_dept
   domain: hr
   question: Which department has the most high-risk employees on the flight-risk list?
+  answer: "{value} has the most high-risk employees on the flight-risk list."
   sql: >
     SELECT department FROM hr_flight_risk_scores WHERE risk_band = 'High'
     GROUP BY department ORDER BY COUNT(*) DESC LIMIT 1
@@ -61,12 +67,14 @@
 - id: total_exceptions
   domain: finance
   question: How many GL reconciliation exceptions are open?
+  answer: "There are {value} open GL reconciliation exceptions."
   sql: SELECT COUNT(*) FROM finance_reconciliation_exceptions
   expect: 230
 
 - id: top_exception_type
   domain: finance
   question: What is the most common reconciliation exception type?
+  answer: "\"{value}\" is the most common reconciliation exception type."
   sql: >
     SELECT exception_type FROM finance_reconciliation_exceptions
     GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 1
@@ -75,12 +83,14 @@
 - id: fill_rate
   domain: supplychain
   question: What is the overall order fill rate (shipped vs ordered)?
+  answer: "The overall order fill rate is {value}% of the units ordered."
   sql: SELECT ROUND(100.0 * SUM(qty_shipped) / SUM(qty_ordered), 1) FROM supplychain_fact_orders
   expect: 98.8
 
 - id: top_category_revenue
   domain: supplychain
   question: Which product category has the highest shipped revenue?
+  answer: "{value} is the product category with the highest shipped revenue."
   sql: >
     SELECT p.category FROM supplychain_fact_orders o
     JOIN supplychain_dim_product p ON o.product_id = p.product_id
@@ -90,30 +100,35 @@
 - id: top_customer
   domain: retail
   question: Who is the top wholesale customer by revenue?
+  answer: "{value} is the top wholesale customer by revenue."
   sql: SELECT customer_name FROM retail_customer_analytics ORDER BY total_revenue DESC LIMIT 1
   expect: Canyon Charcuterie 064
 
 - id: high_churn_customers
   domain: retail
   question: How many customers are flagged as high churn risk?
+  answer: "{value} customers are flagged as high churn risk."
   sql: SELECT COUNT(*) FROM retail_customer_analytics WHERE churn_risk = 'High'
   expect: 16
 
 - id: go_verdicts
   domain: migration
   question: How many migration artifacts passed parallel-run validation with a GO verdict?
+  answer: "{value} migration artifacts passed parallel-run validation with a GO verdict."
   sql: SELECT COUNT(*) FROM migration_parallel_run_results WHERE verdict = 'GO'
   expect: 107
 
 - id: total_claims
   domain: healthcare
   question: How many claims are in the dataset in total?
+  answer: "There are {value} claims in the dataset."
   sql: SELECT COUNT(*) FROM healthcare_fact_claims
   expect: 12000
 
 - id: direct_last_touch_overcredit
   domain: marketing
   question: "How many times over does last-touch attribution overcredit the direct channel compared with its true incremental share?"
+  answer: "Last-touch attribution overcredits the direct channel by {value} times its true incremental share."
   sql: >
     SELECT ROUND(last_touch / true_incremental_share, 1) FROM marketing_attribution_comparison WHERE channel = 'direct'
   expect: 13.1
@@ -121,6 +136,7 @@
 - id: most_accurate_attribution_model
   domain: marketing
   question: "Which attribution model comes closest to the true incremental channel shares?"
+  answer: "The {value} model comes closest to the true incremental channel shares."
   sql: >
     WITH shares AS (
       SELECT channel, true_incremental_share, model, share
@@ -134,6 +150,7 @@
 - id: geo_holdout_did_lift
   domain: marketing
   question: "In the geo holdout experiment, what was the difference-in-differences lift of the suppressed channel, in percent?"
+  answer: "The suppressed channel's difference-in-differences lift was {value}%."
   sql: >
     WITH arm AS (
       SELECT in_holdout, period, SUM(conversions) * 1.0 / SUM(sessions) AS cvr
@@ -149,6 +166,7 @@
 - id: worst_cpa_paid_channel
   domain: marketing
   question: "Which paid channel has the worst cost per last-touch conversion?"
+  answer: "{value} has the worst cost per last-touch conversion of any paid channel."
   sql: >
     WITH conv AS (
       SELECT last_touch_channel AS channel, COUNT(*) AS conversions
@@ -165,6 +183,7 @@
 - id: weakest_closing_channel
   domain: marketing
   question: "Which channel closes the smallest share of the journeys it appears in?"
+  answer: "{value} closes the smallest share of the journeys it appears in."
   sql: >
     SELECT channel FROM marketing_fact_sessions
     GROUP BY channel
@@ -175,6 +194,7 @@
 - id: injected_defect_detection_rate
   domain: clinical
   question: "What share of the deliberately injected data defects did the validation pipeline actually detect?"
+  answer: "The validation pipeline detected {value}% of the deliberately injected defects."
   sql: >
     SELECT ROUND(100.0 * COUNT(q.query_id) / COUNT(*), 1) FROM clinical_injected_defects d LEFT JOIN clinical_query_log q ON d.subject_id = q.subject_id AND d.visit_id = q.visit_id AND COALESCE(d.form_id, '') = COALESCE(q.form_id, '') AND COALESCE(d.record_num, -1) = COALESCE(q.record_num, -1) AND COALESCE(d.item_oid, '') = COALESCE(q.item_oid, '') AND d.expected_check = q.check_id
   expect: 100.0
@@ -182,6 +202,7 @@
 - id: site_query_rate_per_subject
   domain: clinical
   question: "Which site generates the most data queries per enrolled subject?"
+  answer: "{value} generates the most data queries per enrolled subject."
   sql: >
     SELECT s.site_id FROM clinical_subjects s LEFT JOIN clinical_query_log q ON q.subject_id = s.subject_id GROUP BY s.site_id ORDER BY COUNT(q.query_id) * 1.0 / COUNT(DISTINCT s.subject_id) DESC LIMIT 1
   expect: "SITE-104"
@@ -189,6 +210,7 @@
 - id: stale_open_query_share
   domain: clinical
   question: "What percentage of the still-open data queries have been outstanding for 60 days or more?"
+  answer: "{value}% of the still-open data queries have been outstanding for 60 days or more."
   sql: >
     SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE age_days >= 60) / COUNT(*), 1) FROM clinical_query_log WHERE status = 'open'
   expect: 31.3
@@ -196,6 +218,7 @@
 - id: uncoded_meddra_share
   domain: clinical
   question: "What share of MedDRA adverse-event terms failed to code cleanly (uncoded or ambiguous)?"
+  answer: "{value}% of MedDRA adverse-event terms failed to code cleanly."
   sql: >
     SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE status IN ('uncoded', 'ambiguous')) / COUNT(*), 1) FROM clinical_coding_results WHERE dictionary = 'MedDRA'
   expect: 11.6
@@ -203,6 +226,7 @@
 - id: arm_completion_gap
   domain: clinical
   question: "How many percentage points separate the two treatment arms on study completion rate?"
+  answer: "{value} percentage points separate the two treatment arms on completion rate."
   sql: >
     SELECT ROUND(MAX(rate) - MIN(rate), 1) FROM (SELECT arm, 100.0 * SUM(completed) / COUNT(*) AS rate FROM clinical_subjects GROUP BY arm)
   expect: 8.0
@@ -210,6 +234,7 @@
 - id: aml_alert_precision
   domain: aml
   question: "Of the transactions the monitoring system alerts on at its chosen risk threshold, what percentage are actually suspicious?"
+  answer: "At its chosen risk threshold, {value}% of alerted transactions are actually suspicious."
   sql: >
     SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE is_suspicious = 1) / COUNT(*), 1) FROM aml_fact_transactions WHERE risk_score >= 39.6
   expect: 25.2
@@ -217,6 +242,7 @@
 - id: aml_riskiest_channel
   domain: aml
   question: "Which payment channel has the highest alert rate?"
+  answer: "{value} is the payment channel with the highest alert rate."
   sql: >
     SELECT channel FROM aml_fact_transactions GROUP BY 1 ORDER BY COUNT(*) FILTER (WHERE risk_score >= 39.6) * 1.0 / COUNT(*) DESC LIMIT 1
   expect: "wire"
@@ -224,6 +250,7 @@
 - id: aml_weakest_typology_recall
   domain: aml
   question: "Which laundering typology does the model catch the least often?"
+  answer: "{value} is the laundering typology the model catches least often."
   sql: >
     SELECT typology FROM aml_fact_transactions WHERE is_suspicious = 1 GROUP BY 1 ORDER BY COUNT(*) FILTER (WHERE risk_score >= 39.6) * 1.0 / COUNT(*) ASC LIMIT 1
   expect: "dormant_reactivation"
@@ -231,6 +258,7 @@
 - id: aml_false_positive_cost
   domain: aml
   question: "What does one false-positive alert cost us to investigate?"
+  answer: "One false-positive alert costs about {value} to investigate."
   sql: >
     SELECT DISTINCT ROUND(entity_expected_cost_cad / entity_false_positives, 2) FROM aml_threshold_sweep WHERE entity_false_negatives = 0 AND entity_false_positives > 0
   expect: 212.5
@@ -238,6 +266,7 @@
 - id: aml_naive_rule_alert_multiple
   domain: aml
   question: "How many times more transactions would a flat $10,000 reporting rule alert on than the risk model does?"
+  answer: "A flat $10,000 reporting rule would alert on {value} times as many transactions as the risk model."
   sql: >
     SELECT ROUND(COUNT(*) FILTER (WHERE amount_cad > 10000.0) * 1.0 / COUNT(*) FILTER (WHERE risk_score >= 39.6), 1) FROM aml_fact_transactions
   expect: 7.4
@@ -245,6 +274,7 @@
 - id: wholesale_lowest_margin_department
   domain: wholesale
   question: "Which merchandising department earns the lowest gross margin percentage?"
+  answer: "{value} earns the lowest gross margin percentage of any merchandising department."
   sql: >
     SELECT department FROM wholesale_fact_department_month GROUP BY department ORDER BY SUM(gross_margin) / SUM(revenue) LIMIT 1
   expect: "Electronics"
@@ -252,6 +282,7 @@
 - id: wholesale_fy2025_revenue_change
   domain: wholesale
   question: "How did fiscal 2025 revenue compare with fiscal 2024 \u2014 what was the percentage change?"
+  answer: "Fiscal 2025 revenue changed by {value}% against fiscal 2024."
   sql: >
     SELECT ROUND(100.0 * (SUM(revenue) FILTER (WHERE fiscal_year = 2025) - SUM(revenue) FILTER (WHERE fiscal_year = 2024)) / SUM(revenue) FILTER (WHERE fiscal_year = 2024), 2) FROM wholesale_finance_monthly
   expect: -4.52
@@ -259,6 +290,7 @@
 - id: wholesale_top_quota_rep
   domain: wholesale
   question: "Which sales rep has the highest quota attainment over the whole period?"
+  answer: "{value} has the highest quota attainment over the whole period."
   sql: >
     SELECT sales_rep_name FROM wholesale_fact_rep_month GROUP BY sales_rep_name ORDER BY SUM(revenue) / SUM(monthly_quota) DESC LIMIT 1
   expect: "Dana Whitfield"
@@ -266,6 +298,7 @@
 - id: wholesale_cheapest_acquisition_channel
   domain: wholesale
   question: "Which marketing channel acquires new customers at the lowest cost?"
+  answer: "{value} acquires new customers at the lowest cost."
   sql: >
     SELECT channel FROM wholesale_marketing_campaigns GROUP BY channel HAVING SUM(new_customers) > 0 ORDER BY SUM(spend) / SUM(new_customers) LIMIT 1
   expect: "Email & CRM nurture"
@@ -273,6 +306,7 @@
 - id: wholesale_lowest_margin_store_format
   domain: wholesale
   question: "Which store format runs the thinnest gross margin?"
+  answer: "{value} runs the thinnest gross margin of any store format."
   sql: >
     SELECT store_format FROM wholesale_fact_segment_month GROUP BY store_format ORDER BY SUM(gross_margin) / SUM(revenue) LIMIT 1
   expect: "Club Warehouse"
@@ -280,6 +314,7 @@
 - id: dbt_most_tested_model
   domain: dbt
   question: "Which model in the dbt warehouse carries the most data tests?"
+  answer: "{value} carries the most data tests of any model in the dbt warehouse."
   sql: >
     SELECT model_name FROM dbt_models WHERE resource_type = 'model' ORDER BY test_count DESC, model_name LIMIT 1
   expect: "fct_orders"
@@ -287,6 +322,7 @@
 - id: dbt_referential_test_share
   domain: dbt
   question: "What share of the dbt project's data tests are referential-integrity checks?"
+  answer: "{value}% of the dbt project's data tests are referential-integrity checks."
   sql: >
     SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE test_type = 'relationships') / COUNT(*), 1) FROM dbt_tests
   expect: 12.5
@@ -294,6 +330,7 @@
 - id: dbt_undocumented_model_share
   domain: dbt
   question: "What percentage of the dbt models have no description \u2014 how bad is our documentation coverage?"
+  answer: "{value}% of the dbt models have no description."
   sql: >
     SELECT ROUND(100.0 * COUNT(*) FILTER (WHERE description IS NULL OR description = '') / COUNT(*), 1) FROM dbt_models WHERE resource_type = 'model'
   expect: 80.0
@@ -301,6 +338,7 @@
 - id: dbt_exposure_upstream_marts
   domain: dbt
   question: "How many mart models does the Power BI control tower dashboard depend on?"
+  answer: "The Power BI control tower dashboard depends on {value} mart models."
   sql: >
     SELECT COUNT(*) FROM dbt_lineage WHERE child = 'supply_chain_control_tower_report' AND parent_layer = 'marts'
   expect: 3
@@ -308,6 +346,7 @@
 - id: dbt_revenue_month_spread
   domain: dbt
   question: "How much revenue separated the best month from the worst in the daily KPI mart?"
+  answer: "{value} in revenue separated the best month from the worst in the daily KPI mart."
   sql: >
     SELECT ROUND(MAX(m.rev) - MIN(m.rev)) FROM (SELECT date_trunc('month', order_date) AS mth, SUM(revenue) AS rev FROM dbt_kpi_daily GROUP BY 1) m
   expect: 639643.0
