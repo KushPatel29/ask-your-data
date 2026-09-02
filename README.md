@@ -7,6 +7,7 @@
 ![Tests](https://img.shields.io/badge/tests-961%20%C2%B7%20960%20run%20without%20an%20API%20key-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
+![Voice](https://img.shields.io/badge/voice-in--process%20%C2%B7%20no%20API%20key-FBBF24)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
 **▶ Live demo: [ask-your-data-kp.streamlit.app](https://ask-your-data-kp.streamlit.app)** —
@@ -32,6 +33,27 @@ a fresh deploy from a warm container still serving the old one.)*
 
 Say or type a plain-English question about any of my portfolio datasets and get a real
 answer — with the SQL that produced it shown right next to the number.
+
+**In one paragraph.** Ask 71 tables across 11 business domains a question in
+plain English, by voice or by typing, and get an answer with the query beside
+it. Nothing here answers from memory: every number on screen was returned by a
+`SELECT` you can read. Two engines write that SQL — a **deterministic compiler**
+that needs no model at all, and, if you bring a key, **a language model** — and
+both pass through one read-only guard, one structural verifier and one
+default-deny access policy. The model's *prose* is verified back against the
+returned rows, so a fluent sentence cannot quote a number the query never
+produced. Six **certified metrics** carry an owner, a committed definition and a
+value CI re-checks. Speech runs inside the process on open models, so the public
+demo listens and answers aloud with no account and no second service.
+**961 tests; 960 of them run without an API key.**
+
+| | |
+|---|---|
+| **The rule** | No number without a query — and it is *enforced*, not just prompted |
+| **Keyless engine** | 58-question contract: **46 right, 0 wrong, 12 refused**. Refusing is the feature |
+| **Retrieval** | Hybrid RRF, **100% table recall** on 2,253 schema tokens against 12,741 for the full catalogue |
+| **Governance** | Read-only guard · structural verifier · OIDC principal + column masking · durable audit trail |
+| **Voice** | faster-whisper + Piper, in-process, checksum-pinned to immutable revisions |
 
 ![A keyless turn end to end: the question, the pipeline strip with PLAN lit, the retrieved tables, the answer, the compiler's binding trace, the read-only guard, the verifier, the SQL, and the physical plan](docs/keyless_compiler.png)
 
