@@ -45,7 +45,7 @@ from __future__ import annotations
 import re
 import sys
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import wraps
 from hashlib import sha256
 from pathlib import Path
@@ -124,6 +124,22 @@ class RetrievedTable:
     domain: str
     description: str
     score: float
+
+
+def scoped_hits(
+    hits: list[RetrievedTable],
+    *,
+    allowed_tables: frozenset[str] | set[str] | None = None,
+    denied_columns: dict[str, frozenset[str]] | None = None,
+) -> list[RetrievedTable]:
+    """Filter display/prompt metadata without changing the shared retrieval index.
+
+    Free-text descriptions can contain protected column names and sample
+    values. A masked table therefore contributes its permitted schema fields,
+    but no unstructured description. This also applies to UI grounding cards.
+    """
+    return [replace(hit, description="") if (denied_columns or {}).get(hit.table) else hit
+            for hit in hits if allowed_tables is None or hit.table in allowed_tables]
 
 
 # --------------------------------------------------------------------------
@@ -445,12 +461,20 @@ def schema_catalog_for(
                 ))
 
     by_domain: dict[str, list[RetrievedTable]] = {}
-    for hit in hits:
+    for hit in scoped_hits(hits, allowed_tables=allowed_tables, denied_columns=denied_columns):
         by_domain.setdefault(hit.domain, []).append(hit)
 
     lines: list[str] = []
     for domain, rows in by_domain.items():
-        lines.append(f"\n### Domain: {domain} — {DOMAINS.get(domain, '')}")
+        # A domain blurb can describe other, unauthorized tables. Only include
+        # it when this principal can see the entire domain without masking.
+        domain_tables = {name for name, metadata in known.items() if metadata["domain"] == domain}
+        complete_domain = (
+            (allowed_tables is None or domain_tables <= set(allowed_tables))
+            and not any((denied_columns or {}).get(name) for name in domain_tables)
+        )
+        description = DOMAINS.get(domain, "") if complete_domain else ""
+        lines.append(f"\n### Domain: {domain}" + (f" — {description}" if description else ""))
         for hit in rows:
             try:
                 hidden = (denied_columns or {}).get(hit.table, frozenset())

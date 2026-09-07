@@ -33,6 +33,48 @@ def answer(question: str, con, layer: Layer) -> str:
     return narrate.answer_sentence(planned.plan, ran)
 
 
+def test_explanation_keeps_simple_answers_concise(con, layer):
+    planned = planner.plan_question("how many denied claims are there?", layer)
+    ran = run_query(con, planned.sql)
+    assert narrate.answer_explanation(planned.plan, ran) == "There are 876 denied claims."
+
+
+def test_explanation_binds_details_in_query_order_and_bounds_them(con, layer):
+    planned = planner.plan_question("average salary by department", layer)
+    ran = run_query(con, planned.sql)
+    explanation = narrate.answer_explanation(planned.plan, ran)
+    bullets = [line for line in explanation.splitlines() if line.startswith("- ")]
+    assert len(bullets) == 3
+    for bullet, row in zip(bullets, ran.rows[:3], strict=True):
+        assert str(row[0]) in bullet
+        assert f"{row[1]:,.2f}" in bullet
+    assert explanation.startswith(narrate.answer_sentence(planned.plan, ran))
+    assert "first three entries" in explanation
+    assert "table below" in explanation
+
+
+def test_explanation_preserves_missing_values_and_preview_scope():
+    plan = planner.Plan(
+        base="hr_fact_employees", aggregate=planner.AVG,
+        measure=Column("hr_fact_employees", "tenure_months", "INTEGER", MEASURE),
+        group_by=Column("hr_fact_employees", "department", "VARCHAR", DIMENSION),
+        limit=2,
+    )
+    ran = QueryResult(sql="", rows=[("A\n- injected line", None), ("B", 1.5)],
+                      row_count=2, truncated=True)
+    explanation = narrate.answer_explanation(plan, ran)
+    assert "- A - injected line: average tenure is no value." in explanation
+    assert "1.50 months" in explanation
+    assert "limited preview" in explanation
+    assert "all 2" not in explanation
+    assert explanation.count("\n- ") == 2
+
+
+def test_explanation_does_not_narrate_failed_query_rows():
+    ran = QueryResult(sql="", rows=[(876,)], row_count=1, error="failed")
+    assert "876" not in narrate.answer_explanation(None, ran)
+
+
 @pytest.mark.parametrize(
     ("question", "expected"),
     [
@@ -130,6 +172,41 @@ def test_decimal_results_are_formatted_as_numbers_not_opaque_strings():
     assert narrate.answer_sentence(plan, ran) == (
         "The total revenue across all orders is 12,345.60."
     )
+
+
+def test_average_of_integer_measure_keeps_the_fraction():
+    plan = planner.Plan(
+        base="retail_fact_orders", aggregate=planner.AVG,
+        measure=Column("retail_fact_orders", "quantity", "INTEGER", MEASURE),
+    )
+    ran = QueryResult(sql="", rows=[(1.5,)], row_count=1)
+    spoken = narrate.answer_sentence(plan, ran)
+    assert "1.5" in spoken and " is 2" not in spoken
+
+
+def test_equal_groups_are_described_as_equal_instead_of_arbitrary_winners():
+    plan = planner.Plan(
+        base="hr_fact_employees", aggregate=planner.COUNT,
+        group_by=Column("hr_fact_employees", "department", "VARCHAR", DIMENSION),
+        order="desc", limit=2,
+    )
+    ran = QueryResult(sql="", rows=[("Sales", 8), ("Finance", 8)], row_count=2)
+    spoken = narrate.answer_sentence(plan, ran)
+    assert "same across the 2 departments shown" in spoken
+    assert "most" not in spoken and "fewest" not in spoken
+
+
+def test_null_group_does_not_acquire_a_superlative():
+    plan = planner.Plan(
+        base="hr_fact_employees", aggregate=planner.AVG,
+        measure=Column("hr_fact_employees", "base_salary", "DOUBLE", MEASURE),
+        group_by=Column("hr_fact_employees", "department", "VARCHAR", DIMENSION),
+        order="desc", limit=1,
+    )
+    ran = QueryResult(sql="", rows=[("Finance", None)], row_count=1)
+    spoken = narrate.answer_sentence(plan, ran)
+    assert "Finance has no value" in spoken
+    assert "highest" not in spoken
 
 
 def test_a_null_scalar_distinguishes_missing_values_from_zero_rows():

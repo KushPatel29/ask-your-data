@@ -68,6 +68,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
+from engine.access import AccessScope  # noqa: E402
 from engine.warehouse import table_columns, table_names  # noqa: E402
 
 # Above this many distinct values a text column stops being a thing you can name
@@ -220,6 +221,59 @@ class Layer:
         self._value_index: dict[str, list[ValueBinding]] = {}
         self._word_index: dict[str, set[str]] = {}
         self._build()
+
+    def scoped(self, access: AccessScope | None) -> Layer:
+        """Return a detached catalogue containing only this principal's metadata.
+
+        The warehouse layer is cached across sessions. Mutating it to apply a
+        user's grants would corrupt other sessions, while filtering only the
+        eventual SQL leaves names and dimension values visible to the planner,
+        refusal suggestions, and schema panels. Copy the table containers and
+        rebuild the lookup indexes without issuing additional database probes.
+        Columns and bindings are immutable and can safely be shared.
+
+        This is metadata authorization, not row-level security. The executor
+        must still receive the same access scope for every query.
+        """
+        if access is None:
+            return self
+        view = object.__new__(Layer)
+        view.con = self.con
+        view.tables = {}
+        view.edges = []
+        view._word_index = {}
+        view._value_index = {}
+        denied = access.denied_by_table
+        for name, table in self.tables.items():
+            if name not in access.allowed_tables:
+                continue
+            hidden = denied.get(name, frozenset())
+            columns = [column for column in table.columns if column.name not in hidden]
+            # A partially visible key does not establish the row's grain.
+            grain = table.grain if not (set(table.grain) & hidden) else ()
+            view.tables[name] = Table(
+                name=table.name,
+                domain=table.domain,
+                # Descriptions are free text and may name hidden columns or
+                # their values. Omit them for masked tables rather than trying
+                # to redact prose by matching identifier substrings.
+                description=table.description if not hidden else "",
+                columns=columns,
+                rows=table.rows,
+                grain=grain,
+            )
+        view._index_words()
+        for phrase, bindings in self._value_index.items():
+            visible = [binding for binding in bindings
+                       if binding.table in view.tables
+                       and binding.column not in denied.get(binding.table, ())]
+            if visible:
+                view._value_index[phrase] = visible
+        view.edges = [edge for edge in self.edges
+                      if edge.left in view.tables and edge.right in view.tables
+                      and edge.column not in denied.get(edge.left, ())
+                      and edge.column not in denied.get(edge.right, ())]
+        return view
 
     # ------------------------------------------------------------------
     # Construction
@@ -435,6 +489,8 @@ class Layer:
         joins to make a question fit is not grounding an answer, it is
         rationalising one -- and every extra hop is another chance to fan out.
         """
+        if start not in self.tables or goal not in self.tables:
+            return None
         if start == goal:
             return []
         frontier: list[tuple[str, list[JoinEdge]]] = [(start, [])]
@@ -501,7 +557,7 @@ _LAYER = None
 _LAYER_CON = None
 
 
-def get_layer(con) -> Layer:
+def get_layer(con, *, access: AccessScope | None = None) -> Layer:
     """One layer per connection, built once.
 
     Keyed on the connection object rather than cached globally, so a test that
@@ -511,7 +567,7 @@ def get_layer(con) -> Layer:
     if _LAYER is None or _LAYER_CON is not con:
         _LAYER = Layer(con)
         _LAYER_CON = con
-    return _LAYER
+    return _LAYER.scoped(access)
 
 
 @lru_cache(maxsize=1)

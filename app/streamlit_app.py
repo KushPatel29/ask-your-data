@@ -86,6 +86,7 @@ from engine import (  # noqa: E402
     audit,
     deadline,
     demo_mode,
+    deployment,
     exemplars,
     narrate,
     planner,
@@ -342,6 +343,7 @@ def _voice_label() -> str:
 
 
 try:
+    DEPLOYMENT_MODE = deployment.validate_deployment()
     PRINCIPAL = _principal()
     ACCESS = access.access_scope(PRINCIPAL)
 except (access.AuthenticationError, access.PolicyConfigurationError) as exc:
@@ -379,15 +381,24 @@ def _warm_voice() -> bool:
 
 
 VOICE_WARMING = _warm_voice()
-layer = get_layer(con)
+base_layer = get_layer(con)
+layer = base_layer.scoped(ACCESS) if base_layer is not None else None
 PLANNER_READY = layer is not None
 verifier = get_verifier(con)
 metric_registry = tuple(
-    metric for metric in get_metric_registry() if metric.domain in {
-        name.split("_", 1)[0] for name in ACCESS.allowed_tables
-    }
+    metric for metric in get_metric_registry()
+    if access.authorize_sql(con, metric.sql, ACCESS).allowed
 )
 assistant = _live_assistant(con) if LIVE_MODE else None
+if st.session_state.get("_answer_scope") != ACCESS.fingerprint:
+    # A browser can retain answers after a role change. Invalidate all material
+    # derived from the previous scope, including its recorded/spoken answers.
+    for state_key in list(st.session_state):
+        if (state_key in {"turns", "transcript", "_contract_spoken", "_voice_revision",
+                          "_contract_selection_revision", "_voice_audio_order"}
+                or state_key.startswith(("voice_", "listen_", "_voice_reset"))):
+            st.session_state.pop(state_key, None)
+    st.session_state["_answer_scope"] = ACCESS.fingerprint
 st.session_state.setdefault("turns", [])      # engine context (Turn objects)
 st.session_state.setdefault("transcript", [])  # everything we rendered, incl. refusals
 
@@ -439,12 +450,12 @@ ui.masthead(
     tables=TABLE_COUNT,
     domains=len(ACCESS_DOMAINS),
     live=LIVE_MODE,
-    compact=CURRENT_VIEW != "Ask",
+    compact=CURRENT_VIEW != "Ask" or bool(st.session_state.transcript),
 )
 
 WORKSPACE_VIEW = st.segmented_control(
     "Workspace",
-    ("Ask", "Data catalog", "Trust center"),
+    ("Ask", "Data catalog", "Trust center", "Project brief"),
     default="Ask",
     key="workspace-nav",
     label_visibility="collapsed",
@@ -508,10 +519,10 @@ def _status_rail() -> None:
     ])
 
 
-if WORKSPACE_VIEW == "Ask":
+if WORKSPACE_VIEW == "Trust center":
     ui.lifecycle(live=LIVE_MODE)
-with st.expander("Runtime controls and model status"):
-    _status_rail()
+    with st.expander("Runtime controls and model status"):
+        _status_rail()
 
 
 @st.cache_data(show_spinner=False, max_entries=256)
@@ -570,8 +581,10 @@ def _retrieval_bundle_cached(question: str, scope_fingerprint: tuple):
     try:
         started = time.perf_counter()
         del scope_fingerprint
-        hits = [hit for hit in retrieval.retrieve_hybrid(question, con=con)
-                if hit.table in ACCESS.allowed_tables]
+        hits = retrieval.scoped_hits(
+            retrieval.retrieve_hybrid(question, con=con),
+            allowed_tables=ACCESS.allowed_tables, denied_columns=ACCESS.denied_by_table,
+        )
         # Only the hybrid call is the RETRIEVE stage. The two rankings gathered
         # below are re-run purely so the panel can show the ranks RRF consumed,
         # and charging the pipeline for the display's own overhead would
@@ -625,13 +638,13 @@ def _model_retrieval_bundle(entry: dict):
     bundle = _retrieval_bundle(entry.get("retrieval_context") or entry["question"])
     if not bundle or not entry.get("tables"):
         return bundle
-    wanted = set(entry["tables"])
+    wanted = set(entry["tables"]) & set(ACCESS.allowed_tables)
     hits = [hit for hit in bundle["hits"] if hit.table in wanted]
     seen = {hit.table for hit in hits}
     if seen != wanted:
         corpus = {row["id"]: row for row in retrieval.build_corpus(con)}
         for name in entry["tables"]:
-            if name in seen or name not in corpus:
+            if name in seen or name not in corpus or name not in wanted:
                 continue
             meta = corpus[name]["metadata"]
             hits.append(retrieval.RetrievedTable(
@@ -642,7 +655,9 @@ def _model_retrieval_bundle(entry: dict):
             ))
     return {
         **bundle,
-        "hits": hits,
+        "hits": retrieval.scoped_hits(
+            hits, allowed_tables=ACCESS.allowed_tables, denied_columns=ACCESS.denied_by_table,
+        ),
         "tokens_used": int(entry.get("schema_tokens") or bundle["tokens_used"]),
     }
 
@@ -778,7 +793,7 @@ def _verification_readout(findings, *, verify_ms=None, refused=False) -> None:
 # --------------------------------------------------------------------------
 
 @st.cache_data(show_spinner=False, max_entries=256)
-def _exemplar_picks(question: str):
+def _exemplar_picks_cached(question: str, scope_fingerprint: tuple):
     """The k nearest solved questions to this one, and what selecting them cost.
 
     Cached on the question text for the same reason `_retrieval_bundle` is: this
@@ -801,12 +816,13 @@ def _exemplar_picks(question: str):
     # the pairs were fused with the retrieved tables. A foot that described a
     # signal the call did not use would be the panel asserting its own mechanism
     # instead of showing it.
+    del scope_fingerprint
     bundle = _retrieval_bundle(question)
     tables = tuple(hit.table for hit in bundle["hits"]) if bundle else ()
     try:
         started = time.perf_counter()
         picks = exemplars.select_exemplars(question, k=exemplars.DEFAULT_K,
-                                           retrieved_tables=tables)
+                                           retrieved_tables=tables, access=ACCESS, con=con)
         elapsed = 1000 * (time.perf_counter() - started)
     except Exception:
         return None
@@ -818,6 +834,10 @@ def _exemplar_picks(question: str):
         "fused": bool(tables),
         "ms": elapsed,
     }
+
+
+def _exemplar_picks(question: str):
+    return _exemplar_picks_cached(question, ACCESS.fingerprint)
 
 
 def _show_exemplars(question: str, *, in_prompt: bool = False) -> None:
@@ -936,7 +956,6 @@ def _plan_rows(node: dict, prefix: str, root: bool, last: bool, out: list) -> No
         _plan_rows(child, child_prefix, False, index == len(children) - 1, out)
 
 
-@st.cache_data(show_spinner=False, max_entries=256)
 def _query_plan(sql: str):
     """DuckDB's physical plan for this SQL, flattened for display.
 
@@ -946,7 +965,7 @@ def _query_plan(sql: str):
     """
     import json
 
-    if not validate_sql(sql)[0]:
+    if not validate_sql(sql)[0] or not access.authorize_sql(con, sql, ACCESS).allowed:
         return None
     try:
         started = time.perf_counter()
@@ -974,7 +993,6 @@ def _plan_size(node: dict) -> int:
     return 1 + sum(_plan_size(child) for child in (node.get("children") or []))
 
 
-@st.cache_data(show_spinner=False, max_entries=256)
 def _result_columns(sql: str) -> list[tuple[str, str]]:
     """The output schema in DuckDB's type names, via DESCRIBE.
 
@@ -982,7 +1000,7 @@ def _result_columns(sql: str) -> list[tuple[str, str]]:
     over the returned values — int64 where the warehouse holds a BIGINT, object
     where it holds a VARCHAR. The point of the line is what the warehouse says.
     """
-    if not validate_sql(sql)[0]:
+    if not validate_sql(sql)[0] or not access.authorize_sql(con, sql, ACCESS).allowed:
         return []
     try:
         cur = con.cursor()
@@ -1070,7 +1088,8 @@ def _schema_browser(ranked: list[str] | None = None) -> None:
         for domain, blurb in DOMAINS.items():
             if domain not in ACCESS_DOMAINS:
                 continue
-            ui.domain_card(domain, blurb)
+            ui.domain_card(domain, "Tables available under your access policy."
+                           if PRINCIPAL.authenticated else blurb)
         return
 
     st.subheader("Browse the schema")
@@ -1174,7 +1193,8 @@ def _render_sidebar(active_question: str | None) -> None:
                 destination=destination,
             )
         if WORKSPACE_VIEW == "Ask":
-            _schema_browser(ranked)
+            with st.expander("Search available data"):
+                _schema_browser(ranked)
         with st.expander("Model settings"):
             _render_key_control()
         with st.expander("Voice settings"):
@@ -1331,13 +1351,12 @@ def _render_voice_control() -> None:
             "voice. No API key, no account, and no second service: the recording "
             "and the answer text never leave the server. "
             + (
-                "Both download once on first use and are verified against a "
+                "Models download when first needed and are verified against a "
                 "checksum pinned in this release — the speech model to an "
                 "immutable Hub revision, the voice to its two artifacts."
                 if local_voice_pinned()
-                else "The voice is checksum-pinned; the speech model has been "
-                     "overridden with ASK_LOCAL_STT_MODEL, so it is fetched "
-                     "unpinned and this release cannot vouch for its weights."
+                else "This speech model override is not approved by this release. "
+                     "Use the default pinned model or configure a reviewed speech endpoint."
             )
         )
     elif voice.local_endpoint_configured():
@@ -1352,12 +1371,13 @@ def _render_voice_control() -> None:
         if server_key:
             st.caption(
                 "OpenAI voice is configured by the server. Recordings are sent to "
-                "OpenAI for transcription; answer text is sent only when Listen is pressed."
+                "OpenAI for transcription; answer text is sent when playback is requested, "
+                "including when automatic speech is enabled."
             )
         else:
             st.caption(
                 "Optional cloud fallback. Your recording and API key are sent to OpenAI "
-                "for transcription; answer text is sent when you press Listen. This app "
+                "for transcription; answer text is sent for manual or automatic playback. This app "
                 "does not write the key, recording, or generated audio to disk."
             )
             typed = st.text_input(
@@ -1374,7 +1394,10 @@ def _render_voice_control() -> None:
 
     if not _voice_ready():
         return
-    st.selectbox("Transcription language", tuple(VOICE_LANGUAGES),
+    languages = {"English": "en"} if _voice_label() == "local" else VOICE_LANGUAGES
+    if st.session_state.get("voice_language") not in languages:
+        st.session_state["voice_language"] = next(iter(languages))
+    st.selectbox("Transcription language", tuple(languages),
                  key="voice_language", index=0)
     options = _voice_options()
     # A browser session can outlive a deployment. If its widget still holds the
@@ -1384,17 +1407,7 @@ def _render_voice_control() -> None:
         st.session_state["voice_name"] = next(iter(options))
     st.selectbox("Answer voice", tuple(options),
                  key="voice_name", index=0)
-    # On by default, because an assistant that has to be asked to speak every
-    # time is not really talking. Off is a real option and has to be reachable:
-    # the first spoken answer takes the process from 330 MB to 465 MB, and a
-    # reader on a shared machine may simply not want sound.
-    st.toggle("Speak answers automatically", key="voice_autospeak",
-              value=_autospeak_on(),
-              help="Answers are read aloud as they arrive. Turn this off to "
-                   "keep a Listen control instead.")
-    # Mirrored into a plain key so the choice survives the widget being
-    # unrendered. See the note in _autospeak_on.
-    st.session_state["_autospeak_pref"] = bool(st.session_state["voice_autospeak"])
+    st.caption("Automatic playback can be switched on or off beside the question input.")
     stt_model, tts_model = _voice_models()
     st.caption(f"STT `{stt_model}` · TTS `{tts_model}` · playback is AI-generated speech.")
 
@@ -1417,6 +1430,8 @@ def _voice_models() -> tuple[str, str]:
 
 
 def _voice_language() -> str:
+    if _voice_label() == "local":
+        return "en"
     return VOICE_LANGUAGES.get(st.session_state.get("voice_language", "Auto detect"), "")
 
 
@@ -1426,11 +1441,31 @@ def _voice_name() -> str:
     return options.get(st.session_state.get("voice_name", ""), default)
 
 
+def _remember_autospeak() -> None:
+    st.session_state["_autospeak_pref"] = bool(st.session_state["voice_autospeak"])
+
+
 def _voice_question() -> str:
     """Record, transcribe, and confirm one question; never auto-run a transcript."""
     ready = _voice_ready()
+    st.toggle("Speak answers automatically", key="voice_autospeak",
+              value=_autospeak_on(), on_change=_remember_autospeak,
+              help="AI-generated male voice. If your browser blocks autoplay, "
+                   "press Play on the audio player.")
+    st.session_state["_autospeak_pref"] = bool(st.session_state["voice_autospeak"])
     stt_model, tts_model = _voice_models()
     ui.voice_dock(ready=ready, stt_model=stt_model, tts_model=tts_model)
+    if ready and _voice_label() == "local":
+        from engine import local_voice
+
+        state = local_voice.readiness()
+        if state.tts == "loading":
+            st.caption("Preparing the male voice. Your text question can run while it loads.")
+        elif state.tts == "error":
+            st.caption("Voice preparation was interrupted. Use Listen or Retry voice on an answer.")
+        elif state.tts == "not_loaded":
+            st.caption("The voice will load on first playback; the first request may take longer.")
+        st.caption("English speech input. Review and edit the transcript before asking.")
     if not ready:
         st.caption(
             "Speech is unavailable in this deployment. Install the voice extras "
@@ -1451,6 +1486,9 @@ def _voice_question() -> str:
         "Record a data question", sample_rate=16000,
         key=f"voice_recording_{revision}",
     )
+    if recording is None and st.session_state.get("voice_last_digest"):
+        for key in ("voice_draft", "voice_last_digest", "voice_error", "voice_meta"):
+            st.session_state.pop(key, None)
     if recording is not None:
         raw = recording.getvalue()
         digest = hashlib.sha256(raw).hexdigest()
@@ -1459,6 +1497,8 @@ def _voice_question() -> str:
             # not repeat on every unrelated Streamlit rerun and spend again.
             st.session_state["voice_last_digest"] = digest
             st.session_state["voice_error"] = ""
+            st.session_state.pop("voice_draft", None)
+            st.session_state.pop("voice_meta", None)
             with st.spinner("Transcribing with the speech model..."):
                 try:
                     transcript = _voice_client().transcribe(
@@ -1562,7 +1602,7 @@ def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn",
     error_key = f"voice_audio_error_{identity}"
     button_key = f"listen_{namespace}_{index}_{identity}"
     mime_key = f"voice_audio_mime_{identity}"
-    played_key = f"voice_played_{identity}"
+    played_key = f"voice_played_{namespace}_{index}_{identity}"
 
     def synthesize() -> None:
         with st.spinner("Reading the answer aloud…"):
@@ -1574,35 +1614,44 @@ def _render_answer_audio(answer: str, index: int, *, namespace: str = "turn",
                 # an MP3, which some browsers refuse outright and others
                 # render as a player that never starts.
                 st.session_state[mime_key] = speech.mime_type
-                cached = [
-                    key for key in st.session_state
-                    if key.startswith("voice_audio_")
-                    and not key.startswith("voice_audio_error_")
-                ]
-                for old_key in cached[:-3]:
-                    st.session_state.pop(old_key, None)
+                # Streamlit session-state iteration is unordered. Maintain
+                # recency explicitly so eviction never removes this new clip.
+                cached = [item for item in st.session_state.get("_voice_audio_order", [])
+                          if item != identity and f"voice_audio_{item}" in st.session_state]
+                cached.append(identity)
+                for old_identity in cached[:-3]:
+                    st.session_state.pop(f"voice_audio_{old_identity}", None)
+                    st.session_state.pop(f"voice_audio_mime_{old_identity}", None)
+                    st.session_state.pop(f"voice_audio_error_{old_identity}", None)
+                st.session_state["_voice_audio_order"] = cached[-3:]
                 st.session_state.pop(error_key, None)
             except voice.VoiceUnavailable as exc:
                 st.session_state[error_key] = str(exc)
 
     wants_speech = autospeak and _autospeak_on()
-    if audio_key not in st.session_state and wants_speech:
+    if (audio_key not in st.session_state and wants_speech
+            and not st.session_state.get(played_key)
+            and not st.session_state.get(error_key)):
         synthesize()
+    manual_play = False
     if audio_key not in st.session_state:
         # Either speaking is switched off, or synthesis failed. Either way the
         # answer is on screen and listening stays one click away.
-        if st.button("Listen to answer", key=button_key,
+        label = "Retry voice" if st.session_state.get(error_key) else "Listen to answer"
+        if st.button(label, key=button_key,
                      icon=":material/volume_up:"):
             synthesize()
+            manual_play = True
     if st.session_state.get(error_key):
         st.error(st.session_state[error_key])
     if st.session_state.get(audio_key):
-        play_now = wants_speech and not st.session_state.get(played_key)
+        play_now = manual_play or (wants_speech and not st.session_state.get(played_key))
         if play_now:
             st.session_state[played_key] = True
         st.audio(st.session_state[audio_key],
                  format=st.session_state.get(mime_key, "audio/mpeg"),
                  autoplay=play_now)
+        st.caption("Press Play if your browser keeps the audio paused.")
         client = _voice_client()
         model = getattr(client, "tts_model", voice.configured_tts_model())
         where = ("Synthesized in this process — the answer text never left the "
@@ -2102,7 +2151,7 @@ def _fmt(value) -> str:
 
 
 def _plan_headline(plan, ran) -> str:
-    """One sentence, built from the plan rather than written about it.
+    """A grounded answer with bounded breakdown details from the result.
 
     The composition moved to `engine/narrate.py`; this is the seam. That module
     is Streamlit-free and depends only on engine.planner, so every sentence it
@@ -2126,7 +2175,7 @@ def _plan_headline(plan, ran) -> str:
         a breakdown bailed to "3 status. The full breakdown is below." — the
         case where a sentence is most useful is the one it gave up on.
     """
-    return narrate.answer_sentence(plan, ran)
+    return narrate.answer_explanation(plan, ran)
 
 
 def _numeric_format(frame):
@@ -2176,7 +2225,10 @@ def render_demo_mode(connection) -> None:
     """
     st.info(demo_mode.DEMO_NOTICE, icon=":material/science:")
 
-    cases = demo_mode.load_golden_questions()
+    cases = demo_mode.visible_cases(connection, access=ACCESS)
+    if not cases:
+        st.info("No worked examples are available for your current access scope.")
+        return None
     grouped = demo_mode.questions_by_domain(cases)
     st.caption(
         f"{len(cases)} pre-registered questions across {len(grouped)} domains, "
@@ -2203,6 +2255,10 @@ def render_demo_mode(connection) -> None:
     seen_before = "_contract_spoken" in st.session_state
     picked = seen_before and st.session_state["_contract_spoken"] != active["id"]
     st.session_state["_contract_spoken"] = active["id"]
+    selection_revision = int(st.session_state.get("_contract_selection_revision", 0))
+    if picked:
+        selection_revision += 1
+        st.session_state["_contract_selection_revision"] = selection_revision
     bundle = _retrieval_bundle(active["question"])
 
     # Timed separately from execution so each pipeline cell reports its own
@@ -2239,7 +2295,6 @@ def render_demo_mode(connection) -> None:
             # cannot afford. VERIFY, by contrast, genuinely ran — see above.
             ui.pipeline(retrieved=True, generated=False, verified=True,
                         guarded=True, executed=True, timings=timings)
-            _show_grounding(bundle)
             # The SENTENCE, not the bare scalar. `result.headline` is still the
             # value CI asserts and it is still what the amber badge vouches
             # for — it is now substituted into a sentence committed beside the
@@ -2254,25 +2309,22 @@ def render_demo_mode(connection) -> None:
             # Worked examples get the same voice every other answer has. They
             # are the questions a first-time visitor actually clicks, so they
             # were the worst place in the app to have speech missing.
-            _render_answer_audio(result.sentence, abs(hash(active["id"])) % 10_000,
+            _render_answer_audio(result.sentence, selection_revision,
                                  namespace="contract", autospeak=picked)
             if not result.matches_contract:
                 st.warning(
                     "This does not match the contract's expected value — the "
                     "vendored data has drifted and the golden test should be red."
                 )
-            _guard_readout(result.sql)
-            _verification_readout(findings, verify_ms=verify_ms)
-            # Below the answer, with the guard and the verifier. Three solved
-            # questions with their full reference SQL is a lot of page, and it
-            # used to sit between the grounding panel and the number — so the
-            # first thing a visitor met after "which tables" was three OTHER
-            # questions' SQL. The panel is provenance; provenance reads after
-            # the thing it vouches for.
-            _show_exemplars(active["question"])
-            st.code(result.sql, language="sql", wrap_lines=True)
             frame = pd.DataFrame(result.result.rows, columns=result.result.columns)
-            _result_readout(result.sql, frame, truncated=result.result.truncated)
+            with st.expander("How this example was calculated", expanded=False):
+                st.code(result.sql, language="sql", wrap_lines=True)
+                _guard_readout(result.sql)
+                _verification_readout(findings, verify_ms=verify_ms)
+                _result_readout(result.sql, frame, truncated=result.result.truncated)
+            with st.expander("Example evidence and related questions", expanded=False):
+                _show_grounding(bundle)
+                _show_exemplars(active["question"])
             st.dataframe(frame, width="stretch", hide_index=True)
             st.caption(
                 "Reference SQL, executed live — not written by the model. "
@@ -2282,7 +2334,6 @@ def render_demo_mode(connection) -> None:
     return active["question"]
 
 
-@st.cache_data(show_spinner=False, max_entries=256)
 def _nearest_vocabulary(words: tuple[str, ...]) -> list[tuple[str, str]]:
     """For words the compiler could not place, what the warehouse DOES have.
 
@@ -2586,27 +2637,27 @@ def render_plan_entry(entry, index: int) -> None:
                                  autospeak=_is_latest_turn(index))
         elif entry["error"]:
             st.error(f"Query error: {entry['error']}")
-        ui.plan_trace(trace["rationale"], coverage=trace["coverage"],
-                      considered=trace["considered"], bound=trace["bound"],
-                      missed=trace["missed"], loose=trace["loose"],
-                      plan_ms=entry.get("plan_ms"))
+        with st.expander("How this answer was calculated"):
+            ui.plan_trace(trace["rationale"], coverage=trace["coverage"],
+                          considered=trace["considered"], bound=trace["bound"],
+                          missed=trace["missed"], loose=trace["loose"],
+                          plan_ms=entry.get("plan_ms"))
+            st.code(entry["sql"], language="sql", wrap_lines=True)
         # wrap_lines, not the default horizontal scroll. Measured at 1280 with
         # the sidebar open: the content column is 752px and a joined query is
         # 930px, so 178px of SQL sat off-screen behind a scrollbar. "The SQL is
         # shown next to the answer so anyone can audit it" is this project's
         # central claim, and a claim you have to drag sideways to check is a
         # weaker version of it.
-        st.code(entry["sql"], language="sql", wrap_lines=True)
         _evidence_block(entry, trace)
         _result_block(entry, index)
         _sql_editor(entry, index)
         st.caption(
-            "Compiled from the schema by engine/planner.py — no model, no API "
-            "key, no cost. Every clause above traces to a word in the question."
+            "Calculated locally from the available data. Open the calculation to inspect "
+            "the SQL, or download the returned rows."
         )
 
 
-@st.cache_data(show_spinner=False, max_entries=256)
 def _layer_cells():
     """The semantic layer's counts, read off the layer itself.
 
@@ -2671,6 +2722,11 @@ def _operations_panel() -> None:
 def _reset_conversation() -> None:
     st.session_state.turns = []
     st.session_state.transcript = []
+    st.session_state["_voice_reset_pending"] = True
+    st.session_state.pop("_voice_audio_order", None)
+    for state_key in list(st.session_state):
+        if state_key.startswith(("voice_audio_", "voice_played_")):
+            st.session_state.pop(state_key, None)
     # A ?q= link put the first question there. Without clearing the guard the
     # deep link would fire again on the very next run and re-ask the question
     # the reader just cleared.
@@ -2701,9 +2757,8 @@ def _transcript_header() -> None:
 
 
 KEYLESS_NOTICE = (
-    "**Local compiler active — no API key required.** Questions are bound to the "
-    "governed schema, checked for meaning, gated read-only, and executed with the "
-    "same limits as model-authored SQL."
+    "**Local compiler active — no API key required.** Explore synthetic business "
+    "data with free local speech. SQL and returned rows are available with every answer."
 )
 
 KEYLESS_DETAILS = (
@@ -2811,6 +2866,89 @@ def _catalog_workspace() -> None:
     ui.column_list(detail["columns"], highlight=needle)
 
 
+def _project_workspace() -> None:
+    ui.view_header(
+        "Project brief", "From a business question to a traceable answer.",
+        "An analytics engineering portfolio by Kush Patel. Built to make the "
+        "calculation, the controls, and the tradeoffs visible.",
+    )
+    st.markdown(
+        "This application brings together semantic search, SQL generation, business-metric "
+        "verification, access policies, and local speech in one working product. "
+        "The public demo uses **synthetic data** and runs without a paid API key."
+    )
+    st.subheader("A two-minute walkthrough")
+    st.markdown(
+        "1. Open **Ask** and choose a question. Read the result, play the male voice, "
+        "then inspect the SQL and returned data.\n"
+        "2. Open **Data catalog** to explore the available domains and measures.\n"
+        "3. Open **Trust center** to inspect access boundaries, session timings, "
+        "and reference questions checked against committed expectations."
+    )
+    st.subheader("Engineering decisions you can inspect")
+    st.dataframe(pd.DataFrame([
+        {"Capability": "Two routes to SQL", "Implementation":
+         "A deterministic compiler works without a key; configured model providers handle "
+         "broader language. Both use the same guarded executor."},
+        {"Capability": "Answers tied to results", "Implementation":
+         "Narration uses returned values. Governed metrics retain their definitions and "
+         "expected results; unsupported requests explain their limits."},
+        {"Capability": "Free speech", "Implementation":
+         "Faster-Whisper transcription and male Piper Joe playback run on the server. "
+         "A transcript must be reviewed before it can execute."},
+        {"Capability": "Access controls", "Implementation":
+         "OIDC policy support, scoped metadata and examples, sensitive-column restrictions, "
+         "read-only SQL, deadlines, and bounded result sizes."},
+        {"Capability": "Reproducible delivery", "Implementation":
+         "Regression and adversarial tests, locked dependencies, container CI, security "
+         "scans, a build fingerprint, and documented deployment tradeoffs."},
+    ]), hide_index=True, width="stretch")
+    st.subheader("Production boundary")
+    st.markdown(
+        "This is a running portfolio application with enterprise controls. Deploying it "
+        "with sensitive organizational data also requires the chosen identity provider, "
+        "database row policies, durable audit storage, and tested capacity and recovery "
+        "targets. Those integrations are documented in the repository."
+    )
+    left, right = st.columns(2)
+    left.link_button("Explore the source", "https://github.com/KushPatel29/ask-your-data",
+                     width="stretch")
+    right.link_button("Read the architecture",
+                      "https://github.com/KushPatel29/ask-your-data/blob/main/"
+                      "docs/ENTERPRISE_ARCHITECTURE.md", width="stretch")
+    st.caption(f"Running source fingerprint: {ui.build_marker()}. "
+               "CI results and evaluation commands are linked in the repository.")
+
+
+def _starter_questions() -> str | None:
+    """Only suggest requests that this principal is allowed to execute."""
+    candidates = EXAMPLES if LIVE_MODE else PLANNER_EXAMPLES
+    visible = []
+    for question in candidates:
+        if not PRINCIPAL.authenticated:
+            visible.append(question)
+            continue
+        result = planner.plan_question(question, layer) if layer is not None else None
+        if result is not None and not result.refused:
+            if access.authorize_sql(con, result.sql, ACCESS).allowed:
+                visible.append(question)
+    if not visible:
+        st.info("Browse Data catalog to see the data available to your role.")
+        return None
+    st.markdown(
+        '<div class="ayd-welcome"><h2>What would you like to understand?</h2>'
+        '<p>Choose a starting question or ask your own below. '
+        'Every example runs against the warehouse when you select it.</p></div>',
+        unsafe_allow_html=True,
+    )
+    with st.container(key="ayd-examples"):
+        for offset in range(0, len(visible), 2):
+            for column, question in zip(st.columns(2), visible[offset:offset + 2], strict=False):
+                if column.button(question, width="stretch"):
+                    return question
+    return None
+
+
 def _trust_workspace(connection) -> str | None:
     """Identity, controls, operations, and reproducible accuracy in one place."""
     ui.view_header(
@@ -2910,24 +3048,17 @@ def render_keyless(connection) -> None:
     # already 973px down the page. Once a question has been asked the reader
     # has both read it and seen the engine named on the pipeline strip, so it
     # folds into an expander and stops being in the way.
-    st.info(KEYLESS_NOTICE)
     if not st.session_state.transcript:
-        with st.expander("How keyless mode works"):
+        st.caption("Free local demo · synthetic data · no account required")
+    else:
+        with st.expander("About this answer engine"):
+            st.markdown(KEYLESS_NOTICE)
             st.markdown(KEYLESS_DETAILS)
 
     link = _link_question()
     clicked = None
     if not st.session_state.transcript and not link:
-        st.write("Try one of these, or type your own:")
-        # The container carries .ayd-examples so app/ui.py can stretch the five
-        # buttons to one height. Without it each sizes to its own text and the
-        # row is ragged by up to two lines.
-        with st.container(key="ayd-examples"):
-            for column, example in zip(st.columns(len(PLANNER_EXAMPLES)),
-                                       PLANNER_EXAMPLES, strict=True):
-                if column.button(example, width="stretch"):
-                    clicked = example
-        _show_layer_summary()
+        clicked = _starter_questions()
 
     if st.session_state.transcript:
         _transcript_header()
@@ -3002,6 +3133,11 @@ if WORKSPACE_VIEW == "Data catalog":
     _render_sidebar(None)
     st.stop()
 
+if WORKSPACE_VIEW == "Project brief":
+    _project_workspace()
+    _render_sidebar(None)
+    st.stop()
+
 if WORKSPACE_VIEW == "Trust center":
     trust_question = _trust_workspace(con)
     _render_sidebar(trust_question)
@@ -3016,14 +3152,9 @@ if not LIVE_MODE:
 # the panel: the ledger's denominator has to move when that constant does.
 from engine.assistant import MAX_ATTEMPTS, AssistantUnavailable  # noqa: E402
 
-if not st.session_state.transcript:
-    st.write("Try one of these, or type your own:")
 clicked = None
 if not st.session_state.transcript:
-    cols = st.columns(len(EXAMPLES))
-    for col, ex in zip(cols, EXAMPLES, strict=True):
-        if col.button(ex, width="stretch"):
-            clicked = ex
+    clicked = _starter_questions()
 
 
 def render_entry(entry, index: int):

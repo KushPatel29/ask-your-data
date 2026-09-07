@@ -113,10 +113,14 @@ from __future__ import annotations
 import hashlib
 import io
 import os
+import tempfile
 import threading
+import time
 import wave
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.request import urlopen
 
 from engine.voice import (
     DOMAIN_KEYWORDS,
@@ -236,8 +240,16 @@ def build_prompt(extra=()) -> str:
 MAX_TTS_CHARS = 1200
 
 _LOCK = threading.RLock()
+_STT_LOCK = threading.RLock()
+_TTS_LOCK = threading.RLock()
 _STT = None
 _TTS = None
+_STATES = {"stt": "not_loaded", "tts": "not_loaded"}
+_ERRORS = {"stt": "", "tts": ""}
+MODEL_DOWNLOAD_TIMEOUT = 20
+MODEL_DOWNLOAD_DEADLINE = 120
+MAX_MODEL_BYTES = 80 * 1024 * 1024
+INFERENCE_WAIT_SECONDS = 15
 
 
 def _cache_root() -> Path:
@@ -268,6 +280,49 @@ class Engines:
         return self.stt or self.tts
 
 
+@dataclass(frozen=True)
+class Readiness:
+    """Resident model state, without a download or a wait on model loading."""
+
+    stt: str
+    tts: str
+    stt_message: str = ""
+    tts_message: str = ""
+
+
+def readiness() -> Readiness:
+    """Distinguish installed engines from models that have actually loaded.
+
+    The short state lock is separate from the inference locks: rendering a
+    loading indicator must not itself wait for the download to finish.
+    """
+    engines = installed()
+    with _LOCK:
+        return Readiness(
+            stt=_STATES["stt"] if engines.stt else "unavailable",
+            tts=_STATES["tts"] if engines.tts else "unavailable",
+            stt_message=_ERRORS["stt"],
+            tts_message=_ERRORS["tts"],
+        )
+
+
+def _state(engine: str, state: str, message: str = "") -> None:
+    with _LOCK:
+        _STATES[engine] = state
+        _ERRORS[engine] = message
+
+
+@contextmanager
+def _inference_slot(lock):
+    """Bound CPU work and queued callers on a shared, memory-limited server."""
+    if not lock.acquire(timeout=INFERENCE_WAIT_SECONDS):
+        raise VoiceUnavailable("The voice engine is busy preparing audio. Please retry shortly.")
+    try:
+        yield
+    finally:
+        lock.release()
+
+
 def installed() -> Engines:
     """Whether the optional packages import. No model is fetched here.
 
@@ -293,7 +348,8 @@ def available() -> bool:
 
 
 def _verify(path: Path, expected: str) -> None:
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    with path.open("rb") as handle:
+        digest = hashlib.file_digest(handle, "sha256").hexdigest()
     if digest != expected:
         # Remove it: a corrupt or substituted file left in the cache would be
         # re-verified and re-rejected on every call, turning one bad download
@@ -303,6 +359,52 @@ def _verify(path: Path, expected: str) -> None:
             f"The speech model {path.name} did not match its pinned checksum and "
             "was discarded. Retry, or configure a speech endpoint instead."
         )
+
+
+def _download_verified(path: Path, expected: str, url: str) -> None:
+    """Repair incomplete caches without publishing partially downloaded weights.
+
+    Piper's default downloader has no socket timeout and writes directly to
+    the final file. An interrupted first visit could leave a bad file, while
+    subsequent visits kept trying to load it. Only a complete, verified
+    temporary artifact is promoted here; a valid cached artifact needs no
+    network even when the model host is down.
+    """
+    if path.is_file():
+        try:
+            _verify(path, expected)
+            return
+        except VoiceUnavailable:
+            # _verify discarded this exact corrupt cache file. Fetch one
+            # fresh copy in the same request rather than requiring two clicks.
+            pass
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = None
+    try:
+        started = time.monotonic()
+        with tempfile.NamedTemporaryFile(
+            mode="wb", dir=path.parent, prefix=f".{path.name}.", suffix=".download", delete=False,
+        ) as handle:
+            temporary = Path(handle.name)
+            size = 0
+            with urlopen(url, timeout=MODEL_DOWNLOAD_TIMEOUT) as response:
+                # read1 returns after one socket read. Buffered read(n) may
+                # keep accepting a slow trickle until n bytes arrive, which
+                # would postpone our overall deadline check indefinitely.
+                read_chunk = getattr(response, "read1", response.read)
+                while chunk := read_chunk(64 * 1024):
+                    size += len(chunk)
+                    if (size > MAX_MODEL_BYTES
+                            or time.monotonic() - started > MODEL_DOWNLOAD_DEADLINE):
+                        raise VoiceUnavailable(
+                            "The speech model download exceeded its limit. Please retry."
+                        )
+                    handle.write(chunk)
+        _verify(temporary, expected)
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def _pinned_tts_files(voice_id: str) -> dict[str, str]:
@@ -328,29 +430,22 @@ def _load_tts():
     """Piper, downloaded once and checksum-verified."""
     expected = _pinned_tts_files(TTS_VOICE)
     from piper import PiperVoice
-    from piper.download_voices import download_voice
 
     directory = _voice_dir()
     directory.mkdir(parents=True, exist_ok=True)
     model = directory / f"{TTS_VOICE}.onnx"
-    config = directory / f"{TTS_VOICE}.onnx.json"
-    if not (model.is_file() and config.is_file()):
-        download_voice(TTS_VOICE, directory)
-    for path in (model, config):
-        _verify(path, expected[path.name])
+    language, name, quality = TTS_VOICE.split("-")
+    prefix = (
+        "https://huggingface.co/rhasspy/piper-voices/resolve/main/"
+        f"{language.split('_')[0]}/{language}/{name}/{quality}"
+    )
+    for filename, digest in expected.items():
+        _download_verified(directory / filename, digest, f"{prefix}/{filename}")
     return PiperVoice.load(model)
 
 
 def stt_is_pinned() -> bool:
-    """Whether the configured STT model is the one these digests describe.
-
-    `ASK_LOCAL_STT_MODEL` exists so an operator can trade accuracy for size,
-    and pinning cannot follow them to a model this release never measured. The
-    override still works; what changes is that the interface stops claiming a
-    checksum it does not have. Failing closed here would be the wrong trade —
-    the weights come from the same Hub either way, and the choice is the
-    operator's.
-    """
+    """Whether the configured STT model is supported by this release's manifest."""
     return STT_MODEL == DEFAULT_STT_MODEL
 
 
@@ -363,20 +458,21 @@ def _verify_stt_snapshot(directory: Path) -> None:
     is on the point of executing.
     """
     root = directory / f"models--{STT_REPO.replace('/', '--')}" / "snapshots" / STT_REVISION
-    if not root.is_dir():
-        # huggingface_hub may lay the cache out differently, or the operator may
-        # have pointed download_root at a pre-seeded directory. An unrecognised
-        # layout is not evidence of tampering, so it is not treated as such —
-        # but it does mean the digests were not checked, and `pinned` on the
-        # readout is what reports that.
-        return
     for name, digest in STT_SHA256.items():
         path = root / name
-        if path.is_file():
-            _verify(path, digest)
+        if not path.is_file():
+            raise VoiceUnavailable(
+                "The local speech model cache is incomplete. Retry to finish downloading it."
+            )
+        _verify(path, digest)
 
 
 def _load_stt():
+    if not stt_is_pinned():
+        raise VoiceUnavailable(
+            "The configured speech model is not checksum-pinned by this release. "
+            "Use tiny.en or a configured self-hosted speech endpoint."
+        )
     from faster_whisper import WhisperModel
 
     directory = _whisper_dir()
@@ -384,15 +480,19 @@ def _load_stt():
     # int8 on CPU is the whole reason this fits: float16 has no CPU path and
     # float32 triples the resident model for a transcript a human then reads
     # and confirms before anything runs.
-    kwargs = {"device": "cpu", "compute_type": "int8", "download_root": str(directory)}
-    if stt_is_pinned():
-        # An immutable commit rather than `main`. Without this the weights this
-        # process executes can change with no commit in this repository.
-        kwargs["revision"] = STT_REVISION
-    model = WhisperModel(STT_MODEL, **kwargs)
-    if stt_is_pinned():
-        _verify_stt_snapshot(directory)
-    return model
+    snapshot = directory / f"models--{STT_REPO.replace('/', '--')}" / "snapshots" / STT_REVISION
+    for filename, digest in STT_SHA256.items():
+        _download_verified(
+            snapshot / filename, digest,
+            f"https://huggingface.co/{STT_REPO}/resolve/{STT_REVISION}/{filename}",
+        )
+    _verify_stt_snapshot(directory)
+    # Instantiate only AFTER every artifact verifies. Passing a local path
+    # and local_files_only prevents an implicit model/tokenizer download.
+    return WhisperModel(
+        str(snapshot), device="cpu", compute_type="int8", cpu_threads=2,
+        num_workers=1, local_files_only=True,
+    )
 
 
 class LocalVoice:
@@ -421,34 +521,44 @@ class LocalVoice:
         global _STT
         if self._stt is not None:
             return self._stt
-        with _LOCK:
+        with _inference_slot(_STT_LOCK):
             if _STT is None:
+                _state("stt", "loading")
                 try:
                     globals()["_STT"] = _load_stt()
-                except VoiceUnavailable:
+                except VoiceUnavailable as exc:
+                    _state("stt", "error", str(exc))
                     raise
                 except Exception as exc:  # noqa: BLE001
-                    raise VoiceUnavailable(
+                    message = (
                         "The local speech-to-text model could not be loaded. It "
                         "downloads once on first use; check the network and retry."
-                    ) from exc
+                    )
+                    _state("stt", "error", message)
+                    raise VoiceUnavailable(message) from exc
+                _state("stt", "ready")
         return _STT
 
     def _text_to_speech(self):
         global _TTS
         if self._tts is not None:
             return self._tts
-        with _LOCK:
+        with _inference_slot(_TTS_LOCK):
             if _TTS is None:
+                _state("tts", "loading")
                 try:
                     globals()["_TTS"] = _load_tts()
-                except VoiceUnavailable:
+                except VoiceUnavailable as exc:
+                    _state("tts", "error", str(exc))
                     raise
                 except Exception as exc:  # noqa: BLE001
-                    raise VoiceUnavailable(
+                    message = (
                         "The local text-to-speech voice could not be loaded. It "
                         "downloads once on first use; check the network and retry."
-                    ) from exc
+                    )
+                    _state("tts", "error", message)
+                    raise VoiceUnavailable(message) from exc
+                _state("tts", "ready")
         return _TTS
 
     # -- the seam --------------------------------------------------------
@@ -468,16 +578,26 @@ class LocalVoice:
                 "That recording is larger than the "
                 f"{MAX_AUDIO_BYTES // (1024 * 1024)} MB voice limit."
             )
-        model = self._speech_to_text()
-        try:
-            segments, _info = model.transcribe(
-                io.BytesIO(payload),
-                beam_size=1,
-                language=(language or "en"),
-                initial_prompt=self.prompt,
-                vad_filter=True,
+        if language and language != "en" and stt_is_pinned():
+            raise VoiceUnavailable(
+                "The local tiny.en model transcribes English only. Select English, "
+                "or configure a multilingual self-hosted speech model."
             )
-            text = " ".join(segment.text for segment in segments).strip()
+        try:
+            with _inference_slot(_STT_LOCK):
+                model = self._speech_to_text()
+                segments, _info = model.transcribe(
+                    io.BytesIO(payload),
+                    beam_size=1,
+                    language=(language or "en"),
+                    initial_prompt=self.prompt,
+                    vad_filter=True,
+                )
+                # faster-whisper returns a lazy generator; consuming it must
+                # also stay inside the inference slot.
+                text = " ".join(segment.text for segment in segments).strip()
+        except VoiceUnavailable:
+            raise
         except Exception as exc:  # noqa: BLE001 - engine errors must be contained
             raise VoiceUnavailable(
                 "Transcription failed on the local model. Re-record and try again."
@@ -492,26 +612,37 @@ class LocalVoice:
         narration = speakable_text(text, limit=MAX_TTS_CHARS)
         if not narration:
             raise VoiceUnavailable("There is no answer text to read aloud.")
-        engine = self._text_to_speech()
         buffer = io.BytesIO()
         try:
             # Piper writes a RIFF header, so the bytes are a complete WAV file
             # and the browser can play them without a container guess. The
             # remote path returns MP3; `Speech.mime_type` is what keeps the
             # player honest about which it received.
-            with wave.open(buffer, "wb") as handle:
-                engine.synthesize_wav(narration, handle)
+            with _inference_slot(_TTS_LOCK):
+                engine = self._text_to_speech()
+                with wave.open(buffer, "wb") as handle:
+                    engine.synthesize_wav(narration, handle)
+            audio = buffer.getvalue()
+            with wave.open(io.BytesIO(audio), "rb") as handle:
+                frames = handle.getnframes()
+                # A valid header can still describe truncated or absent PCM.
+                # Validate actual frame bytes before offering a browser player.
+                pcm = handle.readframes(frames)
+                expected_bytes = frames * handle.getnchannels() * handle.getsampwidth()
+            if not frames or len(pcm) != expected_bytes:
+                raise VoiceUnavailable("The local voice produced no audio. Try again.")
+        except VoiceUnavailable:
+            raise
         except Exception as exc:  # noqa: BLE001
             raise VoiceUnavailable(
                 "Speech generation failed on the local voice. Try again."
             ) from exc
-        audio = buffer.getvalue()
-        if not audio:
-            raise VoiceUnavailable("The local voice produced no audio. Try again.")
         return Speech(
             audio=audio,
             model=self.tts_model,
-            voice=voice or TTS_VOICE,
+            # The shared interface accepts a remote voice preference, but
+            # this process synthesizes with its one configured Piper model.
+            voice=TTS_VOICE,
             mime_type="audio/wav",
         )
 
@@ -569,6 +700,8 @@ def prewarm() -> bool:
 def reset() -> None:
     """Drop the cached engines. For tests; the app never needs it."""
     global _STT, _TTS
-    with _LOCK:
+    with _STT_LOCK, _TTS_LOCK, _LOCK:
         _STT = None
         _TTS = None
+        _STATES.update(stt="not_loaded", tts="not_loaded")
+        _ERRORS.update(stt="", tts="")

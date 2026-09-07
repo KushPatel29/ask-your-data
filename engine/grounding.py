@@ -1,159 +1,198 @@
-"""
-Does the sentence the model wrote actually come from the rows the query returned?
+"""Compose analytics answers from returned cells, never from model prose.
 
-THE GAP THIS CLOSES
-This project's one rule is "no number without a query". The compiler path keeps
-it structurally: `engine/narrate.py` composes its sentence FROM the plan and the
-result, so it has no way to say a number the database did not return.
+The summarizer's contract is ``{"rows": [0, 2]}``: it may choose up to three
+visible result rows to highlight. It cannot supply numbers, labels, explanations,
+comparisons, units, or causal claims. Those are rendered locally from the actual
+result. A malformed selection falls back to the first rows without losing a
+successful query. This replaces a number-membership check, which could not catch
+swapped entities, a correct number attached to the wrong measure, spelled-out
+numbers, or invented explanations.
 
-The model path did not. `Assistant._summarize` asks a language model to write
-one or two sentences "using ONLY the SQL result provided" — and then trusted it.
-The instruction is good and models mostly follow it, but "mostly" is the whole
-problem: the SQL can return 12,000, the prose can say 999, and every layer
-downstream reports a successful turn. Nothing in the guard, the verifier or the
-executor looks at the prose, because none of them are about the prose.
-
-So this module reads the sentence back against the rows.
-
-WHAT IT CAN AND CANNOT PROVE, STATED PLAINLY
-It checks NUMBERS, because a number is the part of an analytics answer that is
-both checkable and load-bearing. It cannot check that the sentence describes the
-right subject, and it does not try — a summary that says "employees" where the
-query counted claims will pass. A narrower control that holds is worth more than
-a broad one that does not, and the limit belongs in the docstring rather than in
-a reader's assumptions.
-
-SMALL INTEGERS ARE DELIBERATELY EXEMPT
-English prose contains integers that are not claims about data: "one or two
-sentences", "the top 3", "both". Flagging those would make the check fire on
-good answers, and a control that cries wolf gets turned off. Integers 0-12 are
-therefore allowed through unless they are the ONLY number in the sentence — at
-which point the sentence is making a numeric claim and has to source it.
-
-That exemption is a real hole and it is bounded: a model that hallucinates "5"
-where the answer was 7 is not caught. A model that hallucinates 999, 12.4% or
-1,661,141 is. The large, specific, quotable numbers — the ones that end up in a
-board deck — are the ones this catches.
+This proves provenance of the displayed facts, not that generated SQL correctly
+interpreted the question. SQL verification and the visible query remain separate
+controls. Comparisons are always scoped to the returned rows, including LIMITs
+and truncated previews; result aliases are labels, not inferred business units.
 """
 
 from __future__ import annotations
 
+import json
 import re
+from decimal import Decimal, InvalidOperation
 
-# Matches 1,234.56 / -12 / 0.5 / 1234. Deliberately not scientific notation:
-# nothing in this warehouse renders that way, and admitting it would widen the
-# token space for no gain.
-NUMBER_RE = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
-
-# Integers a sentence can contain without making a claim about the data.
-SMALL_INTEGER_CEILING = 12
+MAX_INPUT_ROWS = 30
+MAX_HIGHLIGHT_ROWS = 3
+MAX_CELL_CHARS = 240
 
 
-def _forms(value) -> set[str]:
-    """Every way one number could reasonably be written into a sentence.
-
-    A model that reads 8.23 off the result and writes "8.2%" has not invented
-    anything, so rounding to fewer decimals is accepted. Rounding to MORE
-    precision than the result carries is not generated here, because that would
-    be the model adding significant figures the database never produced.
-    """
-    out: set[str] = set()
+def parse_selection(text: str, result) -> list[int] | None:
+    """Validate the complete selector response; extra model claims are rejected."""
     try:
-        number = float(value)
+        payload = json.loads(text)
     except (TypeError, ValueError):
-        return out
-    if number != number or number in (float("inf"), float("-inf")):  # NaN / inf
-        return out
-
-    candidates = [number]
-    for places in (0, 1, 2, 3):
-        candidates.append(round(number, places))
-    for candidate in candidates:
-        if candidate == int(candidate):
-            out.add(str(int(candidate)))
-            out.add(f"{int(candidate):,}")
-        text = repr(float(candidate))
-        out.add(text)
-        for places in (1, 2, 3):
-            out.add(f"{candidate:.{places}f}")
-            out.add(f"{candidate:,.{places}f}")
-    return {t.rstrip(".") for t in out}
+        return None
+    if not isinstance(payload, dict) or set(payload) != {"rows"}:
+        return None
+    indices = payload["rows"]
+    count = min(len(getattr(result, "rows", ()) or ()), MAX_INPUT_ROWS)
+    if not isinstance(indices, list) or len(indices) > MAX_HIGHLIGHT_ROWS:
+        return None
+    if count and not indices:
+        return None
+    if any(type(index) is not int or not 0 <= index < count for index in indices):
+        return None
+    if len(set(indices)) != len(indices):
+        return None
+    # A model may select, but it must not silently reorder the query's ranking.
+    return sorted(indices)
 
 
-def _canonical(token: str) -> str:
-    return token.replace(",", "")
+def _numeric(value) -> Decimal | None:
+    if value is None or isinstance(value, (bool, str, bytes)):
+        return None
+    try:
+        number = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
+    return number if number.is_finite() else None
 
 
-def result_numbers(result) -> set[str]:
-    """Every number the result really contains, in the forms a writer might use.
+def _plain(value) -> str:
+    """Keep cell content as inert, bounded text in Markdown and voice output."""
+    text = " ".join(str(value).split())
+    if len(text) > MAX_CELL_CHARS:
+        text = text[:MAX_CELL_CHARS] + "… [value shortened]"
+    # A result cell can contain Markdown links or HTML. It is data, and must
+    # not become a navigation link, image, heading, or hidden HTML element.
+    return re.sub(r"([\\`*_{}\[\]<>#!|])", r"\\\1", text)
 
-    The row count is included because "5 departments" is a true statement about
-    a result with five rows, and the sentence has no other way to say it.
+
+def _value(value) -> str:
+    if value is None:
+        return "no value"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    number = _numeric(value)
+    if number is not None:
+        if number == number.to_integral_value():
+            return f"{int(number):,}"
+        # Preserve the returned precision, including DECIMAL. Passing through
+        # float would corrupt IDs and large integer totals above 2**53.
+        return f"{number:,f}"
+    if isinstance(value, (int, float, Decimal)):
+        return "a non-finite value (not a usable numeric result)"
+    return _plain(value)
+
+
+def _label(value) -> str:
+    return _plain(str(value).replace("_", " "))
+
+
+def _count_subject(result) -> str:
+    """Name records only for an exact single-table COUNT with no joins/filters.
+
+    This intentionally is not a SQL parser. Full matching rejects subqueries,
+    WHERE, joins, quoted expressions, comments, and misleading SELECT aliases.
+    Everything else uses the result's explicit labels.
     """
-    out: set[str] = set()
-    for row in getattr(result, "rows", None) or []:
-        for value in row:
-            if value is None or isinstance(value, bool):
-                continue
-            if isinstance(value, (int, float)):
-                out |= _forms(value)
-            else:
-                for match in NUMBER_RE.finditer(str(value)):
-                    out |= _forms(_canonical(match.group()))
-    out |= _forms(getattr(result, "row_count", 0) or 0)
-    return {_canonical(t) for t in out}
+    identifier = r"[A-Za-z][A-Za-z0-9_]*"
+    match = re.fullmatch(
+        rf"\s*SELECT\s+COUNT\s*\(\s*\*\s*\)"
+        rf"(?:\s+(?:AS\s+)?{identifier})?\s+FROM\s+({identifier})\s*;?\s*",
+        str(getattr(result, "sql", "")), re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    parts = match[1].lower().split("_")
+    if len(parts) > 1:
+        parts = parts[1:]
+    parts = [word for word in parts if word not in {"fact", "dim", "fct", "tbl"}]
+    noun = " ".join(parts)
+    # Never guess an entity for a table like finance_monthly or clinical_log.
+    return noun if noun.endswith("s") and not noun.endswith(("ss", "us")) else "rows"
 
 
-def ungrounded_numbers(text: str, result) -> list[str]:
-    """Numbers in `text` that the result cannot account for.
-
-    An empty list means every number in the sentence traces to a returned value
-    (or to the row count). It does NOT mean the sentence is correct — see the
-    module docstring.
-    """
-    allowed = result_numbers(result)
-    tokens = [m.group() for m in NUMBER_RE.finditer(str(text or ""))]
-    unexplained: list[str] = []
-    for token in tokens:
-        canonical = _canonical(token)
-        if canonical in allowed:
-            continue
-        # A small bare integer is prose unless it is the sentence's only number,
-        # in which case the sentence is answering with it.
-        try:
-            as_float = float(canonical)
-        except ValueError:
-            continue
-        if (len(tokens) > 1 and as_float == int(as_float)
-                and abs(as_float) <= SMALL_INTEGER_CEILING):
-            continue
-        unexplained.append(token)
-    return unexplained
+def _scalar(result, value, column: str) -> str:
+    label = _label(column)
+    generic = label.lower() in {"", "n", "v", "value", "count star()", "count(*)"}
+    if value is None:
+        subject = "a value" if generic else f"a value for {label}"
+        return (f"The query did not return {subject}. "
+                "A missing value is different from zero.")
+    count_subject = _count_subject(result)
+    if count_subject and _numeric(value) is not None:
+        if value == 1:
+            # Avoid a speculative singularisation of arbitrary table names.
+            return f"The {count_subject} table contains 1 record."
+        return f"There are {_value(value)} {count_subject} in the loaded dataset."
+    if generic:
+        return f"The query returned {_value(value)}."
+    return f"The returned {label} is {_value(value)}."
 
 
-def is_grounded(text: str, result) -> bool:
-    """A non-empty sentence whose every number came from the result."""
-    if not str(text or "").strip():
-        return False
-    return not ungrounded_numbers(text, result)
+def _comparison(rows, columns) -> str:
+    """One observed comparison, with labels and numbers bound to the same row."""
+    if len(columns) != 2 or any(len(row) != 2 for row in rows):
+        return ""
+    if any(row[0] is None or not isinstance(row[0], str) for row in rows):
+        return ""
+    # Duplicate labels do not identify a row unambiguously.
+    if len({row[0] for row in rows}) != len(rows):
+        return ""
+    valued = [(row, _numeric(row[1])) for row in rows if _numeric(row[1]) is not None]
+    if len(valued) < 2:
+        return ""
+    low = min(valued, key=lambda item: item[1])
+    high = max(valued, key=lambda item: item[1])
+    measure = _label(columns[1])
+    if low[1] == high[1]:
+        sentence = (f"Among the returned rows with a numeric value, {measure} is "
+                    f"the same throughout at {_value(low[0][1])}.")
+    else:
+        sentence = (f"Among the returned rows, {measure} ranges from "
+                    f"{_value(low[0][1])} for {_plain(low[0][0])} to "
+                    f"{_value(high[0][1])} for {_plain(high[0][0])}.")
+    missing = len(rows) - len(valued)
+    if missing:
+        sentence += (f" {missing:,} returned {'row has' if missing == 1 else 'rows have'} "
+                     "no usable numeric value for this comparison.")
+    return sentence
 
 
-def fallback_answer(result) -> str:
-    """A deterministic sentence for when the model's prose cannot be trusted.
-
-    Deliberately plain. This runs precisely when the interesting sentence has
-    been rejected, and the honest thing left to say is what came back — not a
-    second attempt at fluency from the same source that just failed.
-    """
-    rows = getattr(result, "rows", None) or []
+def compose_answer(result, indices: list[int] | None = None) -> str:
+    """A useful answer whose facts come exclusively from the executed result."""
+    if getattr(result, "error", ""):
+        return "The query could not be completed, so there is no verified result to summarize."
+    rows = list(getattr(result, "rows", ()) or ())
+    columns = list(getattr(result, "columns", ()) or ())
     if not rows:
-        return "The query returned no rows."
+        return ("No rows matched this query. "
+                "Try broadening the filters or checking the available values.")
+    if not columns:
+        columns = [f"column {index + 1}" for index in range(len(rows[0]))]
     if len(rows) == 1 and len(rows[0]) == 1:
-        value = rows[0][0]
-        if isinstance(value, float) and value == int(value):
-            value = int(value)
-        rendered = f"{value:,}" if isinstance(value, (int, float)) else str(value)
-        return f"The query returned {rendered}."
-    count = getattr(result, "row_count", len(rows))
-    noun = "row" if count == 1 else "rows"
-    return f"The query returned {count:,} {noun}; the full result is below."
+        answer = _scalar(result, rows[0][0], columns[0])
+    else:
+        valid = (parse_selection(json.dumps({"rows": indices}), result)
+                 if indices is not None else None)
+        chosen = valid if valid is not None else list(range(min(len(rows), MAX_HIGHLIGHT_ROWS)))
+        if len(rows) == 1:
+            facts = "; ".join(f"{_label(col)}: {_value(value)}"
+                              for col, value in zip(columns, rows[0], strict=True))
+            answer = f"The query returned one record with {facts}."
+        else:
+            answer = f"The query returned {len(rows):,} rows."
+            comparison = _comparison(rows, columns)
+            if comparison:
+                answer += " " + comparison
+            answer += (" The returned results are:" if len(chosen) == len(rows)
+                       else f" Here are {len(chosen)} selected rows from that result:")
+            details = []
+            for index in chosen:
+                details.append("; ".join(f"{_label(col)}: {_value(value)}"
+                                          for col, value in zip(columns, rows[index], strict=True)))
+            answer += "\n\n" + "\n".join(f"- {detail}" for detail in details)
+    if getattr(result, "truncated", False):
+        answer += (f"\n\nOnly the first {len(rows):,} rows are shown; more rows matched. "
+                   "Any comparisons above describe this preview, not the full dataset.")
+    return answer

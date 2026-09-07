@@ -91,10 +91,15 @@ def test_tools_are_well_formed():
 
 
 def test_format_result_is_readable(con):
+    import json
+
     res = run_query(
         con, "SELECT payer_type, COUNT(*) AS n FROM healthcare_dim_payer GROUP BY 1 ORDER BY 1")
     text = _format_result(res)
-    assert "payer_type | n" in text
+    payload = json.loads(text)
+    assert payload["columns"] == ["payer_type", "n"]
+    assert [row["index"] for row in payload["rows"]] == list(range(len(res.rows)))
+    assert [row["values"] for row in payload["rows"]] == [list(row) for row in res.rows]
 
 
 @pytest.mark.skipif(not HAS_KEY, reason="no ANTHROPIC_API_KEY — live model test skipped")

@@ -18,6 +18,7 @@ import io
 import os
 import re
 from dataclasses import dataclass
+from html import unescape
 
 STT_MODEL = os.environ.get("ASK_STT_MODEL", "gpt-transcribe")
 TTS_MODEL = os.environ.get("ASK_TTS_MODEL", "gpt-4o-mini-tts")
@@ -133,11 +134,33 @@ def speakable_text(text: str, *, limit: int = MAX_TTS_CHARS) -> str:
     clean = str(text or "")
     clean = re.sub(r"```.*?```", " ", clean, flags=re.S)
     clean = re.sub(r"`([^`]*)`", r"\1", clean)
+    clean = re.sub(r"\[([^\]]+)\]\(https?://[^)]+\)", r"\1", clean)
+    clean = re.sub(r"</?[A-Za-z][^>]*>", " ", clean)
+    clean = unescape(clean)
     clean = re.sub(r"https?://\S+", "", clean)
-    clean = re.sub(r"[*_#>|]+", " ", clean)
+    # Piper interprets [[...]] as raw phonemes. An ordinary answer must not
+    # accidentally switch the speech engine into that special input syntax.
+    clean = re.sub(r"[*_#>|\[\]]+", " ", clean)
     clean = re.sub(r"\s+", " ", clean).strip()
     clean = re.sub(r"\s+([.,!?;:%])", r"\1", clean)
-    return clean[:limit].strip()
+    if limit <= 0:
+        return ""
+    if len(clean) <= limit:
+        return clean
+    # A character slice can turn 12,000 into 12 or stop halfway through a
+    # sentence. Prefer a complete sentence, then a whole-word boundary so a
+    # shortened narration never invents a different numeric value.
+    prefix = clean[:limit]
+    # Match against the complete text: a decimal point at the cut is not
+    # the end of a sentence ("12.5" must never become "12.").
+    sentences = [match for match in re.finditer(r"[.!?](?:\s|$)", clean)
+                 if match.end() <= limit]
+    if sentences and sentences[-1].end() >= limit // 2:
+        return prefix[:sentences[-1].end()].strip()
+    if clean[limit].isspace():
+        return prefix.strip()
+    boundary = prefix.rfind(" ")
+    return prefix[:boundary].strip() if boundary >= 0 else ""
 
 
 class OpenAIVoice:

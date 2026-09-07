@@ -12,10 +12,15 @@ TTS half into the STT half, and the numbers live in the module docstring.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import sys
+import threading
+import time
 import wave
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -160,6 +165,11 @@ def test_the_transcript_carries_the_engine_that_produced_it():
     assert result.bytes_received == 64
 
 
+def test_local_speech_reports_the_voice_that_actually_generated_it():
+    speech = make().synthesize("There are twelve claims.", voice="a-remote-voice")
+    assert speech.voice == local_voice.TTS_VOICE
+
+
 def test_the_decoder_is_given_the_prompt_and_pinned_to_english():
     engine = FakeSTT()
     local_voice.LocalVoice(stt=engine, tts=FakeTTS()).transcribe(b"\x00" * 32)
@@ -288,25 +298,49 @@ def test_both_speech_models_are_pinned_not_just_the_voice():
     assert all(len(d) == 64 for d in local_voice.STT_SHA256.values())
 
 
-def test_the_revision_is_actually_requested_when_the_model_is_the_pinned_one():
-    """A digest list nobody passes to the loader is decoration."""
-    import inspect
+def test_stt_verifies_artifacts_before_initializing_the_model(monkeypatch, tmp_path):
+    calls = []
+    downloaded = []
+    payload = b"reviewed model artifact"
+    expected = {name: hashlib.sha256(payload).hexdigest() for name in local_voice.STT_SHA256}
+    monkeypatch.setattr(local_voice, "STT_SHA256", expected)
+    monkeypatch.setattr(local_voice, "STT_MODEL", local_voice.DEFAULT_STT_MODEL)
+    monkeypatch.setattr(local_voice, "_whisper_dir", lambda: tmp_path)
 
-    source = inspect.getsource(local_voice._load_stt)
-    assert 'kwargs["revision"] = STT_REVISION' in source
-    assert "_verify_stt_snapshot" in source
+    def download(path, digest, url):
+        downloaded.append(url)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(payload)
+
+    def construct(path, **kwargs):
+        calls.append((path, kwargs))
+        for name, digest in expected.items():
+            assert hashlib.sha256((Path(path) / name).read_bytes()).hexdigest() == digest
+        return object()
+
+    monkeypatch.setattr(local_voice, "_download_verified", download)
+    monkeypatch.setitem(sys.modules, "faster_whisper", SimpleNamespace(WhisperModel=construct))
+    local_voice._load_stt()
+    assert all(f"/resolve/{local_voice.STT_REVISION}/" in url for url in downloaded)
+    assert calls[0][1]["local_files_only"] is True
+
+    # Even a buggy downloader cannot hand unchecked artifacts to CTranslate2.
+    calls.clear()
+
+    def tampered(path, digest, url):
+        path.write_bytes(b"substituted graph")
+
+    monkeypatch.setattr(local_voice, "_download_verified", tampered)
+    with pytest.raises(voice.VoiceUnavailable, match="pinned checksum"):
+        local_voice._load_stt()
+    assert not calls
 
 
-def test_an_overridden_stt_model_is_reported_as_unpinned_rather_than_refused():
-    """ASK_LOCAL_STT_MODEL exists so an operator can trade accuracy for size,
-    and pinning cannot follow them to a model this release never measured.
-
-    Failing closed would be the wrong trade — the weights come from the same
-    Hub either way and the choice is theirs. What must not happen is the
-    interface going on claiming a checksum it no longer has.
-    """
-    assert local_voice.stt_is_pinned() is (
-        local_voice.STT_MODEL == local_voice.DEFAULT_STT_MODEL)
+def test_an_overridden_stt_model_fails_before_download_or_instantiation(monkeypatch):
+    monkeypatch.setattr(local_voice, "STT_MODEL", "unreviewed/model")
+    assert not local_voice.stt_is_pinned()
+    with pytest.raises(voice.VoiceUnavailable, match="not checksum-pinned"):
+        local_voice._load_stt()
 
 
 def test_a_tampered_snapshot_file_is_rejected_and_discarded(tmp_path):
@@ -324,11 +358,171 @@ def test_a_tampered_snapshot_file_is_rejected_and_discarded(tmp_path):
     assert not bad.exists()
 
 
-def test_an_unrecognised_cache_layout_is_not_treated_as_tampering(tmp_path):
-    """huggingface_hub may lay the cache out differently, or an operator may
-    pre-seed the directory. That is not evidence of tampering — but it does
-    mean the digests were not checked, which is what `stt_is_pinned` reports."""
-    local_voice._verify_stt_snapshot(tmp_path)  # must not raise
+def test_an_incomplete_cache_cannot_skip_integrity_checks(tmp_path):
+    with pytest.raises(voice.VoiceUnavailable, match="cache is incomplete"):
+        local_voice._verify_stt_snapshot(tmp_path)
+
+
+def test_a_zero_frame_wav_is_not_returned_as_successful_speech():
+    with pytest.raises(voice.VoiceUnavailable, match="produced no audio"):
+        local_voice.LocalVoice(tts=FakeTTS(frames=b"")).synthesize("There are twelve claims.")
+
+
+@pytest.mark.parametrize("fault", ["header", "truncated"])
+def test_malformed_speech_is_contained_in_an_actionable_voice_error(fault):
+    class BrokenTTS(FakeTTS):
+        def synthesize_wav(self, text, handle):
+            super().synthesize_wav(text, handle)
+            if fault == "header":
+                handle._file.seek(0)
+                handle._file.write(b"NOPE")
+            else:
+                handle._file.truncate(48)
+
+    with pytest.raises(voice.VoiceUnavailable, match="Try again"):
+        local_voice.LocalVoice(tts=BrokenTTS()).synthesize("There are twelve claims.")
+
+
+def test_an_english_only_model_does_not_silently_accept_other_languages():
+    engine = FakeSTT()
+    with pytest.raises(voice.VoiceUnavailable, match="English only"):
+        local_voice.LocalVoice(stt=engine).transcribe(b"recording", language="hi")
+    assert not engine.calls
+
+
+def test_an_interrupted_download_leaves_no_final_or_partial_artifact(monkeypatch, tmp_path):
+    class Interrupted(io.BytesIO):
+        def read1(self, *args):
+            if self.tell():
+                raise TimeoutError("connection interrupted")
+            return super().read(4)
+
+    monkeypatch.setattr(local_voice, "urlopen", lambda *args, **kw: Interrupted(b"model bytes"))
+    destination = tmp_path / "voice.onnx"
+    with pytest.raises(TimeoutError):
+        local_voice._download_verified(destination, "0" * 64, "https://example.invalid/model")
+    assert not destination.exists()
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("byte_limit,deadline", [(3, 120), (1024, -1)])
+def test_download_size_and_deadline_limits_discard_partial_artifacts(
+        monkeypatch, tmp_path, byte_limit, deadline):
+    payload = b"model bytes"
+    monkeypatch.setattr(local_voice, "urlopen", lambda *args, **kwargs: io.BytesIO(payload))
+    monkeypatch.setattr(local_voice, "MAX_MODEL_BYTES", byte_limit)
+    monkeypatch.setattr(local_voice, "MODEL_DOWNLOAD_DEADLINE", deadline)
+    with pytest.raises(voice.VoiceUnavailable, match="exceeded its limit"):
+        local_voice._download_verified(
+            tmp_path / "voice.onnx", hashlib.sha256(payload).hexdigest(),
+            "https://example.invalid/model",
+        )
+    assert not list(tmp_path.iterdir())
+
+
+def test_corrupt_cache_is_repaired_and_verified_cache_needs_no_network(monkeypatch, tmp_path):
+    payload = b"verified model bytes"
+    expected = hashlib.sha256(payload).hexdigest()
+    destination = tmp_path / "voice.onnx"
+    destination.write_bytes(b"an interrupted earlier download")
+    requests = []
+
+    def fetch(url, *, timeout):
+        assert not destination.exists()
+        requests.append(timeout)
+        return io.BytesIO(payload)
+
+    monkeypatch.setattr(local_voice, "urlopen", fetch)
+    local_voice._download_verified(destination, expected, "https://example.invalid/model")
+    assert destination.read_bytes() == payload
+    assert requests == [local_voice.MODEL_DOWNLOAD_TIMEOUT]
+    local_voice._download_verified(destination, expected, "https://example.invalid/model")
+    assert len(requests) == 1
+    assert list(tmp_path.iterdir()) == [destination]
+
+
+def test_bad_download_never_reaches_the_final_cache(monkeypatch, tmp_path):
+    monkeypatch.setattr(local_voice, "urlopen", lambda *a, **kw: io.BytesIO(b"substituted"))
+    with pytest.raises(voice.VoiceUnavailable, match="pinned checksum"):
+        local_voice._download_verified(
+            tmp_path / "voice.onnx", "0" * 64, "https://example.invalid/model",
+        )
+    assert not list(tmp_path.iterdir())
+
+
+def test_simultaneous_speech_requests_do_not_run_inference_concurrently():
+    class SharedEngine(FakeTTS):
+        active = 0
+        maximum = 0
+
+        def synthesize_wav(self, text, handle):
+            self.active += 1
+            self.maximum = max(self.maximum, self.active)
+            time.sleep(0.02)
+            super().synthesize_wav(text, handle)
+            self.active -= 1
+
+    engine = SharedEngine()
+    client = local_voice.LocalVoice(tts=engine)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        responses = list(pool.map(client.synthesize, ["There are twelve claims."] * 4))
+    assert len(responses) == 4
+    assert engine.maximum == 1
+
+
+def test_busy_voice_has_a_bounded_wait_and_an_actionable_retry(monkeypatch):
+    entered = threading.Event()
+    release = threading.Event()
+    engine = FakeTTS()
+    monkeypatch.setattr(local_voice, "INFERENCE_WAIT_SECONDS", 0.01)
+
+    def occupy():
+        with local_voice._TTS_LOCK:
+            entered.set()
+            release.wait(2)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        worker = pool.submit(occupy)
+        assert entered.wait(1)
+        try:
+            with pytest.raises(voice.VoiceUnavailable, match="busy"):
+                local_voice.LocalVoice(tts=engine).synthesize("There are twelve claims.")
+            assert not engine.spoken
+        finally:
+            release.set()
+        worker.result(timeout=2)
+
+
+def test_readiness_is_nonblocking_and_failed_loading_can_be_retried(monkeypatch):
+    local_voice.reset()
+    monkeypatch.setattr(local_voice, "installed", lambda: local_voice.Engines(True, True))
+    entered = threading.Event()
+    release = threading.Event()
+
+    def failing_load():
+        entered.set()
+        release.wait(2)
+        raise TimeoutError("internal host information")
+
+    monkeypatch.setattr(local_voice, "_load_tts", failing_load)
+    assert local_voice.readiness().tts == "not_loaded"
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        worker = pool.submit(local_voice.LocalVoice()._text_to_speech)
+        assert entered.wait(1)
+        try:
+            snapshot = pool.submit(local_voice.readiness).result(timeout=1)
+            assert snapshot.tts == "loading"
+        finally:
+            release.set()
+        with pytest.raises(voice.VoiceUnavailable):
+            worker.result(timeout=2)
+    assert local_voice.readiness().tts == "error"
+    assert "internal host information" not in local_voice.readiness().tts_message
+    monkeypatch.setattr(local_voice, "_load_tts", FakeTTS)
+    local_voice.LocalVoice()._text_to_speech()
+    assert local_voice.readiness().tts == "ready"
+    assert not local_voice.readiness().tts_message
+    local_voice.reset()
 
 
 def test_the_interface_reads_the_pin_from_the_engine_rather_than_restating_it():

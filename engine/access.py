@@ -436,9 +436,13 @@ def authorize_sql(con, sql: str, scope: AccessScope | None) -> AccessDecision:
     if ast is None:
         return AccessDecision(False, "authorization could not parse the statement")
 
-    bindings: dict[str, str] = {}
+    # One alias can be reused in nested scopes. Retaining only the last table
+    # lets an inner unmasked relation overwrite the outer masked binding. Keep
+    # every possible source; an ambiguous qualifier is denied conservatively.
+    bindings: dict[str, set[str]] = {}
     tables: set[str] = set()
     unknown_relations: set[str] = set()
+    renamed_relations: set[str] = set()
     for node in _walk(ast):
         if node.get("type") == "TABLE_FUNCTION":
             function = node.get("function")
@@ -466,8 +470,10 @@ def authorize_sql(con, sql: str, scope: AccessScope | None) -> AccessDecision:
             unknown_relations.add(f"{schema}.{name}" if schema else name)
             continue
         alias = str(node.get("alias") or name).lower()
-        bindings[alias] = name
-        bindings.setdefault(name, name)
+        bindings.setdefault(alias, set()).add(name)
+        bindings.setdefault(name, set()).add(name)
+        if node.get("column_name_alias"):
+            renamed_relations.add(name)
         tables.add(name)
     if unknown_relations:
         return AccessDecision(
@@ -486,6 +492,12 @@ def authorize_sql(con, sql: str, scope: AccessScope | None) -> AccessDecision:
 
     denied = scope.denied_by_table
     sensitive = {column for table in tables for column in denied.get(table, ())}
+    if any(denied.get(table) for table in renamed_relations):
+        return AccessDecision(
+            False,
+            "column aliases on a source relation with sensitive columns are not allowed",
+            tuple(sorted(tables)),
+        )
     for node in _walk(ast):
         names = node.get("column_names") if node.get("class") == "COLUMN_REF" else None
         if not names:
@@ -494,8 +506,9 @@ def authorize_sql(con, sql: str, scope: AccessScope | None) -> AccessDecision:
         if column not in sensitive:
             continue
         if len(names) >= 2:
-            table = bindings.get(str(names[-2]).lower())
-            if table and column not in denied.get(table, ()):
+            possible_tables = bindings.get(str(names[-2]).lower(), set())
+            if possible_tables and all(column not in denied.get(table, ())
+                                       for table in possible_tables):
                 continue
         return AccessDecision(
             False,
@@ -525,12 +538,36 @@ def authorize_sql(con, sql: str, scope: AccessScope | None) -> AccessDecision:
     # as a star over it, which is what it is.
     if sensitive:
         masked_relations = {name for name in tables if denied.get(name)}
-        aliases = {alias for alias, table in bindings.items()
-                   if table in masked_relations}
+        aliases = {alias for alias, sources in bindings.items()
+                   if sources & masked_relations}
         for node in _walk(ast):
+            if node.get("type") == "PIVOT":
+                # UNPIVOT stores its source-column list as string constants,
+                # not COLUMN_REF nodes, and PIVOT can retain implicit group
+                # columns. Neither is safe under name-only masking.
+                return AccessDecision(
+                    False,
+                    "PIVOT and UNPIVOT are not allowed with sensitive source columns",
+                    tuple(sorted(tables)),
+                )
+            if node.get("class") == "POSITIONAL_REFERENCE":
+                return AccessDecision(
+                    False,
+                    "positional column references are not allowed with sensitive columns",
+                    tuple(sorted(tables)),
+                )
+            if node.get("type") == "JOIN":
+                using = {str(column).lower() for column in node.get("using_columns", ())}
+                if using & sensitive or node.get("ref_type") == "NATURAL":
+                    return AccessDecision(
+                        False,
+                        "implicit joins cannot reference sensitive columns; "
+                        "use an explicit authorized join condition",
+                        tuple(sorted(tables)),
+                    )
             if node.get("class") == "COLUMN_REF":
                 names = node.get("column_names") or []
-                if len(names) == 1 and str(names[0]).lower() in aliases:
+                if names and str(names[-1]).lower() in aliases:
                     return AccessDecision(
                         False,
                         "a whole-row reference is not allowed on a relation with "

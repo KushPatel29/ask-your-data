@@ -36,6 +36,11 @@ jobs:
         # the golden set's refusal count is visible when it moves.
         run: python scripts/run_planner_eval.py
 
+      - name: Verify checkout readiness and UI contracts
+        run: |
+          python scripts/check_readiness.py
+          python scripts/audit_ui.py
+
   docker:
     runs-on: ubuntu-latest
     steps:

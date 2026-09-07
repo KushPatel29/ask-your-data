@@ -53,6 +53,8 @@ from pathlib import Path
 
 import yaml
 
+from engine.access import AccessScope, authorize_sql
+
 ROOT = Path(__file__).resolve().parents[1]
 GOLDEN_PATH = ROOT / "evals" / "golden_questions.yaml"
 
@@ -229,6 +231,8 @@ def select_exemplars(
     exclude_ids: object = (),
     retrieved_tables: object = None,
     query_embedding=None,
+    access: AccessScope | None = None,
+    con=None,
 ) -> list[Exemplar]:
     """The k golden questions most similar to `question`, best first.
 
@@ -264,16 +268,25 @@ def select_exemplars(
     question = (question or "").strip()
     if not question or k < 1:
         return []
+    # A scope without a parser connection cannot establish whether a query
+    # references masked columns, nested relations, or a whole-row expression.
+    # Omit examples instead of falling back to name-only filtering.
+    if access is not None and con is None:
+        return []
 
     excluded = {str(i) for i in (exclude_ids or ())}
     self_key = _normalise(question)
-    cases = {c["id"]: c for c in load_cases()}
+    corpus = load_cases()
+    cases = {c["id"]: c for c in corpus
+             if access is None or authorize_sql(con, c["sql"], access).allowed}
+    if not cases:
+        return []
 
     try:
         collection = build_index()
         # Over-fetch: the whole corpus when re-ranking (RRF needs full rankings
         # to fuse), otherwise just enough to survive the leave-one-out drops.
-        pool = len(cases) if retrieved_tables else min(
+        pool = len(corpus) if retrieved_tables or access is not None else min(
             len(cases), k + len(excluded) + 2)
         query_args = ({"query_embeddings": query_embedding}
                       if query_embedding is not None else {"query_texts": [question]})
@@ -347,6 +360,8 @@ def exemplar_block(
     exclude_ids: object = (),
     retrieved_tables: object = None,
     query_embedding=None,
+    access: AccessScope | None = None,
+    con=None,
 ) -> str:
     """The formatted few-shot block, or "" when there is nothing to show.
 
@@ -356,7 +371,7 @@ def exemplar_block(
     """
     picks = select_exemplars(question, k=k, exclude_ids=exclude_ids,
                              retrieved_tables=retrieved_tables,
-                             query_embedding=query_embedding)
+                             query_embedding=query_embedding, access=access, con=con)
     if not picks:
         return ""
     lines = [EXEMPLAR_HEADER]

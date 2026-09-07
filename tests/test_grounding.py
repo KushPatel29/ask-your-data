@@ -1,15 +1,6 @@
-"""The model's PROSE, read back against the rows.
+"""Only returned facts can enter an answer, regardless of model response."""
 
-Every other boundary in this app checks something other than the sentence. The
-guard checks SQL, the verifier checks structure, the executor checks the
-database — and the summary, which is the part a reader actually quotes, was
-covered by a prompt instruction and nothing else.
-
-The reproduction that motivated this: SQL returns 12,000, the model writes 999,
-and the turn is reported as successful.
-"""
-
-from __future__ import annotations
+from decimal import Decimal
 
 import pytest
 
@@ -17,129 +8,130 @@ from engine import grounding
 from engine.query import QueryResult
 
 
-def result(rows, columns=("n",), truncated=False):
-    return QueryResult(sql="SELECT 1", columns=list(columns), rows=rows,
+def result(rows, columns=("n",), truncated=False, sql="SELECT 1"):
+    return QueryResult(sql=sql, columns=list(columns), rows=rows,
                        row_count=len(rows), truncated=truncated)
 
 
-# ---------------------------------------------------------------------------
-# The case this exists for
-# ---------------------------------------------------------------------------
-
-def test_a_number_the_query_never_returned_is_caught():
-    rows = result([(12000,)])
-    assert grounding.ungrounded_numbers("There are 999 claims.", rows) == ["999"]
-    assert not grounding.is_grounded("There are 999 claims.", rows)
-
-
-def test_the_number_the_query_did_return_passes():
-    rows = result([(12000,)])
-    assert grounding.is_grounded("There are 12,000 claims.", rows)
-    assert grounding.is_grounded("There are 12000 claims.", rows)
-
-
-def test_an_empty_answer_is_not_grounded():
-    """An empty summary used to pass straight through and render as a blank
-    answer above a perfectly good SQL block."""
-    assert not grounding.is_grounded("", result([(1,)]))
-    assert not grounding.is_grounded("   ", result([(1,)]))
-
-
-def test_a_sentence_with_no_numbers_at_all_is_grounded():
-    """Plenty of true answers are categorical: "Self-Pay has the lowest rate."."""
-    rows = result([("Self-Pay",)], columns=("payer_type",))
-    assert grounding.is_grounded("Self-Pay has the lowest net collection rate.", rows)
-
-
-# ---------------------------------------------------------------------------
-# What must NOT fire, because a control that cries wolf gets switched off
-# ---------------------------------------------------------------------------
-
-def test_rounding_down_to_fewer_decimals_is_not_an_invention():
-    """A model that reads 8.23 and writes 8.2% has added nothing."""
-    rows = result([(8.23,)])
-    assert grounding.is_grounded("The denial rate is 8.2%.", rows)
-    assert grounding.is_grounded("The denial rate is 8%.", rows)
-
-
-def test_adding_precision_the_result_never_had_is_caught():
-    """The other direction is an invention: significant figures the database
-    did not produce."""
-    rows = result([(8.2,)])
-    assert not grounding.is_grounded("The denial rate is 8.2456%.", rows)
-
-
-def test_thousands_separators_are_the_same_number():
-    rows = result([(1661141.0,)])
-    assert grounding.is_grounded("About 1,661,141 is collectable.", rows)
-
-
-def test_small_integers_in_prose_do_not_fire():
-    """English contains integers that are not claims about data."""
-    rows = result([("Electronics", 41280624.23), ("Grocery", 23832879.27)],
-                  columns=("department", "revenue"))
-    assert grounding.is_grounded(
-        "The top 2 departments are Electronics at 41,280,624.23 and Grocery at "
-        "23,832,879.27.", rows)
-
-
-def test_a_lone_small_integer_still_has_to_be_sourced():
-    """The exemption is for prose, not for the answer itself. If the sentence
-    contains exactly one number, that number IS the claim."""
-    rows = result([(1483,)])
-    assert not grounding.is_grounded("There are 7 employees.", rows)
-
-
-def test_the_row_count_is_a_legitimate_thing_to_cite():
-    """"5 departments" is true of a five-row result and the sentence has no
-    other way to say it."""
-    rows = result([("a", 1.5), ("b", 2.5), ("c", 3.5), ("d", 4.5), ("e", 5.5)],
-                  columns=("dept", "v"))
-    assert grounding.is_grounded("Across all 5 departments the values vary.", rows)
-
-
-def test_numbers_inside_string_values_count_as_returned():
-    """`CLM-000008` and `SITE-104` are values, and a sentence naming one is
-    quoting the result."""
-    rows = result([("SITE-104",)], columns=("site_id",))
-    assert grounding.is_grounded("SITE-104 generates the most queries.", rows)
-
-
-# ---------------------------------------------------------------------------
-# The replacement
-# ---------------------------------------------------------------------------
-
-def test_the_fallback_states_the_result_rather_than_retrying_fluency():
-    assert grounding.fallback_answer(result([(876,)])) == "The query returned 876."
-    assert grounding.fallback_answer(result([])) == "The query returned no rows."
-    many = result([("a", 1), ("b", 2)], columns=("k", "v"))
-    assert "2 rows" in grounding.fallback_answer(many)
-
-
-def test_the_fallback_formats_a_whole_float_as_an_integer():
-    assert grounding.fallback_answer(result([(1661141.0,)])) == \
-        "The query returned 1,661,141."
-
-
-# ---------------------------------------------------------------------------
-# The wiring, asserted at source level: the check is worthless if nothing calls it
-# ---------------------------------------------------------------------------
-
-def test_the_assistant_actually_reads_its_own_summary_back():
-    from pathlib import Path
-
-    source = (Path(__file__).resolve().parent.parent / "engine" / "assistant.py"
-              ).read_text(encoding="utf-8")
-    assert "grounding.is_grounded(answer, result)" in source
-    assert "grounding.fallback_answer(result)" in source
-    assert "ungrounded_answer" in source, "the turn must carry a finding, not swap silently"
-
-
-@pytest.mark.parametrize("text,rows,grounded", [
-    ("No rows matched.", [], True),
-    ("The total is 0.", [(0,)], True),
-    ("The average is -4.52%.", [(-4.52,)], True),
-    ("The average is -9.9%.", [(-4.52,)], False),
+@pytest.mark.parametrize("text", [
+    "There are 999 claims.",
+    "There are 12,000 employees because productivity improved.",
+    "There is 1 claim.",
+    "There are twelve thousand employees.",
+    "", "   ", "null", "[]", '{"rows": []}',
+    '{"rows": [0], "answer": "Sales made 12000"}',
+    '{"rows": [true]}', '{"rows": [0.0]}', '{"rows": ["0"]}',
+    '{"rows": [-1]}', '{"rows": [1]}', '{"rows": [0, 0]}',
+    '{"rows": [0]} trailing prose',
 ])
-def test_edges(text, rows, grounded):
-    assert grounding.is_grounded(text, result(rows)) is grounded
+def test_model_claims_and_invalid_selections_are_never_accepted(text):
+    ran = result([(12000,)])
+    assert grounding.parse_selection(text, ran) is None
+    answer = grounding.compose_answer(ran)
+    assert "12,000" in answer
+    assert "999" not in answer and "employees" not in answer
+
+
+def test_only_existing_visible_rows_can_be_selected_and_order_is_preserved():
+    ran = result([(index,) for index in range(40)])
+    assert grounding.parse_selection('{"rows": [2, 0]}', ran) == [0, 2]
+    assert grounding.parse_selection('{"rows": [29]}', ran) == [29]
+    assert grounding.parse_selection('{"rows": [30]}', ran) is None
+    assert grounding.parse_selection('{"rows": [0, 1, 2, 3]}', ran) is None
+    assert grounding.parse_selection('{"rows": []}', result([])) == []
+
+
+def test_count_subject_comes_from_the_query_not_a_model_alias():
+    ran = result([(12000,)], ("employees",),
+                 sql="SELECT COUNT(*) AS employees FROM healthcare_fact_claims")
+    assert grounding.compose_answer(ran) == "There are 12,000 claims in the loaded dataset."
+
+
+@pytest.mark.parametrize("sql", [
+    "SELECT COUNT(*) FROM healthcare_fact_claims WHERE status = 'Denied'",
+    "SELECT COUNT(*) FROM healthcare_fact_claims JOIN hr_fact_employees ON true",
+    "SELECT COUNT(*) FROM (SELECT * FROM healthcare_fact_claims LIMIT 2)",
+])
+def test_filtered_or_joined_count_does_not_claim_to_count_every_entity(sql):
+    answer = grounding.compose_answer(result([(7,)], sql=sql))
+    assert "7" in answer and "loaded dataset" not in answer
+    assert "claims" not in answer
+
+
+def test_named_values_are_useful_without_inventing_a_unit_or_scale():
+    answer = grounding.compose_answer(result([(Decimal("0.21"),)], ("net_collection_rate",)))
+    assert "net collection rate" in answer and "0.21" in answer
+    assert "%" not in answer and "$" not in answer
+
+
+def test_null_does_not_become_zero_or_no_matching_rows():
+    answer = grounding.compose_answer(result([(None,)], ("average_allowed_amount",)))
+    assert "did not return a value" in answer
+    assert "different from zero" in answer
+    assert "No rows matched" not in answer
+
+
+def test_large_numbers_and_decimal_precision_survive_without_float_conversion():
+    assert "9,007,199,254,740,993" in grounding.compose_answer(result([(9007199254740993,)]))
+    assert "9,007,199,254,740,993.25" in grounding.compose_answer(
+        result([(Decimal("9007199254740993.25"),)]))
+    assert "0.0000001" in grounding.compose_answer(result([(0.0000001,)]))
+
+
+def test_boolean_and_text_identifiers_are_not_reinterpreted_as_numeric_claims():
+    assert "true" in grounding.compose_answer(result([(True,)]))
+    assert "SITE-104" in grounding.compose_answer(result([("SITE-104",)], ("site_id",)))
+
+
+def test_selected_rows_keep_their_own_labels_and_values():
+    ran = result([("Sales", 12000), ("Finance", 600), ("Legal", 900), ("HR", 100)],
+                 ("department", "revenue"))
+    answer = grounding.compose_answer(ran, [1, 2])
+    assert "4 rows" in answer and "2 selected rows" in answer
+    assert "100 for HR to 12,000 for Sales" in answer
+    assert "department: Finance; revenue: 600" in answer
+    assert "department: Legal; revenue: 900" in answer
+    assert "Finance; revenue: 12,000" not in answer
+
+
+def test_equal_values_and_missing_values_have_honest_context():
+    ran = result([("A", 5), ("B", 5), ("C", None)], ("team", "count"))
+    answer = grounding.compose_answer(ran)
+    assert "same throughout at 5" in answer
+    assert "1 returned row has no usable numeric value" in answer
+    assert "highest" not in answer
+
+
+def test_duplicate_labels_do_not_create_an_ambiguous_comparison():
+    ran = result([("Sales", 12000), ("Sales", 600)], ("department", "revenue"))
+    answer = grounding.compose_answer(ran)
+    assert "ranges from" not in answer
+    assert "12,000" in answer and "600" in answer
+
+
+def test_preview_cannot_be_presented_as_the_entire_population():
+    ran = result([("A", 1), ("B", 8)], ("team", "count"), truncated=True)
+    answer = grounding.compose_answer(ran)
+    assert "Among the returned rows" in answer
+    assert "Only the first 2 rows" in answer
+    assert "not the full dataset" in answer
+
+
+def test_empty_or_failed_query_does_not_gain_a_successful_narrative():
+    assert "No rows matched" in grounding.compose_answer(result([]))
+    failed = result([(999,)])
+    failed.error = "query failed"
+    answer = grounding.compose_answer(failed)
+    assert "no verified result" in answer and "999" not in answer
+
+
+def test_result_markup_stays_inert_and_long_cells_are_explicitly_shortened():
+    answer = grounding.compose_answer(
+        result([("![open](https://example.org) <script>x</script>",)]))
+    assert r"\!\[open\]" in answer and r"\<script\>" in answer
+    assert "value shortened" in grounding.compose_answer(result([("x" * 1000,)]))
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), Decimal("NaN")])
+def test_non_finite_values_are_reported_as_unusable(value):
+    assert "not a usable numeric result" in grounding.compose_answer(result([(value,)]))

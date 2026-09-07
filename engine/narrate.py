@@ -239,6 +239,10 @@ def _measure_kind(plan) -> str:
         return "pct"
     if words & _MONEY_WORDS:
         return "money"
+    # An average of integers is not necessarily an integer. Rendering it as a
+    # count rounded a genuine 1.5 to 2 even though SQL had returned the fraction.
+    if plan.aggregate == planner.AVG:
+        return "plain"
     if str(plan.measure.type).upper() in ("BIGINT", "INTEGER", "INT", "HUGEINT",
                                           "SMALLINT", "TINYINT"):
         return "count"
@@ -640,6 +644,9 @@ def _rank_sentence(plan, ran) -> str:
     label_name = ("row" if plan.label is None
                   else _dimension_label(plan.label.name))
     measure_label, unit = _column_label(plan.measure.name)
+    if row[1] is None:
+        return (f"The first returned {label_name}, {_label_value(row[0])}, has no "
+                f"value for {measure_label}. A missing value cannot establish a ranking.")
     high, low = _superlatives(plan)
     direction = high if (plan.order or "desc") == "desc" else low
     subject = f"{label_name[:1].upper()}{label_name[1:]} {_label_value(row[0])}"
@@ -710,6 +717,9 @@ def _grouped_sentence(plan, ran) -> str:
     if ran.row_count == 1:
         head = _label_value(rows[0][0])
         value = _amount(rows[0][1], kind, unit)
+        if rows[0][1] is None:
+            return (f"{head} has no value for {_bare(phrase)}. "
+                    f"It is the only {dimension} in the returned result.")
         if plan.order:
             high, low = _superlatives(plan)
             direction = high if plan.order == "desc" else low
@@ -739,6 +749,10 @@ def _grouped_sentence(plan, ran) -> str:
         missing = (f" {_label_value(empty[0][0])} has no value."
                    if len(empty) == 1
                    else f" {len(empty):,} of them have no value.")
+
+    if all(row[1] == valued[0][1] for row in valued):
+        return (f"{_upper1(phrase)} is the same across {scope} with a value: "
+                f"{_amount(valued[0][1], kind, unit)}.{missing}")
 
     if plan.order:
         high, low = _superlatives(plan)
@@ -792,3 +806,40 @@ def answer_sentence(plan, ran) -> str:
     if plan.group_by is not None and len(ran.rows[0]) > 1:
         return _grouped_sentence(plan, ran)
     return _scalar_sentence(plan, ran.rows[0][0])
+
+
+def answer_explanation(plan, ran) -> str:
+    """Lead with the answer, then offer bounded, row-bound breakdown details.
+
+    Simple counts need no padding. Multirow breakdowns gain up to three
+    concrete examples in query order, not invented recommendations or causes.
+    The UI escapes all text; collapsing cell whitespace keeps a stored newline
+    from masquerading as another bullet or paragraph.
+    """
+    if ran is not None and getattr(ran, "error", ""):
+        return "The query could not be completed, so there is no result to explain."
+    lead = answer_sentence(plan, ran)
+    if not lead or len(ran.rows) < 2:
+        return lead
+    if plan.group_by is None and plan.aggregate != planner.RANK:
+        return lead
+    if any(len(row) != 2 for row in ran.rows):
+        return lead
+    measure = (_column_label(plan.measure.name)[0] if plan.aggregate == planner.RANK
+               else _bare(_grouped_phrase(plan)))
+    kind, unit = _measure_kind(plan), _measure_unit(plan)
+    chosen = ran.rows[:3]
+    intro = ("Here is the breakdown:" if len(chosen) == len(ran.rows)
+             else "Here are the first three entries in the returned breakdown:")
+    details = []
+    for label, value in chosen:
+        label_text = " ".join(_label_value(label).split())
+        if len(label_text) > 240:
+            label_text = label_text[:240] + "… (label shortened)"
+        details.append(f"- {label_text}: {measure} is {_amount(value, kind, unit)}.")
+    result = lead + "\n\n" + intro + "\n\n" + "\n".join(details)
+    if len(chosen) < len(ran.rows):
+        result += "\n\nYou can explore the full returned breakdown in the table below."
+    if getattr(ran, "truncated", False):
+        result += "\n\nThis is a limited preview; more rows matched the query."
+    return result

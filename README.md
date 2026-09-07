@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-961%20%C2%B7%20960%20run%20without%20an%20API%20key-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-keyless%20regression%20suite-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![Voice](https://img.shields.io/badge/voice-in--process%20%C2%B7%20no%20API%20key-FBBF24)
@@ -20,11 +20,12 @@ same process, so you can ask out loud and hear the answer back on the deployed
 app with nothing configured. Same guard, same verifier, same executor whether the
 question was typed or spoken.
 
-The interface is organized around three jobs: **Ask** keeps the governed answer
+The interface is organized around four jobs: **Ask** keeps the governed answer
 flow focused, **Data catalog** searches authorized tables/columns/values, and
 **Trust center** collects identity scope, runtime controls, session telemetry,
-and the reproducible accuracy contract. Model and voice settings stay collapsed
-until they are needed.
+and the reproducible accuracy contract. **Project brief** provides a two-minute
+recruiter walkthrough with inspectable engineering evidence and explicit limits.
+Model and voice settings stay collapsed until they are needed.
 
 *(First load builds the schema index, which downloads a 79 MB embedding model
 once per container, and profiles the warehouse for the compiler — the spinners
@@ -40,19 +41,21 @@ it. Nothing here answers from memory: every number on screen was returned by a
 `SELECT` you can read. Two engines write that SQL — a **deterministic compiler**
 that needs no model at all, and, if you bring a key, **a language model** — and
 both pass through one read-only guard, one structural verifier and one
-default-deny access policy. The model's *prose* is verified back against the
-returned rows, so a fluent sentence cannot quote a number the query never
-produced. Six **certified metrics** carry an owner, a committed definition and a
+default-deny access policy. The model may select result-row indices, but cannot
+supply factual answer prose: a deterministic renderer binds every displayed
+value to its row and column. This prevents invented summaries, not incorrectly
+interpreted questions or incorrect SQL. Six **certified metrics** carry an owner, a committed definition and a
 value CI re-checks. Speech runs inside the process on open models, so the public
 demo listens and answers aloud with no account and no second service.
-**961 tests; 960 of them run without an API key.**
+See the [September release verification](docs/RELEASE_2026_09_07.md) for current
+test evidence and the remaining production integration requirements.
 
 | | |
 |---|---|
 | **The rule** | No number without a query — and it is *enforced*, not just prompted |
 | **Keyless engine** | 58-question contract: **46 right, 0 wrong, 12 refused**. Refusing is the feature |
 | **Retrieval** | Hybrid RRF, **100% table recall** on 2,253 schema tokens against 12,741 for the full catalogue |
-| **Governance** | Read-only guard · structural verifier · OIDC principal + column masking · durable audit trail |
+| **Governance** | Read-only guard · structural verifier · OIDC principal + column masking · optional JSONL audit sink |
 | **Voice** | faster-whisper + Piper, in-process, checksum-pinned to immutable revisions |
 
 ![A keyless turn end to end: the question, the pipeline strip with PLAN lit, the retrieved tables, the answer, the compiler's binding trace, the read-only guard, the verifier, the SQL, and the physical plan](docs/keyless_compiler.png)
@@ -350,14 +353,15 @@ flowchart LR
    cursor, capped at a sane row count.
 5. **Self-correct if needed** — a failed query's real database error goes back
    to the model for a corrected attempt. At most twice. Then an honest failure.
-6. **Answer** — the result rows are summarized into one or two sentences,
-   grounded strictly in what came back.
+6. **Answer** — actual result rows become a readable summary and selected
+   highlights. In model mode, only validated row indices are accepted; factual
+   prose is rendered from typed values with their original row/column context.
 7. **Voice, around the boundary** — a completed microphone recording is
    transcribed, then shown in an editable confirmation field. The free local
-   path uses faster-whisper for STT and Kokoro for TTS through the
-   OpenAI-compatible Speaches server; OpenAI remains an optional cloud fallback.
-   Speech is generated only after **Listen** is pressed. The UI states which
-   service receives audio or answer text and labels playback as AI-generated.
+   default path uses in-process faster-whisper for English STT and Piper's male
+   Joe voice for TTS. Self-hosted Speaches and OpenAI are optional alternatives.
+   Automatic speech can be toggled off; **Listen** and the visible player remain
+   available. The UI explains where audio/text goes and labels generated speech.
 
 ## The model is untrusted input
 
@@ -412,10 +416,9 @@ defend in an interview:
   not first cells — a `GROUP BY` with no `ORDER BY` has no first row, and
   comparing one scored twelve correct breakdowns as wrong.
 
-```
-855 tests — 854 run keyless in CI across two jobs (lint + suite, and suite-in-Docker);
-1 live model test skips without a key.
-```
+The regression suite runs keyless in CI, both directly and inside the Docker
+image. One live-model test skips without an API key. CI also runs the release
+preflight, UI markup/contrast audit, and planner scorecard.
 
 The live layer — *does the model write SQL that gets the right answer?* — is
 graded by `scripts/run_live_eval.py`, which asks the assistant every golden and

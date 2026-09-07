@@ -438,3 +438,51 @@ def test_a_whole_row_reference_on_an_unmasked_relation_is_still_fine(con):
     assert authorize_sql(con, "SELECT r FROM hr_flight_risk_scores r", scope).allowed
     assert authorize_sql(
         con, "SELECT employee_id FROM hr_fact_employees", scope).allowed
+
+
+def test_nested_alias_reuse_cannot_unmask_an_outer_column(con):
+    scope = AccessScope(
+        Principal("analyst", authenticated=True),
+        frozenset({"hr_fact_employees", "hr_flight_risk_scores"}),
+        (("hr_fact_employees", ("base_salary",)),),
+    )
+    sql = (
+        "SELECT e.base_salary FROM hr_fact_employees e "
+        "WHERE EXISTS(SELECT 1 FROM hr_flight_risk_scores e)"
+    )
+    result = run_query(con, sql, access=scope)
+    assert result.policy_denied
+    assert not result.rows
+
+
+@pytest.mark.parametrize("sql", [
+    "SELECT main.hr_fact_employees FROM main.hr_fact_employees",
+    "SELECT #5 FROM hr_fact_employees",
+    "SELECT renamed FROM hr_fact_employees e(a,b,c,d,renamed)",
+    "SELECT COUNT(*) FROM hr_fact_employees a "
+    "JOIN hr_fact_employees b USING(base_salary)",
+    "SELECT COUNT(*) FROM hr_fact_employees a NATURAL JOIN hr_fact_employees b",
+    "SELECT value FROM hr_fact_employees UNPIVOT(value FOR variable IN (base_salary))",
+])
+def test_alternate_column_syntax_cannot_bypass_masking(con, sql):
+    scope = AccessScope(
+        Principal("analyst", authenticated=True),
+        frozenset({"hr_fact_employees"}),
+        (("hr_fact_employees", ("base_salary",)),),
+    )
+    assert not authorize_sql(con, sql, scope).allowed
+
+
+def test_explicit_safe_joins_and_unmasked_positional_references_remain_allowed(con):
+    scope = AccessScope(
+        Principal("analyst", authenticated=True),
+        frozenset({"hr_fact_employees", "hr_flight_risk_scores"}),
+        (("hr_fact_employees", ("base_salary",)),),
+    )
+    assert authorize_sql(
+        con,
+        "SELECT COUNT(*) FROM hr_fact_employees a "
+        "JOIN hr_flight_risk_scores b USING(employee_id)",
+        scope,
+    ).allowed
+    assert authorize_sql(con, "SELECT #1 FROM hr_flight_risk_scores", scope).allowed

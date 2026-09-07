@@ -1,5 +1,9 @@
 # Enterprise readiness review — 1 September 2026
 
+Historical review: the findings and counts below describe the September 1
+snapshot. See [September 7 release verification](RELEASE_2026_09_07.md) for the
+subsequent fixes, current checks, and still-required production integrations.
+
 ## Executive verdict
 
 Ask Your Data is a strong, unusually inspectable analytics prototype. It is

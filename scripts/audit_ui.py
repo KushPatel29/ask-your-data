@@ -165,10 +165,7 @@ def plan_nodes(sql: str, con=None) -> list[dict]:
     # are read as source and exec'd in isolation instead.
     source = (ROOT / "app" / "streamlit_app.py").read_text(encoding="utf-8")
     start = source.index("_PLAN_DETAIL = {")
-    function = source.index("def _query_plan", start)
-    end = source.rfind("@st.cache_data", start, function)
-    if end < start:
-        raise ValueError("could not locate the cache decorator before _query_plan")
+    end = source.index("def _query_plan", start)
     namespace: dict = {}
     exec(compile(source[start:end], "streamlit_app_slice", "exec"), namespace)
 

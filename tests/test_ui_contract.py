@@ -915,10 +915,11 @@ def test_a_certified_metric_names_its_own_pipeline_stage(rendered):
 def test_voice_has_distinct_ready_and_unconfigured_states(rendered):
     _ui, panels = rendered
     assert 'data-ready="1"' in panels["voice_ready"]
-    assert "gpt-transcribe" in panels["voice_ready"]
-    assert "review transcript" in panels["voice_ready"]
+    assert "review the words" in panels["voice_ready"]
+    assert "enabled" in panels["voice_ready"]
     assert 'data-ready="0"' in panels["voice_disabled"]
-    assert "add key in sidebar" in panels["voice_disabled"]
+    assert "unavailable" in panels["voice_disabled"]
+    assert "Voice settings" in panels["voice_disabled"]
 
 
 def test_every_streamlit_data_cache_has_a_hard_entry_bound():

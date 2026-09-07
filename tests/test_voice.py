@@ -63,6 +63,24 @@ def test_markdown_sql_urls_and_excess_space_are_not_read_aloud():
     assert voice.speakable_text(raw) == "Result: 42. See"
 
 
+def test_narration_never_truncates_halfway_through_a_number():
+    answer = "There are 12,000 claims in the warehouse."
+    assert voice.speakable_text(answer, limit=14) == "There are"
+    assert "12" not in voice.speakable_text(answer, limit=14)
+    assert voice.speakable_text("There are twelve claims.", limit=16) == "There are twelve"
+    assert voice.speakable_text("The rate is 12.5 percent.", limit=15) == "The rate is"
+
+
+def test_narration_prefers_a_finished_sentence_when_it_fits():
+    answer = "There are twelve claims. This is a longer explanation of the result."
+    assert voice.speakable_text(answer, limit=40) == "There are twelve claims."
+
+
+def test_links_html_and_raw_phoneme_markup_are_read_as_ordinary_words():
+    raw = "<b>Revenue &amp; margin</b>: [result](https://example.com) is [[twelve]]."
+    assert voice.speakable_text(raw) == "Revenue & margin: result is twelve."
+
+
 def test_recordings_are_bounded_before_any_provider_call():
     client = _Client()
     service = voice.OpenAIVoice("unused", client=client)

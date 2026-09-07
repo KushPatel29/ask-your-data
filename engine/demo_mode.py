@@ -25,6 +25,7 @@ from typing import Any
 
 import yaml
 
+from engine.access import AccessScope, authorize_sql
 from engine.query import QueryResult, run_query
 
 EVALS_DIR = Path(__file__).resolve().parent.parent / "evals"
@@ -147,7 +148,21 @@ def questions_by_domain(cases: list[dict]) -> dict[str, list[dict]]:
     return grouped
 
 
-def answer(con, case: dict, *, access=None) -> DemoAnswer:
+def visible_cases(
+    con, cases: list[dict] | None = None, *, access: AccessScope | None = None,
+) -> list[dict]:
+    """Filter contract questions, SQL and expected answers before display.
+
+    Execution is authorized separately in ``answer``. Filtering here also
+    prevents a selector or an expected-answer preview from disclosing the
+    contents of a restricted contract without ever running its query.
+    """
+    candidates = load_golden_questions() if cases is None else cases
+    return [case for case in candidates
+            if authorize_sql(con, case["sql"], access).allowed]
+
+
+def answer(con, case: dict, *, access: AccessScope | None = None) -> DemoAnswer:
     """Execute a golden question's reference SQL and wrap the result.
 
     `access` is threaded through for the same reason every other execution path

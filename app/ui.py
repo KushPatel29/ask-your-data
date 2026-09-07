@@ -221,21 +221,21 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 
 /* ---- masthead ---------------------------------------------------------- */
 .ayd-mast{ border-bottom:1px solid var(--ayd-line); padding:.2rem 0 1.1rem; margin-bottom:1rem; }
-.ayd-kicker{ font-family:var(--ayd-mono) !important; font-size:.68rem; letter-spacing:.19em;
-  text-transform:uppercase; color:var(--ayd-machine); display:flex; gap:.6rem; align-items:center; }
+.ayd-kicker{ font-family:var(--ayd-sans) !important; font-size:.9rem; font-weight:600;
+  color:var(--ayd-ink); display:flex; gap:.6rem; align-items:center; }
 .ayd-kicker::after{ content:''; flex:1; height:1px;
   background:linear-gradient(90deg,var(--ayd-line),transparent); }
 /* Streamlit sets font-family on h1 with !important of its own, so a bare
    class loses even when it also declares !important. Element+class wins. */
-.ayd-mast h1.ayd-title{ font-family:var(--ayd-cond) !important; font-weight:700;
-  font-size:2.7rem; line-height:1.02;
-  letter-spacing:-.015em; margin:.5rem 0 .4rem; color:var(--ayd-ink); }
+.ayd-mast h1.ayd-title{ font-family:var(--ayd-sans) !important; font-weight:650;
+  font-size:clamp(1.8rem,3.5vw,2.7rem); line-height:1.12;
+  letter-spacing:-.035em; margin:.7rem 0 .65rem; color:var(--ayd-ink); max-width:23ch; }
 .ayd-sub{ color:var(--ayd-muted); max-width:62ch; font-size:.95rem; line-height:1.55; margin:0; }
 .ayd-stats{ display:flex; gap:1.6rem; flex-wrap:wrap; margin-top:1rem;
   font-family:var(--ayd-mono) !important; font-size:.72rem; color:var(--ayd-muted); }
 .ayd-stats b{ color:var(--ayd-ink); font-weight:600; }
 .ayd-mast[data-compact="1"]{ padding-bottom:.65rem; margin-bottom:.7rem; }
-.ayd-mast[data-compact="1"] .ayd-kicker{ font-size:.6rem; }
+.ayd-mast[data-compact="1"] .ayd-kicker{ font-size:.8rem; }
 .ayd-mast[data-compact="1"] h1.ayd-title{ font-size:1.5rem; margin:.28rem 0 0; }
 .ayd-mast[data-compact="1"] h1.ayd-title br{ display:none; }
 .ayd-mast[data-compact="1"] .ayd-title-tail::before{ content:' '; }
@@ -252,8 +252,7 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .st-key-workspace-nav [role="radiogroup"]{ width:100%; padding:3px;
   border:1px solid var(--ayd-line); border-radius:4px; background:var(--ayd-panel); }
 .st-key-workspace-nav [role="radiogroup"] > label{ flex:1 1 0; justify-content:center;
-  min-height:40px; font-family:var(--ayd-mono) !important; font-size:.68rem;
-  letter-spacing:.08em; text-transform:uppercase; }
+  min-height:44px; font-family:var(--ayd-sans) !important; font-size:.88rem; }
 .st-key-workspace-nav [aria-checked="true"]{ color:var(--ayd-machine) !important;
   background:rgba(34,211,238,.08) !important; }
 
@@ -264,6 +263,26 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
 .ayd-viewhead h2{ font-family:var(--ayd-cond) !important; color:var(--ayd-ink);
   font-size:1.55rem; line-height:1.1; margin:0 0 .32rem; }
 .ayd-viewhead p{ color:var(--ayd-muted); font-size:.88rem; line-height:1.5; margin:0; }
+
+/* The opening screen gives a visitor a question to try before implementation
+   detail. These are purposeful paths into the warehouse, not empty cards. */
+.st-key-ayd-examples button{ text-align:left; justify-content:flex-start;
+  min-height:76px; padding:.8rem 1rem; border-radius:10px;
+  background:var(--ayd-panel); border-color:var(--ayd-line); }
+.st-key-ayd-examples button:hover{ border-color:var(--ayd-machine); }
+.st-key-ayd-examples [data-testid="stCaptionContainer"]{ margin-top:-.4rem; }
+.ayd-welcome{ padding:.6rem 0 .75rem; max-width:70ch; }
+.ayd-welcome h2{ font-family:var(--ayd-sans) !important; font-size:1.2rem;
+  font-weight:600; margin:0 0 .35rem; color:var(--ayd-ink); }
+.ayd-welcome p{ font-size:.95rem; line-height:1.55; color:var(--ayd-muted); margin:0; }
+.ayd-brief{ max-width:74ch; font-size:1rem; line-height:1.65; }
+.ayd-brief p{ color:var(--ayd-muted); }
+.ayd-brief strong{ color:var(--ayd-ink); }
+@media(max-width:640px){
+  .st-key-workspace-nav [role="radiogroup"]{ flex-wrap:wrap; }
+  .st-key-workspace-nav [role="radiogroup"] > label{ flex-basis:45%; }
+  .ayd-stats{ gap:.5rem 1rem; }
+}
 
 /* The product's signature: every answer has a visible, governed route. This is
    a real sequence (unlike decorative numbered cards), so order carries meaning. */
@@ -893,6 +912,11 @@ html, body, [class*="st-"]{ font-family:var(--ayd-sans) !important; }
   font-size:1.75rem; line-height:1.22;
   color:var(--ayd-ink); margin:.15rem 0 .45rem; letter-spacing:-.01em;
   font-variant-numeric:tabular-nums; }
+.ayd-answer p{ font:inherit; line-height:1.4; margin:0 0 .7rem; max-width:70ch; }
+.ayd-answer p + p, .ayd-answer-details{ font-family:var(--ayd-sans) !important;
+  font-size:1rem; line-height:1.65; font-weight:400; letter-spacing:normal; }
+.ayd-answer-details{ padding-left:1.25rem; }
+.ayd-answer-details li{ margin-bottom:.4rem; }
 .ayd-verified{ display:inline-flex; align-items:center; gap:.45rem;
   font-family:var(--ayd-mono) !important;
   font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ayd-verified);
@@ -1106,11 +1130,10 @@ def masthead(*, tables: int, domains: int, live: bool, compact: bool = False) ->
         f"""
 <div class="ayd-mast" data-compact="{1 if compact else 0}">
   <div class="ayd-kicker">Ask your data</div>
-  <h1 class="ayd-title">Ask governed data.<br>
-    <span class="ayd-title-tail">See every step.</span></h1>
-  <p class="ayd-sub">Voice or text across an enterprise analytics warehouse.
-  Each question is scoped by access policy, grounded in the catalog, verified,
-  executed read-only, and returned with the SQL and evidence behind the answer.</p>
+  <h1 class="ayd-title">A clear answer.<br>
+    <span class="ayd-title-tail">The evidence to trust it.</span></h1>
+  <p class="ayd-sub">Explore business data in your own words. Ask by text or voice,
+  hear the answer, and inspect the calculation. Try it below with synthetic data.</p>
   <div class="ayd-stats">
     <span><b>{tables}</b> tables</span>
     <span><b>{domains}</b> domains</span>
@@ -2176,9 +2199,10 @@ def result_shape(columns: list[tuple[str, str]], *, rows: int, truncated: bool,
 
 def voice_dock(*, ready: bool, stt_model: str, tts_model: str) -> None:
     """The state of the optional voice edge around the governed query path."""
-    state = "ready" if ready else "add key in sidebar"
-    detail = (f"{stt_model} → review transcript → governed query → {tts_model}"
-              if ready else "Recordings are sent only after voice is enabled")
+    state = "enabled" if ready else "unavailable"
+    detail = ("Record a question, review the words, then ask. "
+              "Your answer can be played aloud."
+              if ready else "Use text below or check Voice settings in the sidebar.")
     st.markdown(
         f"""
 <div class="ayd-voice" data-ready="{'1' if ready else '0'}">
@@ -2209,7 +2233,15 @@ def metric_definition(*, label: str, owner: str, definition: str,
 
 
 def answer(text: str, *, verified: bool = False, verified_note: str = "") -> None:
-    st.markdown(f'<div class="ayd-answer">{html.escape(str(text))}</div>', unsafe_allow_html=True)
+    sections = []
+    for part in str(text).split("\n\n"):
+        lines = part.splitlines()
+        if lines and all(line.startswith("- ") for line in lines):
+            items = "".join(f"<li>{html.escape(line[2:])}</li>" for line in lines)
+            sections.append(f'<ul class="ayd-answer-details">{items}</ul>')
+        else:
+            sections.append(f"<p>{html.escape(part)}</p>")
+    st.markdown(f'<div class="ayd-answer">{"".join(sections)}</div>', unsafe_allow_html=True)
     if verified:
         st.markdown(
             f'<span class="ayd-verified">✓ matches the committed contract</span>'
