@@ -565,13 +565,11 @@ def _catalog_by_domain() -> dict[str, list[str]]:
 
 
 @st.cache_data(show_spinner=False, max_entries=256)
-def _retrieval_bundle_cached(question: str, scope_fingerprint: tuple):
+def _retrieval_bundle_cached(question: str, scope_fingerprint: tuple, corpus_revision: str):
     """Everything the readouts need about one question's retrieval, fetched once.
 
-    Cached on the question text, which is the only thing retrieval depends on -
-    the warehouse and the index are @st.cache_resource singletons for the life
-    of the container, so a question that has been retrieved once cannot retrieve
-    differently later in the same session.
+    The question, access policy and live schema revision all participate in the
+    cache identity. An old answer's retrieval must not outlive a schema change.
 
     Returns None rather than raising. Retrieval is an optimisation over pasting
     the whole catalogue, so a failure here has to cost a panel, not an answer:
@@ -580,9 +578,9 @@ def _retrieval_bundle_cached(question: str, scope_fingerprint: tuple):
     """
     try:
         started = time.perf_counter()
-        del scope_fingerprint
+        del scope_fingerprint, corpus_revision
         hits = retrieval.scoped_hits(
-            retrieval.retrieve_hybrid(question, con=con),
+            retrieval.retrieve_hybrid(question, con=con, allowed_tables=ACCESS.allowed_tables),
             allowed_tables=ACCESS.allowed_tables, denied_columns=ACCESS.denied_by_table,
         )
         # Only the hybrid call is the RETRIEVE stage. The two rankings gathered
@@ -592,11 +590,11 @@ def _retrieval_bundle_cached(question: str, scope_fingerprint: tuple):
         hybrid_ms = 1000 * (time.perf_counter() - started)
 
         vector = {hit.table: rank for rank, hit
-                  in enumerate(retrieval.retrieve(question, k=POOL, con=con), 1)
-                  if hit.table in ACCESS.allowed_tables}
+                  in enumerate(retrieval.retrieve(
+                      question, k=POOL, con=con, allowed_tables=ACCESS.allowed_tables), 1)}
         keyword = {hit.table: rank for rank, hit
-                   in enumerate(retrieval.retrieve_keyword(question, k=POOL, con=con), 1)
-                   if hit.table in ACCESS.allowed_tables}
+                   in enumerate(retrieval.retrieve_keyword(
+                       question, k=POOL, con=con, allowed_tables=ACCESS.allowed_tables), 1)}
         tokens_used = max(1, len(retrieval.schema_catalog_for(
             question, con,
             allowed_tables=ACCESS.allowed_tables,
@@ -619,7 +617,11 @@ def _retrieval_bundle_cached(question: str, scope_fingerprint: tuple):
 
 
 def _retrieval_bundle(question: str):
-    bundle = _retrieval_bundle_cached(question, ACCESS.fingerprint)
+    try:
+        revision = retrieval.corpus_revision(con)
+    except Exception:
+        return None
+    bundle = _retrieval_bundle_cached(question, ACCESS.fingerprint, revision)
     if bundle is not None:
         # Re-derive this cheap field at the session boundary as a guard against
         # stale cached payloads from an older code version.

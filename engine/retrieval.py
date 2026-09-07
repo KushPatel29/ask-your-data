@@ -201,6 +201,29 @@ def _corpus_fingerprint(corpus: list[dict]) -> str:
     return sha256(payload.encode("utf-8")).hexdigest()
 
 
+def corpus_revision(con=None) -> str:
+    """Identity of descriptions and live schema, without reading result data.
+
+    One catalog query detects drift before reusing an in-process index. A
+    separate cursor avoids overwriting another session's pending result set.
+    The returned digest is safe for cache keys; schema contents stay local.
+    """
+    columns = []
+    if con is not None:
+        reader = con.cursor()
+        try:
+            columns = reader.execute(
+                "SELECT table_catalog, table_schema, table_name, column_name, data_type, "
+                "ordinal_position FROM information_schema.columns "
+                "ORDER BY table_catalog, table_schema, table_name, ordinal_position"
+            ).fetchall()
+        finally:
+            reader.close()
+        known = {table_name(domain, table) for domain, table, _, _ in MANIFEST}
+        columns = [row for row in columns if row[2] in known]
+    return sha256(repr((MANIFEST, DOMAINS, columns)).encode("utf-8")).hexdigest()
+
+
 # --------------------------------------------------------------------------
 # The index.
 # --------------------------------------------------------------------------
@@ -217,7 +240,7 @@ def build_index(con=None, *, rebuild: bool = False):
 
     global _collection, _collection_source
 
-    source = "warehouse" if con is not None else "manifest"
+    source = corpus_revision(con)
     if _collection is not None and _collection_source == source and not rebuild:
         return _collection
     corpus = build_corpus(con)
@@ -228,14 +251,20 @@ def build_index(con=None, *, rebuild: bool = False):
     return _collection
 
 
-def retrieve(question: str, *, k: int = DEFAULT_K, con=None) -> list[RetrievedTable]:
+def retrieve(question: str, *, k: int = DEFAULT_K, con=None,
+             allowed_tables: frozenset[str] | set[str] | None = None) -> list[RetrievedTable]:
     """The top-k tables for a question, best first."""
     question = (question or "").strip()
-    if not question:
+    if not question or (allowed_tables is not None and not allowed_tables):
         return []
     collection = build_index(con)
     k = max(1, min(int(k), collection.count()))
-    result = collection.query(query_texts=[question], n_results=k)
+    # Score the small exact index once; scope BEFORE taking the top-k budget.
+    # Post-filtering a global top-k lets forbidden candidates crowd out useful
+    # authorized tables. No unauthorized hit leaves this function.
+    result = collection.query(query_texts=[question], n_results=(
+        collection.count() if allowed_tables is not None else k
+    ))
 
     out: list[RetrievedTable] = []
     ids = (result.get("ids") or [[]])[0]
@@ -253,7 +282,7 @@ def retrieve(question: str, *, k: int = DEFAULT_K, con=None) -> list[RetrievedTa
                 score=round(1.0 - distance, 4),
             )
         )
-    return out
+    return scoped_hits(out, allowed_tables=allowed_tables)[:k]
 
 
 # --------------------------------------------------------------------------
@@ -293,7 +322,9 @@ def _tokens(text: str) -> set[str]:
     return out
 
 
-def retrieve_keyword(question: str, *, k: int = DEFAULT_K, con=None) -> list[RetrievedTable]:
+def retrieve_keyword(question: str, *, k: int = DEFAULT_K, con=None,
+                     allowed_tables: frozenset[str] | set[str] | None = None
+                     ) -> list[RetrievedTable]:
     """Token-overlap retrieval over the same corpus.
 
     Deliberately the same shape as the inverted-index lookup used elsewhere in
@@ -302,10 +333,12 @@ def retrieve_keyword(question: str, *, k: int = DEFAULT_K, con=None) -> list[Ret
     document brevity so a long document cannot win on surface area alone.
     """
     q = _tokens(question)
-    if not q:
+    if not q or (allowed_tables is not None and not allowed_tables):
         return []
     scored = []
     for row in build_corpus(con):
+        if allowed_tables is not None and row["id"] not in allowed_tables:
+            continue
         doc_tokens = _tokens(row["document"])
         overlap = len(q & doc_tokens)
         if overlap:
@@ -329,7 +362,9 @@ def retrieve_keyword(question: str, *, k: int = DEFAULT_K, con=None) -> list[Ret
 RRF_K = 60  # the constant from Cormack et al.'s original reciprocal-rank fusion
 
 
-def retrieve_hybrid(question: str, *, k: int = DEFAULT_K, con=None) -> list[RetrievedTable]:
+def retrieve_hybrid(question: str, *, k: int = DEFAULT_K, con=None,
+                    allowed_tables: frozenset[str] | set[str] | None = None
+                    ) -> list[RetrievedTable]:
     """Fuse the vector and keyword rankings by reciprocal rank.
 
     Measured on the 71-table warehouse, each method fails where the other
@@ -353,9 +388,12 @@ def retrieve_hybrid(question: str, *, k: int = DEFAULT_K, con=None) -> list[Retr
     token overlap have no common scale, and normalising them would invent one.
     RRF only reads the RANKS, which both methods genuinely produce.
     """
+    if allowed_tables is not None and not allowed_tables:
+        return []
     pool = max(k * 2, 12)
-    vector_hits = retrieve(question, k=pool, con=con)
-    keyword_hits = retrieve_keyword(question, k=pool, con=con)
+    scope = {} if allowed_tables is None else {"allowed_tables": allowed_tables}
+    vector_hits = retrieve(question, k=pool, con=con, **scope)
+    keyword_hits = retrieve_keyword(question, k=pool, con=con, **scope)
 
     fused: dict[str, float] = {}
     meta: dict[str, RetrievedTable] = {}
@@ -406,7 +444,8 @@ def schema_catalog_for(
     picker = {"keyword": retrieve_keyword, "vector": retrieve,
               "hybrid": retrieve_hybrid}.get(strategy, retrieve_hybrid)
     try:
-        hits = picker(question, k=k, con=con)
+        scope = {} if allowed_tables is None else {"allowed_tables": allowed_tables}
+        hits = picker(question, k=k, con=con, **scope)
     except Exception:
         # Retrieval is an optimisation over pasting the whole catalogue, so a
         # failure here must cost tokens, not answers. Two real ways this fires

@@ -34,7 +34,9 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import time
 from pathlib import Path
+from statistics import median
 
 import yaml
 
@@ -75,16 +77,31 @@ def main(argv: list[str] | None = None) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument("--k", type=int, default=retrieval.DEFAULT_K)
+    ap.add_argument("--paraphrases", action="store_true",
+                    help="Use the separate development paraphrase challenge set")
+    ap.add_argument("--min-coverage", type=float, default=None,
+                    help="Fail if hybrid full-question coverage is below this fraction (0..1)")
     ap.add_argument(
         "--sweep",
         action="store_true",
         help="Report recall at k = 1..10 instead of a single k",
     )
     args = ap.parse_args(argv)
+    if args.k < 1 or (args.min_coverage is not None and not 0 <= args.min_coverage <= 1):
+        ap.error("k must be positive and min-coverage must be between 0 and 1")
 
     con = build_warehouse()
     known = set(table_names(con))
     questions = yaml.safe_load(GOLDEN.read_text(encoding="utf-8"))
+    suite = "golden"
+    if args.paraphrases:
+        reference = {row["id"]: row for row in questions}
+        challenge = yaml.safe_load(
+            (ROOT / "evals" / "retrieval_paraphrases.yaml").read_text(encoding="utf-8")
+        )
+        questions = [{**reference[row["reference"]], "id": row["id"],
+                      "question": row["question"]} for row in challenge]
+        suite = "development paraphrases"
 
     cases = []
     for row in questions:
@@ -97,11 +114,13 @@ def main(argv: list[str] | None = None) -> int:
         cases.append({"id": row["id"], "question": row["question"], "needed": needed})
 
     full_catalog_tokens = approx_tokens(schema_catalog(con))
-    print(f"\nWarehouse: {len(known)} tables · golden questions with labels: {len(cases)}")
+    print(f"\nWarehouse: {len(known)} tables · {suite} questions with labels: {len(cases)}")
     print(f"Full-catalogue prompt block: ~{full_catalog_tokens:,} tokens per turn\n")
 
     ks = range(1, 11) if args.sweep else [args.k]
 
+    retrieval.build_index(con)  # report warm retrieval latency, not first model download
+    failed = False
     for k in ks:
         rows = []
         for strategy in ("keyword", "vector", "hybrid"):
@@ -110,18 +129,23 @@ def main(argv: list[str] | None = None) -> int:
             total_tables = 0
             tokens = 0
             misses: list[str] = []
+            latencies = []
+            reciprocal_ranks = []
             for case in cases:
-                got = {
-                    r.table
-                    for r in (
-                        retrieval.retrieve_keyword(case["question"], k=k, con=con)
-                        if strategy == "keyword"
-                        else retrieval.retrieve(case["question"], k=k, con=con)
-                        if strategy == "vector"
-                        else retrieval.retrieve_hybrid(case["question"], k=k, con=con)
-                    )
-                }
+                started = time.perf_counter()
+                ranked = (
+                    retrieval.retrieve_keyword(case["question"], k=k, con=con)
+                    if strategy == "keyword"
+                    else retrieval.retrieve(case["question"], k=k, con=con)
+                    if strategy == "vector"
+                    else retrieval.retrieve_hybrid(case["question"], k=k, con=con)
+                )
+                latencies.append(1000 * (time.perf_counter() - started))
+                got = {r.table for r in ranked}
                 need = case["needed"]
+                first = next((rank for rank, result in enumerate(ranked, 1)
+                              if result.table in need), None)
+                reciprocal_ranks.append(1 / first if first else 0)
                 total_tables += len(need)
                 missing = need - got
                 missed_tables += len(missing)
@@ -139,6 +163,9 @@ def main(argv: list[str] | None = None) -> int:
                     "table_recall": (total_tables - missed_tables) / total_tables,
                     "tokens": tokens / len(cases),
                     "misses": misses,
+                    "mrr": sum(reciprocal_ranks) / len(cases),
+                    "p50_ms": median(latencies),
+                    "p95_ms": sorted(latencies)[min(len(latencies) - 1, int(.95 * len(latencies)))],
                 }
             )
 
@@ -154,6 +181,11 @@ def main(argv: list[str] | None = None) -> int:
                 f"  {row['strategy']:<10} {row['full_recall']:>23.1%} {row['table_recall']:>17.1%} "
                 f"{row['tokens']:>14,.0f}"
             )
+            print(f"    first relevant MRR {row['mrr']:.3f}; warm retrieval "
+                  f"p50 {row['p50_ms']:.1f}ms / p95 {row['p95_ms']:.1f}ms")
+            if (row["strategy"] == "hybrid" and args.min_coverage is not None
+                    and row["full_recall"] < args.min_coverage):
+                failed = True
         if not args.sweep:
             for row in rows:
                 if row["misses"]:
@@ -162,7 +194,10 @@ def main(argv: list[str] | None = None) -> int:
                         print(f"    - {miss}")
         print()
 
-    return 0
+    con.close()
+    if failed:
+        print(f"FAIL: hybrid coverage below required {args.min_coverage:.1%}")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

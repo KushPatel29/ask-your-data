@@ -41,6 +41,11 @@ jobs:
           python scripts/check_readiness.py
           python scripts/audit_ui.py
 
+      - name: Gate RAG required-table recall
+        run: |
+          python scripts/run_retrieval_eval.py --min-coverage 1
+          python scripts/run_retrieval_eval.py --paraphrases --min-coverage 1
+
   docker:
     runs-on: ubuntu-latest
     steps:

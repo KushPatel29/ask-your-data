@@ -49,6 +49,8 @@ value CI re-checks. Speech runs inside the process on open models, so the public
 demo listens and answers aloud with no account and no second service.
 See the [September release verification](docs/RELEASE_2026_09_07.md) for current
 test evidence and the remaining production integration requirements.
+The [RAG review](docs/RAG_REVIEW_2026_09_07.md) separately measures retrieval on
+39 reference questions and 22 development paraphrases, with CI recall gates.
 
 | | |
 |---|---|

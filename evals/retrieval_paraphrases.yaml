@@ -1,0 +1,69 @@
+# Development challenge set, separate from the familiar golden wording.
+# Labels come from the referenced golden SQL, not guessed relevance judgements.
+# Keep failures visible; this is not an independently collected user benchmark.
+- id: rejected_reimbursements
+  reference: denial_rate
+  question: Among medical reimbursement claims with a completed decision, what fraction were rejected?
+- id: weakest_bill_collection
+  reference: lowest_ncr_payer_type
+  question: Which insurance payer category recovers the smallest share of allowed charges?
+- id: people_still_employed
+  reference: active_employees
+  question: How many people are currently still employed here?
+- id: staff_chose_to_leave
+  reference: voluntary_attrition
+  question: How many people chose to leave rather than being dismissed?
+- id: ledger_mismatches
+  reference: total_exceptions
+  question: How many mismatches were found when reconciling the accounting ledgers?
+- id: common_reconciliation_problem
+  reference: top_exception_type
+  question: Which kind of ledger reconciliation problem occurs most often?
+- id: requested_versus_delivered
+  reference: fill_rate
+  question: Across customer orders, what percentage of requested units actually shipped?
+- id: strongest_shipped_category
+  reference: top_category_revenue
+  question: Among products we delivered, which category generated the largest shipped sales value?
+- id: customer_spending_leader
+  reference: top_customer
+  question: Which wholesale customer has spent the most with us in total?
+- id: ready_to_migrate
+  reference: go_verdicts
+  question: How many migration assessments gave the green light to proceed?
+- id: attribution_closest_to_truth
+  reference: most_accurate_attribution_model
+  question: Which marketing credit assignment method has the smallest error against ground truth?
+- id: inefficient_paid_ads
+  reference: worst_cpa_paid_channel
+  question: Which paid advertising channel spends the most per conversion credited to the final interaction?
+- id: trial_site_clarifications
+  reference: site_query_rate_per_subject
+  question: Which clinical trial site generates the most clarification requests per enrolled participant?
+- id: old_unresolved_queries
+  reference: stale_open_query_share
+  question: What fraction of unresolved clinical data queries have been waiting sixty days or longer?
+- id: true_alert_fraction
+  reference: aml_alert_precision
+  question: Among transactions flagged at the selected money laundering risk threshold, what fraction are genuinely suspicious?
+- id: weak_crime_pattern
+  reference: aml_weakest_typology_recall
+  question: Which money laundering pattern does the detector miss most often?
+- id: wholesale_profitability
+  reference: wholesale_lowest_margin_department
+  question: Which merchandising department retains the smallest gross profit share of revenue?
+- id: annual_revenue_change
+  reference: wholesale_fy2025_revenue_change
+  question: By what percentage did wholesale revenue grow or shrink from fiscal 2024 to fiscal 2025?
+- id: quota_achievement
+  reference: wholesale_top_quota_rep
+  question: Which salesperson achieved the greatest share of their combined sales target?
+- id: model_test_coverage
+  reference: dbt_most_tested_model
+  question: Which warehouse transformation model has the largest number of automated checks?
+- id: missing_model_documentation
+  reference: dbt_undocumented_model_share
+  question: What percentage of dbt models lack a written description?
+- id: dashboard_dependencies
+  reference: dbt_exposure_upstream_marts
+  question: How many upstream data marts supply the Power BI supply chain control tower report?
