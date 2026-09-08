@@ -362,7 +362,8 @@ flowchart LR
    transcribed, then shown in an editable confirmation field. The free local
    default path uses in-process faster-whisper for English STT and Piper's male
    Joe voice for TTS. Self-hosted Speaches and OpenAI are optional alternatives.
-   Automatic speech can be toggled off; **Listen** and the visible player remain
+   Automatic speech is off by default to keep first answers fast; enable it in
+   the voice panel or use **Listen** for an individual answer. The player remains
    available. The UI explains where audio/text goes and labels generated speech.
 
 ## The model is untrusted input

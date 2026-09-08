@@ -1552,13 +1552,11 @@ def _voice_question() -> str:
 
 
 def _autospeak_on() -> bool:
-    """Whether answers should speak themselves. On by default; a real toggle.
+    """Keep first answers text-first; speech is opt-in for each session.
 
-    Default-on is a deliberate cost decision, not an oversight. Speech is lazy
-    — a session that never gets an answer never loads the model — but the first
-    spoken answer takes the process from 330 MB to 465 MB and pays a one-time
-    model load. Every visitor who asks anything now pays that, so the control
-    to turn it off has to exist and has to be findable.
+    A visitor can still request an individual answer with Listen to answer,
+    or enable the persistent automatic-speech toggle. The initial query no
+    longer pays the speech model's first-load cost.
     """
     # Read from the MIRROR, not from the widget key.
     #
@@ -1569,7 +1567,7 @@ def _autospeak_on() -> bool:
     # key directly therefore meant a reader who turned speech OFF would have
     # it turn itself back on the moment the panel was not on screen, which is
     # the one thing a mute control must never do.
-    return bool(st.session_state.get("_autospeak_pref", True))
+    return bool(st.session_state.get("_autospeak_pref", False))
 
 
 def _is_latest_turn(index: int) -> bool:

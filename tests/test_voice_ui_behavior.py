@@ -58,14 +58,18 @@ def renderer():
         "_voice_ready": lambda: True, "_voice_name": lambda: "en_US-joe-medium",
         "_voice_models": lambda: ("tiny.en", speaker.tts_model),
         "_voice_client": lambda: speaker, "_voice_label": lambda: "local",
-        "_autospeak_on": lambda: surface.session_state.get("_autospeak_pref", True),
     }
-    exec(compile(ast.Module(body=[function], type_ignores=[]), source, "exec"), namespace)
+    preference = next(node for node in ast.parse(source).body
+                      if isinstance(node, ast.FunctionDef) and node.name == "_autospeak_on")
+    exec(compile(ast.Module(body=[preference, function], type_ignores=[]), source, "exec"), namespace)
     return namespace["_render_answer_audio"], surface, speaker
 
 
 def test_repeat_answer_plays_for_new_turn_but_not_for_rerender():
     render, surface, speaker = renderer()
+    render("There are 876 denied claims.", 0, autospeak=True)
+    assert speaker.calls == 0, "the first text answer must not load speech"
+    surface.session_state["_autospeak_pref"] = True
     render("There are 876 denied claims.", 0, autospeak=True)
     render("There are 876 denied claims.", 0, autospeak=True)
     render("There are 876 denied claims.", 1, autospeak=True)
@@ -83,6 +87,7 @@ def test_manual_listen_plays_even_when_automatic_speech_is_off():
 
 def test_audio_eviction_keeps_payload_and_mime_paired():
     render, surface, speaker = renderer()
+    surface.session_state["_autospeak_pref"] = True
     for index in range(5):
         render(f"Result {index}.", index, autospeak=True)
     keys = [key for key in surface.session_state
@@ -105,6 +110,7 @@ def test_streamlit_unordered_state_never_evicts_the_clip_just_generated():
 
     render, surface, speaker = renderer()
     surface.session_state = UnorderedState()
+    surface.session_state["_autospeak_pref"] = True
     for index in range(7):
         render(f"Result {index}.", index, autospeak=True)
         assert surface.players[-1][0] == b"RIFF" + f"Result {index}.".encode()
@@ -127,7 +133,9 @@ def test_removing_a_recording_clears_its_transcript_before_confirming():
         "ui": SimpleNamespace(voice_dock=lambda **_kwargs: None),
     }
     surface.session_state["voice_autospeak"] = False
-    exec(compile(ast.Module(body=[function], type_ignores=[]), source, "exec"), namespace)
+    preference = next(node for node in ast.parse(source).body
+                      if isinstance(node, ast.FunctionDef) and node.name == "_autospeak_on")
+    exec(compile(ast.Module(body=[preference, function], type_ignores=[]), source, "exec"), namespace)
     assert namespace["_voice_question"]() == ""
     assert "voice_draft" not in surface.session_state
     assert "voice_last_digest" not in surface.session_state
@@ -135,6 +143,7 @@ def test_removing_a_recording_clears_its_transcript_before_confirming():
 
 def test_failure_waits_for_explicit_retry_instead_of_retrying_each_rerun():
     render, surface, speaker = renderer()
+    surface.session_state["_autospeak_pref"] = True
     speaker.fail = True
     render("Result.", 0, autospeak=True)
     render("Result.", 0, autospeak=True)
