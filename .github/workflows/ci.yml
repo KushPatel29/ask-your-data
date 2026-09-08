@@ -40,8 +40,8 @@ jobs:
       # the badge and the suite ever disagree again.
       - name: The README test badge must match what the suite collects
         run: |
-          collected=$(python -m pytest --collect-only -q 2>/dev/null             | grep -oE '[0-9]+ tests? collected' | grep -oE '^[0-9]+')
-          claimed=$(grep -oE 'badge/tests-[0-9%C,]+%20passing' README.md | head -1             | sed -E 's|badge/tests-||; s|%20passing||; s|%2C||g; s|,||g')
+          collected=$(python -m pytest --collect-only -q 2>/dev/null | grep -oE '[0-9]+ tests? collected' | grep -oE '^[0-9]+')
+          claimed=$(grep -oE 'badge/tests-[0-9%C,]+%20passing' README.md | head -1 | sed -E 's|badge/tests-||; s|%20passing||; s|%2C||g; s|,||g')
           echo "suite collects: ${collected:-<none>}   README badge: ${claimed:-<none>}"
           if [ -z "$collected" ] || [ -z "$claimed" ]; then
             echo "::error::could not read one of the two numbers"; exit 1
