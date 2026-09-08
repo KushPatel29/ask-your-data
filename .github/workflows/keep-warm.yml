@@ -1,0 +1,40 @@
+name: Keep the demo awake
+
+# Streamlit Community Cloud sleeps an app after about a week of no traffic, and
+# the next visitor gets a "this app has gone to sleep" screen with a button on
+# it. Every other day is comfortably inside that window.
+#
+# The request is also a check: a demo that has stopped answering should be
+# found by this workflow, not by someone following the link from a CV.
+
+on:
+  schedule:
+    - cron: "15 8 */2 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake ask-your-data-kp and check it answers
+        run: |
+          set -euo pipefail
+          url="https://ask-your-data-kp.streamlit.app"
+          for attempt in 1 2 3; do
+            code=$(curl -sS -o /tmp/body.html -w '%{http_code}' -L --max-time 90 --retry 2 --retry-delay 10 "$url" || echo 000)
+            echo "attempt $attempt -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              # A sleeping app still answers 200 with a wake-up page, so the
+              # body has to be looked at rather than just the status line.
+              if grep -qi "has gone to sleep\|Yes, get this app back up" /tmp/body.html; then
+                echo "::warning::$url answered but is asleep; the ping should wake it"
+              fi
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::$url did not return 200 after 3 attempts (last: $code)"
+          exit 1

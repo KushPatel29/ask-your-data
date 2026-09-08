@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-keyless%20regression%20suite-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-1%2C098%20passing-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![Voice](https://img.shields.io/badge/voice-in--process%20%C2%B7%20no%20API%20key-FBBF24)

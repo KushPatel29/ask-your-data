@@ -1,6 +1,10 @@
 name: CI
 
 on:
+  # Weekly, so a green badge means the tests pass now rather
+  # than that they passed the day of the last push.
+  schedule:
+    - cron: "7 7 * * 1"
   push:
     branches: [main, master]
   pull_request:
