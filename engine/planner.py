@@ -236,6 +236,24 @@ COMPARE_RE = re.compile(
     r"fewer than|at most|exactly|equal to)\s+\$?([0-9][0-9,_]*(?:\.[0-9]+)?)\b", re.I)
 YEAR_RE = re.compile(r"\b(?:in|during|for)\s+(19|20)(\d{2})\b")
 
+# Relative dates and sub-year windows are constraints, not optional vocabulary.
+# The grammar currently supports a single explicit year only. Refuse other
+# time windows before the coverage calculation can excuse their words.
+UNSUPPORTED_TIME_RE = re.compile(
+    r"\b(?:today|yesterday|tomorrow|tonight|recently|lately)\b"
+    r"|\b(?:this|last|next|previous|current|past|recent)\s+"
+    r"(?:(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|thirty)\s+)?"
+    r"(?:calendar\s+)?(?:hours?|days?|weeks?|months?|quarters?|years?)\b"
+    r"|\b(?:\d+|one|two|three|seven|thirty)\s+(?:hours?|days?|weeks?|months?|years?)\s+ago\b"
+    r"|\b(?:as\s+of|to\s+date|year-to-date|month-to-date|ytd|mtd)\b"
+    r"|\b\d{4}-\d{1,2}-\d{1,2}\b|\b\d{1,2}/\d{1,2}/\d{2,4}\b"
+    r"|\b(?:in|during|since|before|after|on|until|through|between|for)\s+"
+    r"(?:january|february|march|april|may|june|july|august|september|october|november|december)\b"
+    r"|\b(?:since|before|after|until|through)\s+(?:19|20)\d{2}\b"
+    r"|\b(?:from|between)\s+(?:19|20)\d{2}\s+(?:to|and|through)\s+(?:19|20)\d{2}\b",
+    re.I,
+)
+
 COMPARE_OPS = {
     "over": ">", "above": ">", "more than": ">", "greater than": ">",
     "at least": ">=", "under": "<", "below": "<", "less than": "<",
@@ -2002,6 +2020,13 @@ def plan_question(question: str, layer: Layer, *,
             reason=("that reads as a follow-up, and this compiler is stateless — "
                     "it has no previous question to attach it to. Ask it as a "
                     "whole question and it will compile."))
+    if UNSUPPORTED_TIME_RE.search(question):
+        return PlanResult(
+            question=question, refused=True, kind="unsupported date filter",
+            reason=("I cannot safely apply that date window in the keyless compiler. "
+                    "I have not run an all-time query instead. Use a supported explicit "
+                    "year (for example, claims submitted in 2024), or specify the exact "
+                    "date field and range in the SQL editor or configured model mode."))
     if NEITHER_RE.search(question):
         return PlanResult(
             question=question, refused=True, kind="outside the grammar",

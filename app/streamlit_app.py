@@ -66,6 +66,7 @@ embedding engine.retrieval computed for the identical question a moment earlier.
 """
 
 import hashlib
+import logging
 import re
 import sys
 import time
@@ -571,37 +572,29 @@ def _retrieval_bundle_cached(question: str, scope_fingerprint: tuple, corpus_rev
     The question, access policy and live schema revision all participate in the
     cache identity. An old answer's retrieval must not outlive a schema change.
 
-    Returns None rather than raising. Retrieval is an optimisation over pasting
-    the whole catalogue, so a failure here has to cost a panel, not an answer:
-    schema_catalog_for() already falls back to the full catalogue internally and
-    the assistant keeps working.
+    Cache successful work only. Exceptions must escape this function so a
+    temporary failure cannot become a permanently cached None. The session
+    boundary below handles degradation and a short retry cooldown.
     """
-    try:
-        started = time.perf_counter()
-        del scope_fingerprint, corpus_revision
-        hits = retrieval.scoped_hits(
-            retrieval.retrieve_hybrid(question, con=con, allowed_tables=ACCESS.allowed_tables),
-            allowed_tables=ACCESS.allowed_tables, denied_columns=ACCESS.denied_by_table,
-        )
-        # Only the hybrid call is the RETRIEVE stage. The two rankings gathered
-        # below are re-run purely so the panel can show the ranks RRF consumed,
-        # and charging the pipeline for the display's own overhead would
-        # overstate what the assistant pays by roughly 50%.
-        hybrid_ms = 1000 * (time.perf_counter() - started)
-
-        vector = {hit.table: rank for rank, hit
-                  in enumerate(retrieval.retrieve(
-                      question, k=POOL, con=con, allowed_tables=ACCESS.allowed_tables), 1)}
-        keyword = {hit.table: rank for rank, hit
-                   in enumerate(retrieval.retrieve_keyword(
-                       question, k=POOL, con=con, allowed_tables=ACCESS.allowed_tables), 1)}
-        tokens_used = max(1, len(retrieval.schema_catalog_for(
-            question, con,
-            allowed_tables=ACCESS.allowed_tables,
-            denied_columns=ACCESS.denied_by_table,
-        )) // 4)
-    except Exception:
-        return None
+    started = time.perf_counter()
+    del scope_fingerprint, corpus_revision
+    hits = retrieval.scoped_hits(
+        retrieval.retrieve_hybrid(question, con=con, allowed_tables=ACCESS.allowed_tables),
+        allowed_tables=ACCESS.allowed_tables, denied_columns=ACCESS.denied_by_table,
+    )
+    # The other rankings are display overhead, not the measured retrieval stage.
+    hybrid_ms = 1000 * (time.perf_counter() - started)
+    vector = {hit.table: rank for rank, hit
+              in enumerate(retrieval.retrieve(
+                  question, k=POOL, con=con, allowed_tables=ACCESS.allowed_tables), 1)}
+    keyword = {hit.table: rank for rank, hit
+               in enumerate(retrieval.retrieve_keyword(
+                   question, k=POOL, con=con, allowed_tables=ACCESS.allowed_tables), 1)}
+    tokens_used = max(1, len(retrieval.schema_catalog_for(
+        question, con,
+        allowed_tables=ACCESS.allowed_tables,
+        denied_columns=ACCESS.denied_by_table,
+    )) // 4)
     return {
         "hits": hits,
         "vector": vector,
@@ -617,11 +610,25 @@ def _retrieval_bundle_cached(question: str, scope_fingerprint: tuple, corpus_rev
 
 
 def _retrieval_bundle(question: str):
+    # Bound repeated rerender attempts without caching failure as success.
+    # Scope participates so a failure for one role cannot suppress another.
+    identity = hashlib.sha256(repr((question, ACCESS.fingerprint)).encode()).hexdigest()
+    now = time.monotonic()
+    retries = {key: until for key, until in
+               st.session_state.get("_retrieval_retry_after", {}).items() if until > now}
+    st.session_state["_retrieval_retry_after"] = retries
+    if identity in retries:
+        return None
     try:
         revision = retrieval.corpus_revision(con)
-    except Exception:
+        bundle = _retrieval_bundle_cached(question, ACCESS.fingerprint, revision)
+    except Exception as exc:
+        retries[identity] = time.monotonic() + 5.0
+        st.session_state["_retrieval_retry_after"] = dict(list(retries.items())[-32:])
+        # Do not log exception messages: they may contain questions or metadata.
+        logging.getLogger(__name__).warning("Schema retrieval unavailable (%s)",
+                                            type(exc).__name__)
         return None
-    bundle = _retrieval_bundle_cached(question, ACCESS.fingerprint, revision)
     if bundle is not None:
         # Re-derive this cheap field at the session boundary as a guard against
         # stale cached payloads from an older code version.
@@ -673,6 +680,8 @@ def _show_grounding(bundle, *, tokens: bool = True) -> None:
     must not report a schema budget it did not pay.
     """
     if not bundle:
+        st.caption("Retrieval evidence is unavailable for this turn. No ranked-table "
+                   "or retrieval-confidence claim is being made.")
         return
     # Hybrid is what schema_catalog_for() actually uses, so the readout shows
     # the ranking the model was really given - not a prettier one.
@@ -777,7 +786,8 @@ def _verify_now(sql: str, result, question: str):
     return findings, 1000 * (time.perf_counter() - started)
 
 
-def _verification_readout(findings, *, verify_ms=None, refused=False) -> None:
+def _verification_readout(findings, *, verify_ms=None, refused=False,
+                          refusal_note="") -> None:
     """Findings as (check, severity, message), which is all app/ui.py accepts.
 
     Unpacked here rather than in ui.py so that module keeps importing nothing
@@ -786,7 +796,7 @@ def _verification_readout(findings, *, verify_ms=None, refused=False) -> None:
     """
     ui.verification(
         [(f.check, f.severity, f.message) for f in findings],
-        checks=VERIFY_CHECKS, verify_ms=verify_ms, refused=refused,
+        checks=VERIFY_CHECKS, verify_ms=verify_ms, refused=refused, refusal_note=refusal_note,
     )
 
 
@@ -1704,7 +1714,7 @@ def _audit_turn(entry: dict, *, engine: str, coverage=None, metric: str = "") ->
             corrections=list(entry.get("corrections") or []),
             guard_ok=bool(entry.get("guard_ok", True)),
             guard_reason=entry.get("guard_reason", ""),
-            verifier=[{"rule": getattr(f, "rule", ""), "severity": getattr(f, "severity", "")}
+            verifier=[{"rule": getattr(f, "check", ""), "severity": getattr(f, "severity", "")}
                       for f in (entry.get("findings") or [])],
             metric=metric,
             coverage=coverage,
@@ -1860,6 +1870,16 @@ def _keyless_turn(question: str) -> dict:
     return _plan_turn(question, request_deadline)
 
 
+def _refuse_unverified_plan(entry: dict, *, coverage=None) -> dict:
+    """Keep rejected results out of prose, speech, downloads and the audit count."""
+    failures = [finding.message for finding in entry["findings"] if finding.blocking]
+    entry.update(refused=True, verification_failed=True, answer="", rows=None,
+                 truncated=False, refusal_kind="verification failed",
+                 reason="I could not verify this calculation. " + " ".join(failures))
+    _audit_turn(entry, engine="plan", coverage=coverage)
+    return entry
+
+
 def _plan_turn(question: str, request_deadline=None) -> dict:
     """Compile a question without a model, run it, and record what happened.
 
@@ -1933,6 +1953,7 @@ def _plan_turn(question: str, request_deadline=None) -> dict:
     guard_started = time.perf_counter()
     ok, reason = validate_sql(result.sql)
     entry["guard_ms"] = 1000 * (time.perf_counter() - guard_started)
+    entry["guard_ok"] = ok
     try:
         request_deadline.require("SQL guard")
     except deadline.DeadlineExpired as exc:
@@ -1953,20 +1974,36 @@ def _plan_turn(question: str, request_deadline=None) -> dict:
         _audit_turn(entry, engine="plan", coverage=result.plan.coverage)
         return entry
 
-    exec_started = time.perf_counter()
-    ran = run_query(con, result.sql, access=ACCESS, deadline=request_deadline)
-    entry["exec_ms"] = 1000 * (time.perf_counter() - exec_started)
-    findings, verify_ms = _verify_now(result.sql, ran, question)
+    # SQL findings are a gate, not just evidence shown after execution.
+    findings, verify_ms = _verify_now(result.sql, None, question)
     entry["findings"] = findings
     entry["verify_ms"] = verify_ms
-    entry["ran"] = bool(ran.ok)
-    entry["error"] = "" if ran.ok else ran.error
     try:
         request_deadline.require("verification")
     except deadline.DeadlineExpired as exc:
         return _timeout_turn(
             question, "plan", exc, entry=entry, coverage=result.plan.coverage
         )
+    if any(finding.blocking for finding in findings):
+        return _refuse_unverified_plan(entry, coverage=result.plan.coverage)
+
+    exec_started = time.perf_counter()
+    ran = run_query(con, result.sql, access=ACCESS, deadline=request_deadline)
+    entry["exec_ms"] = 1000 * (time.perf_counter() - exec_started)
+    entry["ran"] = bool(ran.ok)
+    entry["error"] = "" if ran.ok else ran.error
+    if ran.ok:
+        verify_started = time.perf_counter()
+        entry["findings"] += verifier.check_result(result.sql, ran, question)
+        entry["verify_ms"] += 1000 * (time.perf_counter() - verify_started)
+    try:
+        request_deadline.require("verification")
+    except deadline.DeadlineExpired as exc:
+        return _timeout_turn(
+            question, "plan", exc, entry=entry, coverage=result.plan.coverage
+        )
+    if any(finding.blocking for finding in entry["findings"]):
+        return _refuse_unverified_plan(entry, coverage=result.plan.coverage)
     if ran.ok and ran.rows:
         entry["rows"] = pd.DataFrame(ran.rows, columns=ran.columns)
         entry["truncated"] = bool(ran.truncated)
@@ -2609,9 +2646,29 @@ def render_plan_entry(entry, index: int) -> None:
             timings[label] = entry[key]
 
     with st.chat_message("assistant"):
-        if entry["refused"]:
-            ui.pipeline(retrieved=True, planned="fail", guarded=False,
-                        executed=False, timings=timings)
+        blocking = [finding for finding in entry.get("findings", []) if finding.blocking]
+        if entry["refused"] or blocking:
+            # Also suppress rejected answers retained from an older deployment.
+            ui.pipeline(retrieved=bool(entry.get("bundle")),
+                        planned=True if entry.get("guard_ms") is not None else "fail",
+                        verified="fail" if blocking else False,
+                        guarded=(True if entry.get("guard_ok") else "fail")
+                        if entry.get("guard_ms") is not None else False,
+                        executed=bool(entry.get("ran")), timings=timings)
+            if blocking:
+                ui.refusal("I could not verify this calculation. "
+                           + " ".join(finding.message for finding in blocking),
+                           kind="verification failed")
+                _verification_readout(entry["findings"], verify_ms=entry.get("verify_ms"),
+                                      refused=True,
+                                      refusal_note=("The query ran, but its result failed "
+                                                    "verification and is withheld."
+                                                    if entry.get("ran") else
+                                                    "The compiled query failed verification "
+                                                    "and was not executed."))
+                st.caption("No answer or audio is provided for a rejected calculation. "
+                           "Try the overall governed metric, or clarify its definition.")
+                return
             # The kind comes from engine.planner, which knows why it stopped.
             # Deriving it here from "did a Plan object get built" labelled the
             # median refusal "nothing to bind", when the warehouse binds salary
@@ -2631,8 +2688,13 @@ def render_plan_entry(entry, index: int) -> None:
             )
             return
 
-        ui.pipeline(retrieved=True, planned=True, verified=True, guarded=True,
+        ui.pipeline(retrieved=bool(entry.get("bundle")), planned=True,
+                    verified=entry.get("verify_ms") is not None, guarded=True,
                     executed=True if entry["ran"] else "fail", timings=timings)
+        if not entry.get("bundle"):
+            st.caption("Schema retrieval was unavailable for this turn. The compiler used "
+                       "the permitted semantic layer; ask again after a few seconds to "
+                       "retry retrieval.")
         if entry["answer"]:
             ui.answer(entry["answer"])
             _render_answer_audio(entry["answer"], index, namespace="plan",

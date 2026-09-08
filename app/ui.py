@@ -1869,7 +1869,7 @@ _SEVERITY_ORDER = ("error", "warn", "note")
 
 
 def verification(findings, *, checks=None, verify_ms: float | None = None,
-                 refused: bool = False, ran: bool = True) -> None:
+                 refused: bool = False, ran: bool = True, refusal_note: str = "") -> None:
     """What engine.verify decided about the query that just ran.
 
     `findings` is a list of (check, severity, message) triples — plain tuples,
@@ -1888,6 +1888,9 @@ def verification(findings, *, checks=None, verify_ms: float | None = None,
     `ran=False` renders nothing at all. A turn where the verifier did not run —
     a refusal before any SQL existed — must not draw an empty board, because a
     board of quiet rules is a claim that they were checked.
+
+    `refusal_note` describes non-model paths, which do not have a retry loop
+    and can withhold a result after execution. It is plain text, never markup.
     """
     if not ran:
         return
@@ -1931,11 +1934,14 @@ def verification(findings, *, checks=None, verify_ms: float | None = None,
 
     refusal = ""
     if refused:
+        note = refusal_note or (
+            "The loop ran out of attempts with this still unresolved, so the query "
+            "below was written and never executed. Running it would have produced "
+            "a number and a confident sentence about it, which is the failure "
+            "this layer exists to prevent."
+        )
         refusal = (
-            '<p class="ayd-ver-refused">The loop ran out of attempts with this '
-            'still unresolved, so the query below was written and never executed. '
-            'Running it would have produced a number and a confident sentence '
-            'about it, which is the failure this layer exists to prevent.</p>'
+            f'<p class="ayd-ver-refused">{html.escape(note)}</p>'
         )
 
     st.markdown(

@@ -53,6 +53,7 @@
   phrases:
     - denial rate
     - claim denial rate
+    - claims denial rate
     - denials rate
     - rate of denials
   sql: >

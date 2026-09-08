@@ -242,6 +242,15 @@ def test_a_refusal_says_the_query_was_written_and_not_run(panels):
     assert 'class="ayd-ver-refused"' in body
 
 
+def test_keyless_refusal_note_does_not_invent_model_retries(ui):
+    body = render(ui, lambda: ui.verification(
+        [FINDINGS[0]], refused=True,
+        refusal_note="The result was withheld. <unsafe>"))
+    assert "result was withheld" in body and "&lt;unsafe&gt;" in body
+    assert "<unsafe>" not in body
+    assert "loop ran out" not in body and "never executed" not in body
+
+
 def test_a_verification_refusal_never_prints_the_models_correction_text(panels):
     """engine.verify.correction_message() closes with instructions addressed to
     the MODEL. The panel carries the findings, never that text."""
