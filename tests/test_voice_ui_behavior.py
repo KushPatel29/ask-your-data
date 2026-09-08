@@ -61,7 +61,8 @@ def renderer():
     }
     preference = next(node for node in ast.parse(source).body
                       if isinstance(node, ast.FunctionDef) and node.name == "_autospeak_on")
-    exec(compile(ast.Module(body=[preference, function], type_ignores=[]), source, "exec"), namespace)
+    module = ast.Module(body=[preference, function], type_ignores=[])
+    exec(compile(module, source, "exec"), namespace)  # noqa: S102 - fixture builds the unit under test
     return namespace["_render_answer_audio"], surface, speaker
 
 
@@ -135,7 +136,8 @@ def test_removing_a_recording_clears_its_transcript_before_confirming():
     surface.session_state["voice_autospeak"] = False
     preference = next(node for node in ast.parse(source).body
                       if isinstance(node, ast.FunctionDef) and node.name == "_autospeak_on")
-    exec(compile(ast.Module(body=[preference, function], type_ignores=[]), source, "exec"), namespace)
+    module = ast.Module(body=[preference, function], type_ignores=[])
+    exec(compile(module, source, "exec"), namespace)  # noqa: S102 - fixture builds the unit under test
     assert namespace["_voice_question"]() == ""
     assert "voice_draft" not in surface.session_state
     assert "voice_last_digest" not in surface.session_state

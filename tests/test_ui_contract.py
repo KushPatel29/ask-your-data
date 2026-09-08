@@ -1041,14 +1041,32 @@ def test_the_mute_choice_is_not_stored_only_in_the_widget_key():
     """Streamlit drops a widget's session_state entry on any run where the
     widget is not rendered, and the toggle lives in a panel several paths do
     not draw. Probed live, the key alternated ABSENT / True / ABSENT between
-    runs — so reading it directly meant speech switched itself back on."""
+    runs — so reading it directly meant speech switched itself back on.
+
+    Two separate properties, and they moved independently: the preference is
+    read from the mirror rather than the widget key, and it now defaults to
+    OFF. This test pinned the default as True and so went red the moment
+    speech became opt-in — a correct change failing on a stale expectation.
+    Both are asserted, so neither can drift silently again.
+    """
     source = _app_source()
     assert '_autospeak_pref' in source
-    assert 'st.session_state.get("_autospeak_pref", True)' in source
+    assert 'st.session_state.get("_autospeak_pref", False)' in source, (
+        "the preference must be read from the mirror with an explicit default; "
+        "speech is opt-in, so that default is False"
+    )
+    assert 'st.session_state.get("_autospeak_pref", True)' not in source, (
+        "speech defaults back on — the first answer would pay the speech "
+        "model's load cost again"
+    )
 
 
 def test_speech_can_be_turned_off_at_all():
-    """Default-on is a cost decision — the first spoken answer takes the
-    process from 330 MB to 465 MB — so the control to stop it has to exist."""
+    """The control has to exist whichever way the default points.
+
+    Speech is opt-in now, so this is no longer the only thing standing between
+    a reader and an unasked-for 135 MB of model load — but the toggle is still
+    what makes the choice persistent, and it is still a cost decision: the
+    first spoken answer takes the process from 330 MB to 465 MB."""
     source = _app_source()
     assert "Speak answers automatically" in source
