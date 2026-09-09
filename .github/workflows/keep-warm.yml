@@ -23,8 +23,16 @@ jobs:
         run: |
           set -euo pipefail
           url="https://ask-your-data-kp.streamlit.app"
+          jar="$(mktemp)"
           for attempt in 1 2 3; do
-            code=$(curl -sS -o /tmp/body.html -w '%{http_code}' -L --max-time 90 --retry 2 --retry-delay 10 "$url" || echo 000)
+            # Streamlit Cloud answers the first request with a redirect to
+            # /-/login?payload=... That is a COOKIE HANDSHAKE, not an auth wall:
+            # the payload has to come back as a cookie on the next hop. Without
+            # -c/-b every hop drops it, curl walks 50 redirects and gives up,
+            # and a healthy app reports as down. Measured 2026-09-09: all six
+            # Streamlit demos in this portfolio return 303-then-fail without a
+            # jar and 200 with one.
+            code=$(curl -sS -o /tmp/body.html -w '%{http_code}' -L \n                     -c "$jar" -b "$jar" \n                     --max-time 90 --retry 2 --retry-delay 10 "$url" || echo 000)
             echo "attempt $attempt -> HTTP $code"
             if [ "$code" = "200" ]; then
               # A sleeping app still answers 200 with a wake-up page, so the
@@ -34,6 +42,7 @@ jobs:
               fi
               exit 0
             fi
+            : > "$jar"
             sleep 20
           done
           echo "::error::$url did not return 200 after 3 attempts (last: $code)"
