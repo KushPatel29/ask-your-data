@@ -32,7 +32,7 @@ jobs:
             # and a healthy app reports as down. Measured 2026-09-09: all six
             # Streamlit demos in this portfolio return 303-then-fail without a
             # jar and 200 with one.
-            code=$(curl -sS -o /tmp/body.html -w '%{http_code}' -L \n                     -c "$jar" -b "$jar" \n                     --max-time 90 --retry 2 --retry-delay 10 "$url" || echo 000)
+            code=$(curl -sS -o /tmp/body.html -w '%{http_code}' -L -c "$jar" -b "$jar" --max-time 90 --retry 2 --retry-delay 10 "$url" || echo 000)
             echo "attempt $attempt -> HTTP $code"
             if [ "$code" = "200" ]; then
               # A sleeping app still answers 200 with a wake-up page, so the
