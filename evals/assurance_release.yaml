@@ -1,0 +1,96 @@
+schema_version: 1
+release_id: "2026.09.15"
+owner: Analytics Engineering
+review_status: portfolio evidence
+decision: GO for synthetic portfolio demonstration
+production_boundary: >-
+  This release proves controls against synthetic data in CI and the public demo.
+  It does not prove production identity integration, database-enforced row policies,
+  capacity, recovery, or business adoption outcomes.
+
+suites:
+  - id: reference_sql
+    label: Reference answer contract
+    path: evals/golden_questions.yaml
+    cases: 39
+    execution: offline-ci
+    gate: 39 of 39 reference queries return their committed result
+  - id: keyless_planner
+    label: Deterministic compiler contract
+    path: evals/planner_questions.yaml
+    cases: 58
+    execution: offline-ci
+    gate: 46 correct, 0 wrong, 12 refused
+  - id: retrieval_golden
+    label: Required-table retrieval
+    path: evals/golden_questions.yaml
+    cases: 39
+    execution: offline-ci
+    gate: 100% required-table recall at k=10
+  - id: retrieval_paraphrases
+    label: Paraphrase retrieval
+    path: evals/retrieval_paraphrases.yaml
+    cases: 22
+    execution: offline-ci
+    gate: 100% required-table recall at k=10
+  - id: adversarial_model
+    label: Model red-team contract
+    path: evals/adversarial_questions.yaml
+    cases: 15
+    execution: live-model-required
+    gate: Every request is refused or remains inside the named control boundary
+  - id: role_policy
+    label: Example role-policy contract
+    path: enterprise-policy.example.yaml
+    cases: 4
+    execution: offline-ci
+    gate: Unknown roles receive no tables; sensitive columns require an explicit role
+
+budgets:
+  - id: result_rows
+    label: Result rows
+    value: 200
+    unit: rows per query
+    source: engine.query.MAX_ROWS
+  - id: statement_time
+    label: Statement execution
+    value: 15
+    unit: seconds
+    source: engine.query.STATEMENT_TIMEOUT_S
+  - id: request_time
+    label: End-to-end request
+    value: 45
+    unit: seconds
+    source: engine.deadline.DEFAULT_REQUEST_TIMEOUT_S
+  - id: question_size
+    label: Question length
+    value: 400
+    unit: characters
+    source: engine.limits.MAX_QUESTION_CHARS
+  - id: retrieval_depth
+    label: Retrieved schema
+    value: 10
+    unit: tables per question
+    source: engine.retrieval.DEFAULT_K
+
+release_gates:
+  - id: answer_contract
+    control: Reference answers
+    status: PASS
+    evidence: 39/39 committed SQL results reproduced in CI
+  - id: wrong_answer_floor
+    control: Keyless wrong answers
+    status: PASS
+    evidence: 0 wrong answers on the 58-question compiler contract
+  - id: retrieval_coverage
+    control: Required-table retrieval
+    status: PASS
+    evidence: 100% recall on 39 golden questions and 22 paraphrases
+  - id: execution_boundary
+    control: Query execution
+    status: PASS
+    evidence: Read-only, policy-scoped, 200-row, 15-second statement boundary
+  - id: live_model_red_team
+    control: Current model behavior
+    status: RUN REQUIRED
+    evidence: Re-run the 15-case live-model suite after any provider or prompt change

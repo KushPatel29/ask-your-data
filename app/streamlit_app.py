@@ -84,6 +84,7 @@ from app import ui  # noqa: E402
 from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
 from engine import (  # noqa: E402
     access,
+    assurance,
     audit,
     deadline,
     demo_mode,
@@ -2945,7 +2946,8 @@ def _project_workspace() -> None:
         "then inspect the SQL and returned data.\n"
         "2. Open **Data catalog** to explore the available domains and measures.\n"
         "3. Open **Trust center** to inspect access boundaries, session timings, "
-        "and reference questions checked against committed expectations."
+        "release gates, red-team coverage, roles, budgets, and reference questions "
+        "checked against committed expectations."
     )
     st.subheader("Engineering decisions you can inspect")
     st.dataframe(pd.DataFrame([
@@ -2963,7 +2965,8 @@ def _project_workspace() -> None:
          "read-only SQL, deadlines, and bounded result sizes."},
         {"Capability": "Reproducible delivery", "Implementation":
          "Regression and adversarial tests, locked dependencies, container CI, security "
-         "scans, a build fingerprint, and documented deployment tradeoffs."},
+         "scans, a build fingerprint, and a versioned release pack that separates offline "
+         "proof from model evaluations that must be rerun."},
     ]), hide_index=True, width="stretch")
     st.subheader("Production boundary")
     st.markdown(
@@ -3048,6 +3051,87 @@ def _trust_workspace(connection) -> str | None:
         st.info(
             "This local demo uses synthetic data and an explicitly unauthenticated demo role. "
             "Set ASK_AUTH_MODE=oidc and a policy file before serving real organizational data."
+        )
+
+    release = assurance.load_manifest()
+    snapshot = assurance.release_snapshot(release)
+    st.subheader("Release assurance")
+    ui.layer_summary(
+        [
+            (snapshot["release_id"], "release", f"evidence {snapshot['fingerprint']}"),
+            (str(snapshot["passing_gates"]), "gates passed", "offline, reproducible evidence"),
+            (str(snapshot["threat_cases"]), "red-team cases",
+             f"{snapshot['threat_families']} threat families"),
+            (str(snapshot["open_gates"]), "rerun required", "after provider or prompt changes"),
+        ],
+        footnote=f"Decision: {snapshot['decision']}. {snapshot['production_boundary']}",
+    )
+    st.warning(
+        "The live-model red-team gate is intentionally open. Offline CI proves the executor, "
+        "policy, reference answers, compiler, and retrieval contracts; a provider or prompt "
+        "change still requires the credentialed 15-case model evaluation before promotion."
+    )
+    st.dataframe(
+        pd.DataFrame(assurance.gate_rows(release)),
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "Status": st.column_config.TextColumn(width="small"),
+            "Control": st.column_config.TextColumn(width="medium"),
+            "Evidence": st.column_config.TextColumn(width="large"),
+        },
+    )
+    with st.expander("Open the governed release pack"):
+        suites_tab, threats_tab, roles_tab, budgets_tab = st.tabs(
+            ("Benchmarks", "Red team", "Role policy", "Cost envelope")
+        )
+        with suites_tab:
+            st.caption(
+                "Case counts, execution mode, release threshold, and source file are versioned "
+                "together. The fingerprint changes when any governed evidence changes."
+            )
+            st.dataframe(
+                pd.DataFrame(assurance.suite_rows(release)),
+                hide_index=True,
+                width="stretch",
+            )
+        with threats_tab:
+            threats = pd.DataFrame(assurance.threat_rows())
+            families = tuple(sorted(threats["Threat"].unique()))
+            chosen = st.multiselect(
+                "Threat families",
+                families,
+                default=(),
+                placeholder="All threat families",
+                key="assurance-threat-filter",
+            )
+            visible = threats[threats["Threat"].isin(chosen)] if chosen else threats
+            st.caption(
+                f"{len(visible)} of {len(threats)} adversarial prompts shown. "
+                "Choose a family to narrow. These are model-behavior cases; deterministic "
+                "boundary tests remain in CI."
+            )
+            st.dataframe(visible, hide_index=True, width="stretch")
+        with roles_tab:
+            st.caption(
+                "Example deployment policy—not the anonymous public session. Unknown roles "
+                "receive no tables, and sensitive access is an explicit exception."
+            )
+            st.dataframe(
+                pd.DataFrame(assurance.role_rows()),
+                hide_index=True,
+                width="stretch",
+            )
+        with budgets_tab:
+            budget_frame = pd.DataFrame(assurance.budget_rows(release))
+            st.caption(
+                "Approved release values are compared with the constants the running executor "
+                "actually imports. Any mismatch changes MATCH to DRIFT and fails CI."
+            )
+            st.dataframe(budget_frame, hide_index=True, width="stretch")
+        st.caption(
+            "Source: evals/assurance_release.yaml · review status: portfolio evidence · "
+            "no production outcome is inferred from these controls."
         )
 
     st.subheader("Session operations")

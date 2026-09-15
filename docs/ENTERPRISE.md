@@ -3,6 +3,9 @@
 > **New review:** The current 1 September 2026 assessment, including free local
 > voice, n8n operations, newly fixed defects, and the remaining enterprise
 > release gates, is in [`ENTERPRISE_READINESS_2026.md`](ENTERPRISE_READINESS_2026.md).
+> The current governed decision pack, stakeholder case, UAT scenarios and staged
+> rollout are in [`ASSURANCE_CASE.md`](ASSURANCE_CASE.md); its machine-readable
+> release gates are rendered directly in the application's Trust Center.
 
 > **Current status (remediation addendum).** This document is the original
 > point-in-time adversarial assessment; the detailed reproductions below are
