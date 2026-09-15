@@ -12,6 +12,17 @@
 FROM python:3.12-slim
 
 WORKDIR /app
+
+# The slim tag is rebuilt regularly, but a perfectly current language image can
+# still contain Debian packages for which security fixes already exist. Apply
+# those fixes in the release layer before Python dependencies are installed;
+# the container scan is intentionally configured to fail on fixed HIGH/CRITICAL
+# findings rather than accepting a vulnerable snapshot of the base image.
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt requirements.lock ./
 RUN pip install --no-cache-dir --require-hashes -r requirements.lock
 

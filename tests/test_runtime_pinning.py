@@ -58,6 +58,21 @@ def test_the_container_runs_the_interpreter_the_suite_was_proven_on():
             "and on a different interpreter it is proof of something else")
 
 
+def test_the_release_image_applies_available_os_security_fixes():
+    """The image gate must not depend on when a floating slim tag was rebuilt.
+
+    Trivy found fixed HIGH/CRITICAL Debian CVEs in an otherwise current
+    ``python:3.12-slim`` snapshot.  Installing the repository's available
+    security updates in the image makes the scan a release control rather than
+    a lottery tied to Docker Hub's rebuild cadence.
+    """
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "apt-get update" in dockerfile
+    assert "apt-get upgrade -y --no-install-recommends" in dockerfile
+    assert "rm -rf /var/lib/apt/lists/*" in dockerfile
+    assert dockerfile.index("apt-get upgrade") < dockerfile.index("pip install")
+
+
 def test_ci_runs_the_interpreter_the_container_ships():
     ci = _repo_file(".github/workflows/ci.yml")
     versions = re.findall(r'python-version:\s*"?([0-9.]+)"?', ci)
