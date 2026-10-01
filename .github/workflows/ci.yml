@@ -29,6 +29,11 @@ jobs:
       - name: Lint
         run: ruff check .
 
+      # CI installs from requirements.lock, so a bump to requirements.txt alone changes nothing that is tested.
+      # This fails such a change until the lock is regenerated and the suite has run on the new versions.
+      - name: The lock satisfies requirements.txt
+        run: python scripts/check_lock_matches_requirements.py
+
       - name: Build the warehouse and run the suite
         # No API key in CI: the SQL guard, executor, warehouse, harness (fake
         # client), the keyless compiler, and every golden reference query run
