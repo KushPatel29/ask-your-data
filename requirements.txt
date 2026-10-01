@@ -1,5 +1,5 @@
 duckdb>=1.5.5
-anthropic>=1.2.0
+anthropic>=1.8.0
 openai>=3.6.0
 streamlit>=1.62,<2
 pandas>=3.0.5
