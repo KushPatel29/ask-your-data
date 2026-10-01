@@ -12,6 +12,8 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-24.04
+    # The suite takes about four minutes. A hang must not hold a runner for the six-hour default.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
 
