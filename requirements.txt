@@ -14,5 +14,5 @@ PyJWT[crypto]>=2.13.0,<3
 # reports voice as unavailable if either is missing, so a deployment that
 # cannot install them still answers questions.
 faster-whisper>=1.2,<2
-piper-tts>=1.7,<2
+piper-tts>=1.8.0,<2
 pytest>=9.1.1
