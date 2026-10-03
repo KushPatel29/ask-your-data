@@ -90,6 +90,7 @@ from engine import (  # noqa: E402
     demo_mode,
     deployment,
     exemplars,
+    metric_queries,
     narrate,
     planner,
     providers,
@@ -1806,6 +1807,16 @@ def _metric_turn(question: str, metric, match_ms: float,
         _audit_turn(entry, engine="metric", metric=metric.name)
         return entry
 
+    findings, verify_ms = _verify_now(metric.sql, None, question)
+    entry["findings"], entry["verify_ms"] = findings, verify_ms
+    if any(finding.blocking for finding in findings):
+        entry.update(refused=True, verification_failed=True,
+                     refusal_kind="verification failed",
+                     reason="I could not verify this calculation. " + " ".join(
+                         f.message for f in findings if f.blocking))
+        _audit_turn(entry, engine="metric", metric=metric.name)
+        return entry
+
     exec_started = time.perf_counter()
     ran = run_query(con, metric.sql, access=ACCESS, deadline=request_deadline)
     entry["exec_ms"] = 1000 * (time.perf_counter() - exec_started)
@@ -1822,6 +1833,13 @@ def _metric_turn(question: str, metric, match_ms: float,
         )
     entry["timed_out"] = bool(getattr(ran, "timed_out", False))
     entry["policy_denied"] = bool(getattr(ran, "policy_denied", False))
+    if any(finding.blocking for finding in findings):
+        entry.update(refused=True, verification_failed=True,
+                     refusal_kind="verification failed",
+                     reason="I could not verify this result. " + " ".join(
+                         f.message for f in findings if f.blocking))
+        _audit_turn(entry, engine="metric", metric=metric.name)
+        return entry
     certified = metric_layer.MetricAnswer(metric=metric, result=ran)
     if ran.ok and ran.rows:
         entry["rows"] = pd.DataFrame(ran.rows, columns=ran.columns)
@@ -1863,6 +1881,20 @@ def _keyless_turn(question: str) -> dict:
         return entry
     started = time.perf_counter()
     metric = metric_layer.match_metric(question, metric_registry)
+    if metric is None:
+        try:
+            metric = metric_queries.match_scoped_metric(question, metric_registry, con,
+                                                       access=ACCESS, deadline=request_deadline)
+        except metric_queries.MetricScopeError as exc:
+            entry = {
+                "question": question, "engine": "planner", "refused": True,
+                "reason": str(exc), "refusal_kind": "unsupported metric scope",
+                "answer": "", "sql": "", "attempts": 1, "corrections": [],
+                "findings": [], "ran": False, "rows": None, "truncated": False,
+                "error": "", "usage": {}, "bundle": None, "trace": {},
+            }
+            _audit_turn(entry, engine="plan")
+            return entry
     match_ms = 1000 * (time.perf_counter() - started)
     if metric is not None:
         return _metric_turn(question, metric, match_ms, request_deadline)
@@ -2604,7 +2636,7 @@ def render_metric_entry(entry, index: int) -> None:
             )
             _render_answer_audio(entry["answer"], index, namespace="metric",
                                  autospeak=_is_latest_turn(index))
-        if entry["ran"] and not entry.get("contract_match"):
+        if entry["ran"] and not metric.scope and not entry.get("contract_match"):
             st.error(
                 f"Definition drift: metrics.yaml expects {metric.expect}, but the live "
                 "warehouse returned a different value. The SQL is shown below."
@@ -2619,8 +2651,8 @@ def render_metric_entry(entry, index: int) -> None:
         _sql_editor(entry, index)
         st.caption(
             f"Certified definition `{metric.name}` · owner: {metric.owner}. Exact phrase "
-            "matching only; qualified questions fall back to the compiler rather than "
-            "silently dropping a filter or breakdown."
+            "matching only. Supported payer and specialty scopes retain the definition. "
+            "Scoped results are not compared with the overall benchmark."
         )
 
 

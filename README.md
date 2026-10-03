@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-1%2C128%20passing-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-1%2C162%20passing-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![Voice](https://img.shields.io/badge/voice-in--process%20%C2%B7%20no%20API%20key-FBBF24)
@@ -48,7 +48,8 @@ value to its row and column. This prevents invented summaries, not incorrectly
 interpreted questions or incorrect SQL. Six **certified metrics** carry an owner, a committed definition and a
 value CI re-checks. Speech runs inside the process on open models, so the public
 demo listens and answers aloud with no account and no second service.
-See the [September release verification](docs/RELEASE_2026_09_15.md) for current
+See the [October scope verification](docs/RELEASE_2026_10_03.md) and the
+[September release verification](docs/RELEASE_2026_09_15.md) for
 test evidence and the remaining production integration requirements.
 The [RAG review](docs/RAG_REVIEW_2026_09_07.md) separately measures retrieval on
 39 reference questions and 22 development paraphrases, with CI recall gates.
@@ -311,6 +312,20 @@ those two is not a matter of opinion here; it is 97 questions and a table.
 
 ## How it works
 
+The keyless certified path can now answer questions such as:
+
+- "What is the claim denial rate by payer type?"
+- "What is the net collection rate for Medicare?"
+- "What is the claim denial rate by specialty for payer Blue Cross Blue Shield?"
+
+Denial rate still excludes pending claims. Net collection rate still uses paid
+claims only. One breakdown and one exact catalog-value filter can be combined
+in either order. Unknown values, extra filters, unsupported dates and rankings
+are refused. Every dimension join is checked for unique keys, and catalog reads
+and the resulting query respect the caller's access policy. A scoped result is
+labelled with its scope and is not compared with the overall benchmark value.
+The schema-only compiler scorecard below remains independent of this layer.
+
 ```mermaid
 flowchart LR
     MIC[Microphone] --> STT[faster-whisper local<br/>or optional cloud STT]
@@ -348,9 +363,12 @@ flowchart LR
    retains tables named in prior-turn SQL, even when the new wording is vague.
    The same ranking serves both engines: it is what the model is shown, and what
    the compiler is allowed to plan against.
-3. **Question → SQL, one of three ways.** An exact, unqualified governed metric
-   phrase uses a policy-owned definition from `metrics.yaml`, whose expected
-   value CI re-runs. With a key, Claude returns a single
+3. **Question → SQL, one of three ways.** An exact governed metric phrase uses
+   a policy-owned definition from `metrics.yaml`, whose overall expected value
+   CI re-runs. Denial and net collection rates also support one payer, payer-type
+   or specialty breakdown and one exact catalog-value filter. These scopes
+   retain the certified formula and population; unsupported qualifiers are
+   refused. With a key, Claude returns a single
    SELECT (or a refusal) as a structured tool call, and prior turns replay as
    context so follow-ups like *"and by region?"* just work. Without one,
    `engine/planner.py` compiles the question against the semantic layer and

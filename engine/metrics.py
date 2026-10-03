@@ -47,6 +47,8 @@ class Metric:
     expect: Any
     derived_value: Any
     derived_why: str
+    scope: str = ""
+    group_by: str = ""
 
 
 @dataclass(frozen=True)
@@ -60,10 +62,12 @@ class MetricAnswer:
 
     @property
     def value(self):
-        return self.result.rows[0][0] if self.ok else None
+        return self.result.rows[0][-1] if self.ok else None
 
     @property
     def matches_contract(self) -> bool:
+        if self.metric.scope:
+            return False  # the overall benchmark is not a filtered-result contract
         if not self.ok:
             return False
         if isinstance(self.metric.expect, float):
@@ -100,6 +104,9 @@ class MetricAnswer:
         """
         if not self.ok:
             return "—"
+        if self.metric.group_by:
+            return (f"The {self.metric.label.lower()} {self.metric.scope} is shown "
+                    f"for {len(self.result.rows)} groups in the table.")
         rendered = self.headline
         if (self.metric.unit or "").strip().lower() in ("percent", "percentage", "%"):
             rendered = f"{rendered}%"
@@ -107,7 +114,8 @@ class MetricAnswer:
         # "The Claim denial rate is" reads as a proper noun that is not one.
         if label[:1].isupper() and not label.split(" ")[0].isupper():
             label = label[0].lower() + label[1:]
-        return f"The {label} is {rendered}."
+        scope = f" {self.metric.scope}" if self.metric.scope else ""
+        return f"The {label}{scope} is {rendered}."
 
 
 def _words(text: str) -> tuple[str, ...]:
