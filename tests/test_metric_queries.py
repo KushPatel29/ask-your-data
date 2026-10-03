@@ -3,6 +3,7 @@
 import ast
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import duckdb
 import pandas as pd
@@ -164,3 +165,18 @@ def test_overall_app_contract_still_returns_8_point_2(app_turn):
     namespace, _, _ = app_turn
     entry = namespace["_keyless_turn"]("What is the overall claim denial rate?")
     assert entry["contract_match"] and entry["answer"] == "The claim denial rate is 8.2%."
+
+
+def test_scoped_definition_never_displays_an_overall_comparison(monkeypatch):
+    from app import ui
+
+    rendered = []
+    monkeypatch.setattr(ui, "st", SimpleNamespace(markdown=lambda text, **_: rendered.append(text)))
+    metric = next(m for m in REGISTRY if m.name == "net_collection_rate")
+    kwargs = dict(label=metric.label, owner=metric.owner, definition=metric.definition,
+                  derived_value=metric.derived_value, derived_why=metric.derived_why)
+    ui.metric_definition(**kwargs, scope="for Medicare")
+    assert "Revenue Cycle" in rendered[-1] and "PAID claims" in rendered[-1]
+    assert "84.4" not in rendered[-1] and "schema-only" not in rendered[-1].lower()
+    ui.metric_definition(**kwargs)
+    assert "Schema-only result: 84.4" in rendered[-1]

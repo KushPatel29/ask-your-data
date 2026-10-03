@@ -2644,6 +2644,7 @@ def render_metric_entry(entry, index: int) -> None:
         ui.metric_definition(
             label=metric.label, owner=metric.owner, definition=metric.definition,
             derived_value=metric.derived_value, derived_why=metric.derived_why,
+            scope=metric.scope,
         )
         st.code(entry["sql"], language="sql", wrap_lines=True)
         _evidence_block(entry, {})
@@ -2712,10 +2713,11 @@ def render_plan_entry(entry, index: int) -> None:
                               plan_ms=entry.get("plan_ms"), refused=True)
             _refusal_help(entry)
             st.caption(
-                "A refusal here is the compiler working, not failing. It answers "
-                "what it can bind to columns and values, and says so when it "
-                "cannot — an API key puts the model on this box, and the model "
-                "is what resolves the questions this grammar cannot."
+                "Try a supported breakdown and an exact catalog value. Every requested "
+                "filter must be preserved before an answer can be shown."
+                if entry.get("refusal_kind") == "unsupported metric scope" else
+                "The question could not be bound to the available columns and values. "
+                "Try a more specific question or review the data catalog."
             )
             return
 

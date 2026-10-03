@@ -2221,18 +2221,20 @@ def voice_dock(*, ready: bool, stt_model: str, tts_model: str) -> None:
 
 
 def metric_definition(*, label: str, owner: str, definition: str,
-                      derived_value, derived_why: str) -> None:
+                      derived_value, derived_why: str, scope: str = "") -> None:
     """The policy behind a certified number, beside the schema-only contrast."""
     comparison = ("The schema-only compiler refuses this metric."
                   if derived_value is None
                   else f"Schema-only result: {derived_value}")
+    comparison_html = "" if scope else (
+        f'<div class="ayd-metric-compare"><b>{html.escape(comparison)}</b><br>'
+        f'{html.escape(derived_why)}</div>')
     st.markdown(
         f"""
 <div class="ayd-metric ayd-hud">
   <div class="ayd-metric-head">certified metric <span>owner · {html.escape(owner)}</span></div>
   <div class="ayd-metric-def"><b>{html.escape(label)}</b> — {html.escape(definition)}</div>
-  <div class="ayd-metric-compare"><b>{html.escape(comparison)}</b><br>
-    {html.escape(derived_why)}</div>
+  {comparison_html}
 </div>""",
         unsafe_allow_html=True,
     )
