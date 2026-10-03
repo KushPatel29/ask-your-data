@@ -831,9 +831,18 @@ def test_the_chart_says_when_it_is_showing_less_than_the_grid(rendered):
 def test_the_chart_carries_a_text_alternative(rendered):
     """An SVG with no accessible name is a decorative rectangle to a screen
     reader, and this one carries the finding."""
-    _ui, panels = rendered
+    ui, panels = rendered
     assert 'role="img"' in panels["result_chart"]
     assert 'aria-label=' in panels["result_chart"]
+    ui.st.take()
+    ui.result_chart([("Commercial", 7.9), ("Medicaid", 15.5), ("Medicare", 4.5)],
+                    label="payer type", measure="denial rate")
+    body = ui.st.take()
+    assert "highest Medicaid" in body
+    first, peak, last = (body.index(f">{name}</text>")
+                        for name in ("Commercial", "Medicaid", "Medicare"))
+    assert first < peak < last, "the query's alphabetical order must remain intact"
+    assert "bar-top" not in body[first:peak] and "bar-top" in body[peak:last]
 
 
 def test_a_time_series_is_drawn_as_a_line_not_a_ranking(rendered):

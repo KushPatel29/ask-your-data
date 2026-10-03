@@ -1403,6 +1403,7 @@ def result_chart(pairs: list[tuple[str, float]], *, label: str, measure: str,
     # grid, which is honest about a shape this component does not do yet.
     if any(float(v) < 0 for _, v in pairs):
         return
+    highest_index = max(range(len(pairs)), key=lambda i: float(pairs[i][1]))
 
     row_h, gap, pad_l, pad_r = 20, 4, 148, 62
     height = len(pairs) * (row_h + gap)
@@ -1441,7 +1442,7 @@ def result_chart(pairs: list[tuple[str, float]], *, label: str, measure: str,
         for i, (name, value) in enumerate(pairs):
             y = i * (row_h + gap)
             length = max(1.0, track * abs(float(value)) / widest)
-            top = " bar-top" if i == 0 else ""
+            top = " bar-top" if i == highest_index else ""
             body.append(
                 f'<text class="cat" x="0" y="{y + 13}">{html.escape(clip(name))}</text>'
                 f'<rect class="track" x="{pad_l}" y="{y + 3}" width="{track}" '
@@ -1462,7 +1463,7 @@ def result_chart(pairs: list[tuple[str, float]], *, label: str, measure: str,
         f'<span>{html.escape(measure)}</span></div>'
         f'<svg viewBox="0 0 {width} {view_h}" role="img" '
         f'aria-label="{html.escape(measure)} by {html.escape(label)}, '
-        f'{len(pairs)} values, highest {html.escape(clip(str(pairs[0][0])))}">'
+        f'{len(pairs)} values, highest {html.escape(clip(str(pairs[highest_index][0])))}">'
         f'{"".join(body)}</svg>{foot}</div>',
         unsafe_allow_html=True,
     )
