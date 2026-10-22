@@ -254,6 +254,40 @@ UNSUPPORTED_TIME_RE = re.compile(
     re.I,
 )
 
+# "Last year" is the most natural way a reviewer asks, and the bare refusal
+# left them guessing at a rewrite. The refusal stands — a relative window has
+# no safe meaning against data that stops at a fixed date — but it now says
+# what to ask instead, and that a year-on-year change is two questions here.
+RELATIVE_YEAR_RE = re.compile(
+    r"\b(?:this|last|next|previous|current|past|prior)\s+(?:calendar\s+|fiscal\s+)?year\b"
+    r"|\byear[\s-]+(?:over|on)[\s-]+year\b|\byoy\b",
+    re.I,
+)
+CHANGE_RE = re.compile(
+    r"\b(?:versus|vs\.?|compared\s+(?:to|with)|drop(?:ped)?|fell|fall(?:en)?|rose|rise[ns]?"
+    r"|increase[ds]?|decrease[ds]?|change[ds]?|grew|growth|decline[ds]?)\b",
+    re.I,
+)
+
+
+def date_refusal_reason(question: str) -> str:
+    """Why a date window was refused, and the nearest question that compiles."""
+    reason = ("I cannot safely apply that date window in the keyless compiler, and I "
+              "have not run an all-time query instead. ")
+    if RELATIVE_YEAR_RE.search(question):
+        reason += ("\"Last year\" depends on today's date, but this warehouse's data "
+                   "stops at a fixed point, so name the year: ask the same question "
+                   "\"in 2025\", for example.")
+        if CHANGE_RE.search(question):
+            reason += (" A change between two years is two questions here: ask it once "
+                       "for each year and compare the answers, or write the comparison "
+                       "in the SQL editor.")
+        return reason
+    return reason + ("Use a supported explicit year (for example, claims submitted in "
+                     "2024), or specify the exact date field and range in the SQL "
+                     "editor or configured model mode.")
+
+
 COMPARE_OPS = {
     "over": ">", "above": ">", "more than": ">", "greater than": ">",
     "at least": ">=", "under": "<", "below": "<", "less than": "<",
@@ -2023,10 +2057,7 @@ def plan_question(question: str, layer: Layer, *,
     if UNSUPPORTED_TIME_RE.search(question):
         return PlanResult(
             question=question, refused=True, kind="unsupported date filter",
-            reason=("I cannot safely apply that date window in the keyless compiler. "
-                    "I have not run an all-time query instead. Use a supported explicit "
-                    "year (for example, claims submitted in 2024), or specify the exact "
-                    "date field and range in the SQL editor or configured model mode."))
+            reason=date_refusal_reason(question))
     if NEITHER_RE.search(question):
         return PlanResult(
             question=question, refused=True, kind="outside the grammar",

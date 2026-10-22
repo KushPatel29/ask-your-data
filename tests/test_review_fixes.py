@@ -208,3 +208,16 @@ def test_schema_probe_failure_also_recovers(rag):
     namespace["retrieval"].corpus_revision = probe
     state.update(failed=False, now=106)
     assert namespace["_retrieval_bundle"]("same question") is not None
+
+
+@pytest.mark.parametrize("question, mentions_two_questions", [
+    ("Which product category had the biggest drop in gross margin versus last year?", True),
+    ("What was total revenue last year?", False),
+    ("How did total revenue change compared to last year?", True),
+])
+def test_relative_year_refusal_names_the_question_that_compiles(layer, question, mentions_two_questions):
+    result = planner.plan_question(question, layer)
+    assert result.refused and result.kind == "unsupported date filter"
+    assert not result.sql
+    assert "in 2025" in result.reason
+    assert ("two questions" in result.reason) is mentions_two_questions
