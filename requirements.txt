@@ -1,3 +1,6 @@
+# Streamlit Community Cloud rebuilds and restarts the app only when this file changes; a
+# change to engine/ alone is hot-reloaded unreliably. Bump the marker with any engine release.
+# engine release: 2026-10-23 (relative-year refusals name the question that compiles)
 duckdb>=1.5.5
 anthropic>=1.2.0
 openai>=3.6.0
