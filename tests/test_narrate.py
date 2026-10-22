@@ -263,3 +263,32 @@ def test_every_supported_contract_question_produces_a_sentence(con, layer):
         spoken = narrate.answer_sentence(planned.plan, ran)
         assert spoken and spoken[-1] in ".!?", case["id"]
         assert not re.fullmatch(r"[\d,.%\s-]+[.!]?", spoken), case["id"]
+
+
+def test_a_year_outside_the_data_says_where_the_data_is(con, layer):
+    """"In 2024" over claims that start in July 2025 used to stop at "There are
+    no claims with a submitted date in 2024." The reader needs the range."""
+    spoken = answer("How many claims were submitted in 2024?", con, layer)
+    assert spoken == ("There are no claims with a submitted date in 2024. Submitted dates in "
+                      "this data run from 2025-07-01 to 2026-06-30, so 2024 is "
+                      "outside it.")
+
+
+def test_a_year_inside_the_data_gets_no_range_note(con, layer):
+    spoken = answer("How many claims were submitted in 2025?", con, layer)
+    assert spoken.startswith("There are 6,149 claims")
+    assert "run from" not in spoken
+
+
+def test_the_refusal_suggests_a_year_that_answers(con, layer):
+    """The fallback refusal names an example; following it must not dead-end."""
+    refused = planner.plan_question("How many denied claims were there since 2024?", layer)
+    assert refused.refused
+    assert "claims submitted in 2025" in refused.reason
+    assert "6,149" in answer("How many claims were submitted in 2025?", con, layer)
+
+
+def test_date_spans_come_from_the_warehouse(layer):
+    claims = layer.tables["healthcare_fact_claims"]
+    assert claims.column("submitted_date").span == ("2025-07-01", "2026-06-30")
+    assert claims.column("status").span == ()

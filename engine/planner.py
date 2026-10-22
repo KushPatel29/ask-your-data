@@ -284,7 +284,7 @@ def date_refusal_reason(question: str) -> str:
                        "in the SQL editor.")
         return reason
     return reason + ("Use a supported explicit year (for example, claims submitted in "
-                     "2024), or specify the exact date field and range in the SQL "
+                     "2025), or specify the exact date field and range in the SQL "
                      "editor or configured model mode.")
 
 
@@ -412,6 +412,9 @@ class Filter:
     # rendered "(a, b)" — this is the same information in a form the grammar
     # can reason about rather than re-parse.
     literals: tuple = ()
+    # The column's earliest and latest date, when the filter is a year. Only
+    # the narrator reads it, to say where the data is when a year misses it.
+    span: tuple = ()
     # An optional SQL expression to compare instead of the bare column. Exists
     # for exactly one case today and it was a crash: "how many claims were
     # submitted in 2024?" emitted `service_date = 2024`, and DuckDB answered
@@ -1450,7 +1453,8 @@ def _build_filters(layer: Layer, base: str, joins: list[JoinEdge],
             filters.append(Filter(
                 table=base, column=column.name, op="=", literal=value,
                 evidence=year.group(0),
-                expr=f'EXTRACT(YEAR FROM "{base}"."{column.name}")'))
+                expr=f'EXTRACT(YEAR FROM "{base}"."{column.name}")',
+                span=column.span))
             explained.add(value)
             # The column's own words count as explained. "How many claims were
             # SUBMITTED in 2024?" chose `submitted_date` over `service_date`

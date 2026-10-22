@@ -790,22 +790,51 @@ def _empty_sentence(plan) -> str:
 # Entry point
 # ---------------------------------------------------------------------------
 
+def _outside_span(plan) -> str:
+    """" Submitted dates in this data run from 2025-07-01 to 2026-06-30." or "".
+
+    Added only when a year filter names a year the column never reaches, so
+    the empty answer was decided by the calendar, not by the data. The dates
+    come from the warehouse profile (MIN and MAX of that column), never from
+    today's date.
+    """
+    for filt in plan.filters:
+        span = getattr(filt, "span", ())
+        if not (filt.expr.startswith("EXTRACT(YEAR") and len(span) == 2):
+            continue
+        try:
+            year = int(filt.literal)
+        except ValueError:
+            continue
+        if int(span[0][:4]) <= year <= int(span[1][:4]):
+            continue
+        label = _upper1(_plural(_column_label(filt.column, units=False)[0]))
+        return (f" {label} in this data run from {span[0]} to {span[1]}, "
+                f"so {year} is outside it.")
+    return ""
+
+
 def answer_sentence(plan, ran) -> str:
     """One sentence restating `plan`, carrying the numbers `ran` returned.
 
     Never characterises, never benchmarks, never says whether a number is good.
     Every noun in the output is a table name, a column name, a WHERE-clause
-    literal, or a value from `ran.rows`.
+    literal, or a value from `ran.rows` -- plus, when a year falls outside a
+    date column, that column's profiled MIN and MAX.
     """
     if plan is None or ran is None:
         return ""
     if not ran.rows:
-        return _empty_sentence(plan)
+        return _empty_sentence(plan) + _outside_span(plan)
     if plan.aggregate == planner.RANK and len(ran.rows[0]) > 1:
         return _rank_sentence(plan, ran)
     if plan.group_by is not None and len(ran.rows[0]) > 1:
         return _grouped_sentence(plan, ran)
-    return _scalar_sentence(plan, ran.rows[0][0])
+    value = ran.rows[0][0]
+    sentence = _scalar_sentence(plan, value)
+    if value is None or value == 0:
+        sentence += _outside_span(plan)
+    return sentence
 
 
 def answer_explanation(plan, ran) -> str:

@@ -59,7 +59,7 @@ from __future__ import annotations
 
 import re
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from pathlib import Path
 
@@ -99,6 +99,8 @@ RATIO_TOKENS = {"rate", "pct", "percent", "percentage", "ratio", "share",
 NUMERIC_TYPES = {"BIGINT", "INTEGER", "SMALLINT", "TINYINT", "HUGEINT",
                  "DOUBLE", "FLOAT", "REAL", "DECIMAL", "UBIGINT", "UINTEGER"}
 
+ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
 TEMPORAL_TYPES = {"DATE", "TIMESTAMP", "TIMESTAMP_S", "TIMESTAMP_MS",
                   "TIMESTAMP_NS", "TIMESTAMP WITH TIME ZONE", "TIME"}
 
@@ -133,6 +135,12 @@ class Column:
     distinct: int = 0
     unique: bool = False
     values: tuple[str, ...] = ()
+    # Earliest and latest value of a DATE column, as ISO dates. "How many claims
+    # were submitted in 2024?" over claims that start in July 2025 answered
+    # "There are no claims submitted in 2024." True, and a dead end: the reader
+    # learns nothing about which years would answer. The span lets the answer
+    # say where the data actually is.
+    span: tuple[str, ...] = ()
 
     @property
     def words(self) -> tuple[str, ...]:
@@ -336,7 +344,33 @@ class Layer:
             role = self._role(col_name, col_type, distinct, unique, rows)
             out.append(Column(table=name, name=col_name, type=col_type, role=role,
                               distinct=distinct, unique=unique))
-        return out
+        return self._with_spans(name, out)
+
+    def _with_spans(self, name: str, columns: list[Column]) -> list[Column]:
+        """Attach MIN and MAX to every date column, in one query per table.
+
+        TIME is temporal but has no year, so it is left out. A probe that fails
+        leaves the spans empty: an answer without its range note is still a
+        correct answer, and startup must not depend on a nicety.
+        """
+        dated = [c for c in columns
+                 if c.role == DATE and not (c.type or "").upper().startswith("TIME ")
+                 and (c.type or "").upper() != "TIME"]
+        if not dated:
+            return columns
+        probe = ", ".join(f'MIN("{c.name}")::VARCHAR, MAX("{c.name}")::VARCHAR'
+                          for c in dated)
+        try:
+            row = self.con.cursor().execute(f'SELECT {probe} FROM "{name}"').fetchone()
+        except Exception:
+            return columns
+        spans: dict[str, tuple[str, ...]] = {}
+        for i, col in enumerate(dated):
+            lo, hi = row[2 * i], row[2 * i + 1]
+            if lo and hi and ISO_DATE.match(lo) and ISO_DATE.match(hi):
+                spans[col.name] = (lo[:10], hi[:10])
+        return [replace(c, span=spans[c.name]) if c.name in spans else c
+                for c in columns]
 
     @staticmethod
     def _role(name: str, col_type: str, distinct: int, unique: bool, rows: int) -> str:
