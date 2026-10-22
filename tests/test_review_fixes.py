@@ -215,7 +215,8 @@ def test_schema_probe_failure_also_recovers(rag):
     ("What was total revenue last year?", False),
     ("How did total revenue change compared to last year?", True),
 ])
-def test_relative_year_refusal_names_the_question_that_compiles(layer, question, mentions_two_questions):
+def test_relative_year_refusal_names_the_question_that_compiles(
+        layer, question, mentions_two_questions):
     result = planner.plan_question(question, layer)
     assert result.refused and result.kind == "unsupported date filter"
     assert not result.sql
