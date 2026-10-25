@@ -22,11 +22,11 @@ README = ROOT / "README.md"
 
 def test_the_badge_matches_what_pytest_collects():
     # shields.io percent-encodes the thousands separator: 1,098 is written
-    # tests-1%2C098%20passing. Strip the encoding, not the digits - a regex that
-    # grabs runs of digits also finds the "20" in %20passing.
-    badge = re.search(r"tests-([\d,]|%2C)+%20passing", README.read_text(encoding="utf-8"))
+    # tests-1%2C098%20collected. Strip the encoding, not the digits - a regex that
+    # grabs runs of digits also finds the "20" in %20collected.
+    badge = re.search(r"tests-([\d,]|%2C)+%20collected", README.read_text(encoding="utf-8"))
     assert badge, "README no longer carries a test-count badge"
-    claimed = int(re.sub(r"%2C|,", "", badge.group(0)[len("tests-"):-len("%20passing")]))
+    claimed = int(re.sub(r"%2C|,", "", badge.group(0)[len("tests-"):-len("%20collected")]))
 
     proc = subprocess.run(
         [sys.executable, "-m", "pytest", "--collect-only", "-q",
