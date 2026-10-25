@@ -18,4 +18,6 @@ PyJWT[crypto]>=2.13.0,<3
 # cannot install them still answers questions.
 faster-whisper>=1.2.1,<2
 piper-tts>=1.7,<2
+# Security floor for the Hugging Face cache's transitive locking dependency.
+filelock==4.2.1
 pytest>=9.1.1
