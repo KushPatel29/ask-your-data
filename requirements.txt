@@ -8,7 +8,7 @@ streamlit>=1.66.1,<2
 # Pillow 13 fixes the image decoder advisories affecting earlier releases.
 pillow>=13,<14
 pandas>=3.0.5
-numpy>=2.5.2,<3
+numpy>=2.5.4,<3
 onnxruntime>=1.29.0,<2
 tokenizers>=0.23.1,<1
 PyYAML>=6.0.3
