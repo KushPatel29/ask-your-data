@@ -2,7 +2,7 @@
 # so a push does not redeploy it: after a release, reboot it from "Manage app" and check
 # that the footer's build marker changed.
 duckdb>=1.5.5
-anthropic>=1.2.0
+anthropic>=2.3.0
 openai>=3.6.0
 streamlit>=1.66.1,<2
 # Pillow 13 fixes the image decoder advisories affecting earlier releases.
