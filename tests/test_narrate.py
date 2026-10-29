@@ -39,18 +39,59 @@ def test_explanation_keeps_simple_answers_concise(con, layer):
     assert narrate.answer_explanation(planned.plan, ran) == "There are 876 denied claims."
 
 
-def test_explanation_binds_details_in_query_order_and_bounds_them(con, layer):
+def test_explanation_binds_details_in_display_order_and_bounds_them(con, layer):
+    """The query has no ORDER BY, so its row order is DuckDB's accident. The
+    sentence names the three rows the chart and grid show first: the largest."""
     planned = planner.plan_question("average salary by department", layer)
     ran = run_query(con, planned.sql)
+    assert "order by" not in planned.sql.lower()
     explanation = narrate.answer_explanation(planned.plan, ran)
     bullets = [line for line in explanation.splitlines() if line.startswith("- ")]
     assert len(bullets) == 3
-    for bullet, row in zip(bullets, ran.rows[:3], strict=True):
+    largest = sorted(ran.rows, key=lambda row: -row[1])[:3]
+    for bullet, row in zip(bullets, largest, strict=True):
         assert str(row[0]) in bullet
         assert f"{row[1]:,.2f}" in bullet
     assert explanation.startswith(narrate.answer_sentence(planned.plan, ran))
-    assert "first three entries" in explanation
+    assert "three largest entries" in explanation
     assert "table below" in explanation
+
+
+def test_explanation_is_the_same_whatever_order_duckdb_returns(con, layer):
+    planned = planner.plan_question("total paid amount by payer type", layer)
+    ran = run_query(con, planned.sql)
+    shuffled = QueryResult(sql=ran.sql, columns=ran.columns, rows=list(reversed(ran.rows)),
+                           row_count=ran.row_count)
+    assert (narrate.answer_explanation(planned.plan, ran)
+            == narrate.answer_explanation(planned.plan, shuffled))
+
+
+def test_display_index_keeps_a_query_that_named_its_own_order():
+    rows = [("b", 1.0), ("a", 9.0), ("c", 5.0)]
+    assert narrate.display_index(rows, ordered=True) == ([0, 1, 2], narrate.QUERY_ORDER)
+
+
+def test_display_index_ranks_an_unordered_breakdown_with_missing_values_last():
+    rows = [("b", 1.0), ("a", None), ("c", 5), ("d", Decimal("5"))]
+    index, how = narrate.display_index(rows, ordered=False)
+    assert how == narrate.VALUE_ORDER
+    assert [rows[i][0] for i in index] == ["c", "d", "b", "a"]
+
+
+@pytest.mark.parametrize("labels", [
+    ["Mar 2024", "Oct 2023", "Feb 2024"],
+    ["2024-03", "2023-10", "2024-02"],
+])
+def test_display_index_reads_month_labels_as_a_calendar(labels):
+    rows = [(label, value) for label, value in zip(labels, (5.0, 9.0, 1.0), strict=True)]
+    index, how = narrate.display_index(rows, ordered=False)
+    assert how == narrate.DATE_ORDER
+    assert [rows[i][1] for i in index] == [9.0, 1.0, 5.0]
+
+
+def test_display_index_leaves_shapes_it_cannot_rank_alone():
+    assert narrate.display_index([("a", "x"), ("b", "y")], ordered=False)[1] == narrate.QUERY_ORDER
+    assert narrate.display_index([("a", 1, 2), ("b", 3, 4)], ordered=False)[0] == [0, 1]
 
 
 def test_explanation_preserves_missing_values_and_preview_scope():

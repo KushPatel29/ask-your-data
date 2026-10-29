@@ -50,10 +50,85 @@ USAGE
 
 from __future__ import annotations
 
+import datetime as _dt
+import math
 import re
 from numbers import Number
 
 from engine import planner
+
+# ---------------------------------------------------------------------------
+# Display order
+# ---------------------------------------------------------------------------
+
+# Labels a warehouse stores as text but that are dates: "Oct 2023" is a
+# month_label column, and sorting it by revenue draws a calendar as a ranking.
+_DATE_LABEL_FORMATS = ("%b %Y", "%B %Y", "%Y-%m", "%Y-%m-%d")
+
+VALUE_ORDER, DATE_ORDER, QUERY_ORDER = "value", "date", "query"
+
+
+def _as_date(value):
+    if isinstance(value, _dt.datetime):
+        return value.replace(tzinfo=None)
+    if isinstance(value, _dt.date):
+        return _dt.datetime(value.year, value.month, value.day)
+    if isinstance(value, str):
+        text = " ".join(value.split())
+        for fmt in _DATE_LABEL_FORMATS:
+            try:
+                return _dt.datetime.strptime(text, fmt)
+            except ValueError:
+                continue
+    return None
+
+
+def dated_labels(labels) -> bool:
+    """True when every label is a date, a datetime or a month written as text."""
+    labels = list(labels)
+    return bool(labels) and all(_as_date(label) is not None for label in labels)
+
+
+def _sortable_number(value):
+    if value is None or isinstance(value, bool) or not isinstance(value, Number):
+        return None
+    number = float(value)
+    return None if math.isnan(number) else number
+
+
+def display_index(rows, ordered: bool) -> tuple[list[int], str]:
+    """Row positions in the order the sentence, the chart and the grid share.
+
+    A query that named its own order (ORDER BY) is shown exactly as it came
+    back. A GROUP BY without one has no order at all: DuckDB returns the
+    groups however it likes, so reading "the first three" off that order
+    narrates an accident, and a different one on the next run. Such a result
+    is shown by date when its labels are dates (a series reads left to
+    right), otherwise largest value first with missing values last. Ties keep
+    a stable, label-based order. Anything that is not a two-column breakdown
+    keeps the order it came back in.
+    """
+    rows = list(rows)
+    keep = list(range(len(rows)))
+    if ordered or len(rows) < 2 or any(len(row) != 2 for row in rows):
+        return keep, QUERY_ORDER
+    dates = [_as_date(row[0]) for row in rows]
+    if all(date is not None for date in dates):
+        return sorted(keep, key=lambda i: dates[i]), DATE_ORDER
+    if not all(row[1] is None or _sortable_number(row[1]) is not None for row in rows):
+        return keep, QUERY_ORDER
+
+    def by_value(i):
+        number = _sortable_number(rows[i][1])
+        return (number is None, -(number or 0.0), str(rows[i][0]))
+
+    return sorted(keep, key=by_value), VALUE_ORDER
+
+
+def _plan_is_ordered(plan, ran) -> bool:
+    if plan is not None and (plan.aggregate == planner.RANK or getattr(plan, "order", None)):
+        return True
+    return "order by" in " ".join(str(getattr(ran, "sql", "") or "").lower().split())
 
 # ---------------------------------------------------------------------------
 # Vocabulary
@@ -841,7 +916,9 @@ def answer_explanation(plan, ran) -> str:
     """Lead with the answer, then offer bounded, row-bound breakdown details.
 
     Simple counts need no padding. Multirow breakdowns gain up to three
-    concrete examples in query order, not invented recommendations or causes.
+    concrete examples, not invented recommendations or causes, taken in the
+    order the chart and grid show them (`display_index`): the query's own
+    order when it has one, otherwise by date or largest value first.
     The UI escapes all text; collapsing cell whitespace keeps a stored newline
     from masquerading as another bullet or paragraph.
     """
@@ -857,9 +934,16 @@ def answer_explanation(plan, ran) -> str:
     measure = (_column_label(plan.measure.name)[0] if plan.aggregate == planner.RANK
                else _bare(_grouped_phrase(plan)))
     kind, unit = _measure_kind(plan), _measure_unit(plan)
-    chosen = ran.rows[:3]
-    intro = ("Here is the breakdown:" if len(chosen) == len(ran.rows)
-             else "Here are the first three entries in the returned breakdown:")
+    order, how = display_index(ran.rows, _plan_is_ordered(plan, ran))
+    chosen = [ran.rows[i] for i in order[:3]]
+    if len(chosen) == len(ran.rows):
+        intro = "Here is the breakdown:"
+    elif how == VALUE_ORDER:
+        intro = "Here are the three largest entries in the returned breakdown:"
+    elif how == DATE_ORDER:
+        intro = "Here are the three earliest entries in the returned breakdown:"
+    else:
+        intro = "Here are the first three entries in the returned breakdown:"
     details = []
     for label, value in chosen:
         label_text = " ".join(_label_value(label).split())

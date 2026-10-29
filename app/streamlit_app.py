@@ -2470,6 +2470,9 @@ def _refusal_help(entry) -> None:
 
 
 CHART_MAX_BARS = 20
+# A line spends no vertical space per point, so a series keeps far more of
+# itself than a ranking does before the chart has to cut it short.
+CHART_MAX_POINTS = 120
 
 
 def _chart_shape(frame):
@@ -2494,37 +2497,50 @@ def _chart_shape(frame):
         return None
     # A date axis is a fact about the column, not a preference: a series over
     # time reads as a line and a ranking reads as bars, and drawing a time
-    # series as a sorted bar chart hides the one thing it is for.
-    kind = "line" if pd.api.types.is_datetime64_any_dtype(frame[label_col]) else "bar"
+    # series as a sorted bar chart hides the one thing it is for. A month
+    # stored as text ("Oct 2023") is still a date axis.
+    dated = (pd.api.types.is_datetime64_any_dtype(frame[label_col])
+             or narrate.dated_labels(frame[label_col]))
+    kind = "line" if dated else "bar"
     return label_col, value_col, kind
 
 
-def _result_chart(entry) -> None:
-    shape = _chart_shape(entry["rows"])
+def _display_frame(entry):
+    """The rows in the one order the sentence, the chart and the grid share.
+
+    The query's own ORDER BY is the ranking the reader asked for, so a query
+    that HAS one is shown exactly as it came back: re-sorting a top-N would
+    show the answer to a query nobody ran.
+
+    A GROUP BY with no ORDER BY has no order at all — DuckDB returns those
+    groups however it likes, and this repo has already been bitten by treating
+    that arbitrary order as meaningful. Showing it unsorted puts Grocery above
+    Electronics for no reason a reader can see, and the sentence used to
+    narrate "the first three entries" of an order the grid did not show.
+    `narrate.display_index` decides once — dates in date order, otherwise
+    largest value first — and every view uses that answer.
+    """
+    frame = entry["rows"]
+    if frame is None or frame.empty:
+        return frame
+    ordered = "order by" in " ".join(entry.get("sql", "").lower().split())
+    index, _how = narrate.display_index(frame.itertuples(index=False, name=None), ordered)
+    return frame.iloc[index].reset_index(drop=True)
+
+
+def _result_chart(entry, frame=None) -> None:
+    frame = _display_frame(entry) if frame is None else frame
+    shape = _chart_shape(frame)
     if shape is None:
         return
-    frame = entry["rows"]
     label_col, value_col, kind = shape
-    # The query's own ORDER BY is the ranking the reader asked for, so a query
-    # that HAS one is drawn exactly as it came back: re-sorting a top-N would
-    # draw the answer to a query nobody ran, and re-sorting a time series would
-    # scramble the axis outright.
-    #
-    # A GROUP BY with no ORDER BY has no order at all — DuckDB returns those
-    # groups however it likes, and this repo has already been bitten once by
-    # treating that arbitrary order as meaningful. Drawing it unsorted puts
-    # Grocery above Electronics for no reason a reader can see. Sorting is
-    # therefore not an interpretation here; it is the only defensible reading
-    # of a result set the query left unordered.
-    ordered = "order by" in " ".join(entry.get("sql", "").lower().split())
-    if not ordered and kind != "line":
-        frame = frame.sort_values(value_col, ascending=False)
-    head = frame.head(CHART_MAX_BARS)
+    cap = CHART_MAX_POINTS if kind == "line" else CHART_MAX_BARS
+    head = frame.head(cap)
     pairs = [(str(a), float(b)) for a, b in zip(head[label_col], head[value_col],
                                                 strict=False)]
     ui.result_chart(pairs, label=_humanise(str(label_col)),
                     measure=_humanise(str(value_col)), kind=kind,
-                    truncated_from=len(frame) if len(frame) > CHART_MAX_BARS else 0)
+                    truncated_from=len(frame) if len(frame) > cap else 0)
 
 
 def _result_block(entry, index: int) -> None:
@@ -2542,13 +2558,14 @@ def _result_block(entry, index: int) -> None:
         elif entry["error"]:
             st.error(f"Query error: {entry['error']}")
         return
-    _result_chart(entry)
-    st.dataframe(entry["rows"], width="stretch", hide_index=True,
-                 column_config=_numeric_format(entry["rows"]))
+    shown = _display_frame(entry)
+    _result_chart(entry, shown)
+    st.dataframe(shown, width="stretch", hide_index=True,
+                 column_config=_numeric_format(shown))
     left, right = st.columns([1, 3])
     left.download_button(
         "Download CSV",
-        data=entry["rows"].to_csv(index=False).encode("utf-8"),
+        data=shown.to_csv(index=False).encode("utf-8"),
         file_name="ask-your-data.csv", mime="text/csv",
         key=f"csv_{index}", width="stretch",
     )

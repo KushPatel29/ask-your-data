@@ -902,12 +902,17 @@ def test_the_chart_never_reorders_a_query_that_named_its_own_order():
     import ast
 
     tree = ast.parse(_app_source())
-    fn = next(node for node in ast.walk(tree)
-              if isinstance(node, ast.FunctionDef) and node.name == "_result_chart")
-    body = ast.unparse(fn)
-    assert "order by" in body, "the ORDER BY of the query has to be consulted"
-    assert "sort_values" in body
-    assert "kind != 'line'" in body or 'kind != "line"' in body
+    functions = {node.name: ast.unparse(node) for node in ast.walk(tree)
+                 if isinstance(node, ast.FunctionDef)}
+    order = functions["_display_frame"]
+    assert "order by" in order, "the ORDER BY of the query has to be consulted"
+    assert "narrate.display_index" in order, "one ordering rule for every view"
+    block = functions["_result_block"]
+    shown = block.index("_display_frame(entry)")
+    assert shown < block.index("_result_chart(")
+    assert "st.dataframe(shown" in block, "the grid shows the rows the sentence names"
+    assert "shown.to_csv" in block
+    assert "narrate.dated_labels" in functions["_chart_shape"]
 
 
 def test_a_certified_metric_names_its_own_pipeline_stage(rendered):
