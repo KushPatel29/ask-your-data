@@ -141,6 +141,29 @@ def test_every_planned_query_is_read_only(case, con, layer):
     assert ok, f"{case['id']} produced SQL the guard rejected: {reason}"
 
 
+@pytest.mark.parametrize("case", ANSWERABLE, ids=_ids(ANSWERABLE))
+def test_the_contract_holds_without_retrieval(case, con, layer):
+    """Retrieval ranks candidate tables; it must never be what makes an answer right.
+
+    When the embedding model could not be downloaded, "Total spend by channel"
+    summed AML payment amounts instead of media spend: three tables bound the
+    question with full coverage, and only the retriever's ordering separated
+    them. The AML table qualified because its description said retail card
+    *spend* was excluded. So every answerable question is also asked with no
+    retrieval at all, and must return the reference's rows.
+    """
+    result = plan_question(case["question"], layer, retrieved=[])
+    assert not result.refused, f"refused without retrieval: {result.reason}"
+    ran = run_query(con, result.sql)
+    ref = run_query(con, case["sql"])
+    assert ran.ok and ref.ok, ran.error or ref.error
+    width = len(ref.columns)
+    assert ran.row_count == ref.row_count, (
+        f"{ran.row_count} rows vs the reference's {ref.row_count}\n{result.sql}")
+    assert (sorted(_key(row[:width]) for row in ran.rows)
+            == sorted(_key(row[:width]) for row in ref.rows)), result.sql
+
+
 def _hits(question: str) -> list[str]:
     """Retrieval ranking, when the index is available.
 

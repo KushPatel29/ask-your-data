@@ -443,6 +443,10 @@ class Plan:
     unexplained: set[str] = field(default_factory=set)
     coverage: float = 0.0
     confidence: float = 0.0
+    # A tie-breaker only, never a gate: how strongly the question named the measure
+    # and grouping columns. `confidence` is capped at 1.0, so plans that explain
+    # every word tie there.
+    match: float = 0.0
     sql: str = ""
 
     @property
@@ -1994,6 +1998,8 @@ def _finish(plan: Plan, *, question: str, layer: Layer, table: str, words: set[s
         # from a wholesale supplier's stored one.
         structure += max(0.0, 0.18 - 0.02 * rank)
     plan.confidence = round(min(1.0, plan.coverage + structure), 3)
+    plan.match = round((m_score if measure is not None else 0.0)
+                       + (d_score if dimension is not None else 0.0), 3)
     plan.sql = compile_sql(plan)
     return plan
 
@@ -2164,7 +2170,16 @@ def plan_question(question: str, layer: Layer, *,
             nearest = plan
         if plan.coverage < min_confidence:
             continue
-        if best is None or plan.confidence > best.confidence:
+        # Equal confidence used to fall straight back to candidate order, so with
+        # no retrieval "Total spend by channel" summed AML payment amounts (bound
+        # to `spend` only through the amount synonym) instead of media spend,
+        # which names the column outright. The column match decides a tie first;
+        # candidate order still decides the rest. Not the retrieval rank: on "How
+        # many stores by store format?" the retriever ranks the segment fact above
+        # the store dimension, and candidate order, which weighs four signals, is
+        # the one that gets it right.
+        if best is None or ((plan.confidence, plan.match)
+                            > (best.confidence, best.match)):
             best = plan
 
     elapsed = 1000 * (time.perf_counter() - started)
