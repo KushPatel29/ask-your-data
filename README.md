@@ -208,8 +208,8 @@ was built to argue against.
 The 58-question contract also runs with retrieval switched off, and has to hold
 there too. It did not at first: without the embedding model, "Total spend by
 channel" summed AML payment amounts, because three tables explained every word,
-all tied at the confidence cap, and candidate order broke the tie. Ties now go to
-the uncapped score and then to the column that names the measure outright.
+all tied at the confidence cap, and candidate order broke the tie. A tie now goes
+first to the plan whose columns the question names outright.
 
 ### The eval was too easy, and I only found out by attacking it
 
