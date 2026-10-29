@@ -120,3 +120,57 @@ def test_assistant_does_not_override_the_local_model_with_anthropic_default(con,
     assert isinstance(assistant.provider, OpenAICompatProvider)
     assert assistant.provider.model == "qwen-local-sql"
     assert assistant.model == "qwen-local-sql"
+
+
+def test_anthropic_provider_through_the_installed_sdk():
+    """The provider against the real `anthropic` package, over a mocked transport.
+
+    The other provider tests use stand-in clients, so a major SDK upgrade could
+    change the request or response shapes without one of them noticing. This
+    sends the provider's actual request through the installed SDK and parses an
+    API-shaped reply back, then checks that a transport failure still maps to
+    ProviderUnavailable.
+    """
+    import json
+
+    import anthropic
+    import httpx2 as httpx  # the SDK's own HTTP layer; it rejects plain httpx clients
+
+    seen = {}
+
+    def reply(request: httpx.Request) -> httpx.Response:
+        seen["path"] = request.url.path
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json={
+            "id": "msg_test", "type": "message", "role": "assistant", "model": "claude-test",
+            "content": [{"type": "text", "text": "Checking."},
+                        {"type": "tool_use", "id": "toolu_1", "name": "run_sql",
+                         "input": {"sql": "SELECT 1"}}],
+            "stop_reason": "tool_use", "stop_sequence": None,
+            "usage": {"input_tokens": 12, "output_tokens": 5},
+        })
+
+    client = anthropic.Anthropic(api_key="test-key", max_retries=0,
+                                 http_client=httpx.Client(transport=httpx.MockTransport(reply)))
+    provider = providers.AnthropicProvider(client=client, model="claude-test")
+    tools = [{"name": "run_sql", "description": "Run one read-only query.",
+              "input_schema": {"type": "object", "properties": {"sql": {"type": "string"}}}}]
+    out = provider.create_tool_call(system="Answer from the warehouse.",
+                                    messages=[{"role": "user", "content": "How many rows?"}],
+                                    tools=tools, max_tokens=64)
+
+    assert seen["path"] == "/v1/messages"
+    assert seen["body"]["tool_choice"] == {"type": "any"}
+    assert seen["body"]["tools"][0]["name"] == "run_sql"
+    assert out.tool_call.name == "run_sql" and out.tool_call.input == {"sql": "SELECT 1"}
+    assert out.usage == {"input_tokens": 12, "output_tokens": 5}
+    assert out.text == "Checking."
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("unreachable", request=request)
+
+    down = anthropic.Anthropic(api_key="test-key", max_retries=0,
+                               http_client=httpx.Client(transport=httpx.MockTransport(refuse)))
+    with pytest.raises(providers.ProviderUnavailable):
+        providers.AnthropicProvider(client=down, model="claude-test").create_tool_call(
+            system="s", messages=[{"role": "user", "content": "q"}], tools=tools, max_tokens=8)

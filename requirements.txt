@@ -2,15 +2,15 @@
 # so a push does not redeploy it: after a release, reboot it from "Manage app" and check
 # that the footer's build marker changed.
 duckdb>=1.5.5
-anthropic>=1.2.0
-openai>=3.6.0
+anthropic>=2.3.0
+openai>=3.37.0
 streamlit>=1.66.1,<2
 # Pillow 13 fixes the image decoder advisories affecting earlier releases.
 pillow>=13,<14
 pandas>=3.0.5
-numpy>=2.5.2,<3
+numpy>=2.5.4,<3
 onnxruntime>=1.29.0,<2
-tokenizers>=0.23.1,<1
+tokenizers>=0.23.3,<1
 PyYAML>=6.0.3
 PyJWT[crypto]>=2.13.0,<3
 # Speech that needs no API key and no second service. Both run in-process on
@@ -19,7 +19,7 @@ PyJWT[crypto]>=2.13.0,<3
 # reports voice as unavailable if either is missing, so a deployment that
 # cannot install them still answers questions.
 faster-whisper>=1.2.1,<2
-piper-tts>=1.7,<2
+piper-tts>=1.8.0,<2
 # Security floor for the Hugging Face cache's transitive locking dependency.
 filelock==4.2.1
 pytest>=9.1.1

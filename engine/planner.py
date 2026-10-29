@@ -443,6 +443,12 @@ class Plan:
     unexplained: set[str] = field(default_factory=set)
     coverage: float = 0.0
     confidence: float = 0.0
+    # Tie-breakers only, never a gate. `confidence` is capped at 1.0, so two plans
+    # that both explain every word tie there, and the cap also erased the
+    # retrieval-rank bonus below. `support` is the uncapped coverage + structure,
+    # and `match` how strongly the measure and grouping columns were named.
+    support: float = 0.0
+    match: float = 0.0
     sql: str = ""
 
     @property
@@ -1994,6 +2000,9 @@ def _finish(plan: Plan, *, question: str, layer: Layer, table: str, words: set[s
         # from a wholesale supplier's stored one.
         structure += max(0.0, 0.18 - 0.02 * rank)
     plan.confidence = round(min(1.0, plan.coverage + structure), 3)
+    plan.support = round(plan.coverage + structure, 3)
+    plan.match = round((m_score if measure is not None else 0.0)
+                       + (d_score if dimension is not None else 0.0), 3)
     plan.sql = compile_sql(plan)
     return plan
 
@@ -2164,7 +2173,13 @@ def plan_question(question: str, layer: Layer, *,
             nearest = plan
         if plan.coverage < min_confidence:
             continue
-        if best is None or plan.confidence > best.confidence:
+        # Equal confidence used to fall back to candidate order, so with no
+        # retrieval "Total spend by channel" summed AML payment amounts (bound
+        # to `spend` only through the amount synonym) instead of media spend,
+        # which names the column outright. The uncapped score, then the column
+        # match, decide a tie before the order does.
+        if best is None or ((plan.confidence, plan.support, plan.match)
+                            > (best.confidence, best.support, best.match)):
             best = plan
 
     elapsed = 1000 * (time.perf_counter() - started)

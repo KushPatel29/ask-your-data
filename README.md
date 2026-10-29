@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml/badge.svg)](https://github.com/KushPatel29/ask-your-data/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-DuckDB%20%2B%20Claude-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-1%2C170%20collected-3B8C6E)
+![Tests](https://img.shields.io/badge/tests-1%2C217%20collected-3B8C6E)
 ![LLM](https://img.shields.io/badge/LLM-grounded%20text--to--SQL-8A2BE2)
 ![Keyless](https://img.shields.io/badge/keyless-deterministic%20NL%E2%86%92SQL%20compiler-22D3EE)
 ![Voice](https://img.shields.io/badge/voice-in--process%20%C2%B7%20no%20API%20key-FBBF24)
@@ -204,6 +204,12 @@ The planner is graded on two contracts, and the gap between them is the finding:
 `differs` is the column that matters. A refusal costs you an answer; a
 disagreement costs you a **wrong** answer, which is the entire thing this project
 was built to argue against.
+
+The 58-question contract also runs with retrieval switched off, and has to hold
+there too. It did not at first: without the embedding model, "Total spend by
+channel" summed AML payment amounts, because three tables explained every word,
+all tied at the confidence cap, and candidate order broke the tie. Ties now go to
+the uncapped score and then to the column that names the measure outright.
 
 ### The eval was too easy, and I only found out by attacking it
 
