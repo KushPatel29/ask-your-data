@@ -80,6 +80,12 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from app.freshness import refresh  # noqa: E402
+
+# A push that changes only engine/ or app/ui.py must reach this running app:
+# reload the repo's own modules when their files change (see app/freshness.py).
+refresh(ROOT)
+
 from app import ui  # noqa: E402
 from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
 from engine import (  # noqa: E402
@@ -109,6 +115,9 @@ from engine.sql_guard import (  # noqa: E402
 )
 from engine.verify import Verifier  # noqa: E402
 from engine.warehouse import build_warehouse, table_names  # noqa: E402
+
+# Record what this run imported, so the next run can tell when it changed.
+refresh(ROOT)
 
 st.set_page_config(page_title="Ask Your Data", page_icon="💬", layout="wide")
 
