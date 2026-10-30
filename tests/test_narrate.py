@@ -333,3 +333,48 @@ def test_date_spans_come_from_the_warehouse(layer):
     claims = layer.tables["healthcare_fact_claims"]
     assert claims.column("submitted_date").span == ("2025-07-01", "2026-06-30")
     assert claims.column("status").span == ()
+
+
+@pytest.mark.parametrize(("label", "through", "partial"), [
+    ("Jul 2026", "2026-07-04", True),
+    ("2026-07", "2026-07-04", True),
+    ("Jul 2026", "2026-07-31", False),
+    ("Jun 2026", "2026-07-04", False),
+    ("Dec 2025", "2025-12-15", True),
+    ("Grocery", "2026-07-04", False),
+])
+def test_partial_month_is_the_month_the_data_ends_in_before_month_end(label, through, partial):
+    from datetime import date
+
+    assert narrate.partial_month(label, date.fromisoformat(through)) is partial
+    assert (narrate.partial_label(label, date.fromisoformat(through)) != label) is partial
+
+
+def test_a_monthly_series_that_ends_with_the_data_says_its_last_month_is_partial(con, layer):
+    """The wholesale extract stops on 4 July 2026, so July is four days of
+    trading. Without the note the lowest month in the series is July, and the
+    sentence reads as a collapse."""
+    from datetime import date
+
+    planned = planner.plan_question("total sales by month", layer)
+    ran = run_query(con, planned.sql)
+    flagged = narrate.answer_explanation(planned.plan, ran, data_through=date(2026, 7, 4))
+    assert "Jul 2026 is a partial month: the data runs through 4 July 2026" in flagged
+    assert "partial month" not in narrate.answer_explanation(
+        planned.plan, ran, data_through=date(2026, 7, 31))
+    assert "partial month" not in narrate.answer_explanation(planned.plan, ran)
+
+
+def test_the_declared_end_of_the_wholesale_data_falls_inside_its_last_month(con):
+    """DATA_THROUGH is read from the data, so this pins the shape that makes the
+    note necessary rather than a date: the monthly facts include the month the
+    order record ends in, and the record ends before that month does."""
+    from data_manifest import DATA_THROUGH, table_name
+
+    table, column = DATA_THROUGH["wholesale"]
+    store_table = table_name("wholesale", table)
+    through = con.execute(f'SELECT MAX("{column}") FROM "{store_table}"').fetchone()[0]
+    last_month = con.execute(
+        'SELECT MAX("month") FROM "wholesale_fact_department_month"').fetchone()[0]
+    assert (last_month.year, last_month.month) == (through.year, through.month)
+    assert narrate.partial_month(last_month, through)

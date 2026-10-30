@@ -1084,3 +1084,16 @@ def test_speech_can_be_turned_off_at_all():
     first spoken answer takes the process from 330 MB to 465 MB."""
     source = _app_source()
     assert "Speak answers automatically" in source
+
+
+def test_a_series_that_ends_with_the_data_is_labelled_partial_in_text_and_chart():
+    """Source-level, like the ordering contract above: the headline and the
+    chart both consult where the queried domain's data ends."""
+    import ast
+
+    tree = ast.parse(_app_source())
+    functions = {node.name: ast.unparse(node) for node in ast.walk(tree)
+                 if isinstance(node, ast.FunctionDef)}
+    assert "data_through=_data_through(" in functions["_plan_headline"]
+    assert "narrate.partial_label(" in functions["_result_chart"]
+    assert "DATA_THROUGH" in functions["_domain_data_through"]

@@ -125,6 +125,46 @@ def display_index(rows, ordered: bool) -> tuple[list[int], str]:
     return sorted(keep, key=by_value), VALUE_ORDER
 
 
+def _through(value):
+    date = _as_date(value)
+    return date.date() if date is not None else None
+
+
+def partial_month(label, data_through) -> bool:
+    """True when `label` is the month the data ends in, and it ends before month end."""
+    month, through = _as_date(label), _through(data_through)
+    if month is None or through is None:
+        return False
+    if (month.year, month.month) != (through.year, through.month):
+        return False
+    next_month = _dt.date(through.year + through.month // 12, through.month % 12 + 1, 1)
+    return through < next_month - _dt.timedelta(days=1)
+
+
+def partial_label(label, data_through) -> str:
+    """The chart label for a partial last month: `Jul 1–4, 2026`, the days it covers.
+
+    Short on purpose: the chart prints an end label in 16 characters.
+    """
+    text = " ".join(str(label).split())
+    if not partial_month(label, data_through):
+        return text
+    through = _through(data_through)
+    days = "1" if through.day == 1 else f"1–{through.day}"
+    return f"{through:%b} {days}, {through.year}"
+
+
+def partial_month_note(label, data_through) -> str:
+    """A sentence for a series whose last month is cut short by the end of the data."""
+    if not partial_month(label, data_through):
+        return ""
+    through = _through(data_through)
+    text = " ".join(str(label).split())
+    return (f"{text} is a partial month: the data runs through "
+            f"{through.day} {through:%B %Y}, so it is not comparable with the full "
+            "months before it.")
+
+
 def _plan_is_ordered(plan, ran) -> bool:
     if plan is not None and (plan.aggregate == planner.RANK or getattr(plan, "order", None)):
         return True
@@ -912,7 +952,7 @@ def answer_sentence(plan, ran) -> str:
     return sentence
 
 
-def answer_explanation(plan, ran) -> str:
+def answer_explanation(plan, ran, *, data_through=None) -> str:
     """Lead with the answer, then offer bounded, row-bound breakdown details.
 
     Simple counts need no padding. Multirow breakdowns gain up to three
@@ -921,6 +961,11 @@ def answer_explanation(plan, ran) -> str:
     order when it has one, otherwise by date or largest value first.
     The UI escapes all text; collapsing cell whitespace keeps a stored newline
     from masquerading as another bullet or paragraph.
+
+    `data_through` is the last date the queried domain records (see
+    `data_manifest.DATA_THROUGH`). When a date-ordered series ends in that
+    month and the data stops before month end, the answer says so, because a
+    four-day July beside full months otherwise reads as a collapse.
     """
     if ran is not None and getattr(ran, "error", ""):
         return "The query could not be completed, so there is no result to explain."
@@ -955,4 +1000,8 @@ def answer_explanation(plan, ran) -> str:
         result += "\n\nYou can explore the full returned breakdown in the table below."
     if getattr(ran, "truncated", False):
         result += "\n\nThis is a limited preview; more rows matched the query."
+    if how == DATE_ORDER and data_through is not None:
+        note = partial_month_note(ran.rows[order[-1]][0], data_through)
+        if note:
+            result += "\n\n" + note
     return result

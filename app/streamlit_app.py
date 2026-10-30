@@ -87,7 +87,7 @@ from app.freshness import refresh  # noqa: E402
 refresh(ROOT)
 
 from app import ui  # noqa: E402
-from data_manifest import DOMAINS, MANIFEST, table_name  # noqa: E402
+from data_manifest import DATA_THROUGH, DOMAINS, MANIFEST, table_name  # noqa: E402
 from engine import (  # noqa: E402
     access,
     assurance,
@@ -197,6 +197,30 @@ LIVE_MODE = SERVER_MODEL_ENABLED or bool(_session_key())
 def get_connection():
     # Shared across sessions; queries run on isolated cursors.
     return build_warehouse()
+
+
+def _domain_data_through() -> dict:
+    """The last date each declared domain records, read from the data itself.
+
+    Not cached across sessions: it runs under this visitor's access scope, so a
+    principal denied the table gets no date (and no note) rather than one read
+    on someone else's behalf. One MAX over a 620-row table costs nothing.
+    """
+    found = {}
+    for domain, (table, column) in DATA_THROUGH.items():
+        ran = run_query(get_connection(),
+                        f'SELECT MAX("{column}") FROM "{table_name(domain, table)}"',
+                        access=ACCESS)
+        if ran.ok and ran.rows and ran.rows[0][0] is not None:
+            found[domain] = ran.rows[0][0]
+    return found
+
+
+def _data_through(sql: str):
+    """Where the data behind this query ends, if a domain it reads declares it."""
+    hits = [through for domain, through in _domain_data_through().items()
+            if re.search(rf'\b"?{re.escape(domain)}_', sql or "")]
+    return max(hits) if hits else None
 
 
 @st.cache_resource(show_spinner="Preparing the schema index "
@@ -2254,7 +2278,8 @@ def _plan_headline(plan, ran) -> str:
         a breakdown bailed to "3 status. The full breakdown is below." — the
         case where a sentence is most useful is the one it gave up on.
     """
-    return narrate.answer_explanation(plan, ran)
+    return narrate.answer_explanation(
+        plan, ran, data_through=_data_through(getattr(ran, "sql", "")))
 
 
 def _numeric_format(frame):
@@ -2547,6 +2572,12 @@ def _result_chart(entry, frame=None) -> None:
     head = frame.head(cap)
     pairs = [(str(a), float(b)) for a, b in zip(head[label_col], head[value_col],
                                                 strict=False)]
+    if kind == "line" and pairs:
+        # A series that ends where the data does says so on the axis: "Jul 1-4,
+        # 2026" beside full months, rather than a cliff with no caption.
+        last_label, last_value = pairs[-1]
+        pairs[-1] = (narrate.partial_label(last_label, _data_through(entry.get("sql", ""))),
+                     last_value)
     ui.result_chart(pairs, label=_humanise(str(label_col)),
                     measure=_humanise(str(value_col)), kind=kind,
                     truncated_from=len(frame) if len(frame) > cap else 0)

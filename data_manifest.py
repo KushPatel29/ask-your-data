@@ -574,5 +574,15 @@ MANIFEST = [
 ]
 
 
+# Where a domain's own record ends, for domains whose monthly tables include the
+# month the extract was cut in. The wholesale monthly facts run to July 2026, but
+# the last order is on 4 July, so a July total is four days of trading and reads
+# as a collapse beside full months. The date is read from the data at run time
+# (MAX of this column), never typed here, so it moves when the extract does.
+DATA_THROUGH = {
+    "wholesale": ("dim_store", "last_order_date"),
+}
+
+
 def table_name(domain, table):
     return f"{domain}_{table}"
