@@ -1,7 +1,7 @@
 # The Streamlit Community Cloud app is still bound to this repository's former name (iva),
 # so a push does not redeploy it: after a release, reboot it from "Manage app" and check
 # that the footer's build marker changed.
-duckdb>=1.5.5
+duckdb>=2.0.0
 anthropic>=2.3.0
 openai>=3.38.0
 streamlit>=1.66.1,<2
