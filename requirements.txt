@@ -22,4 +22,4 @@ faster-whisper>=1.2.1,<2
 piper-tts>=1.8.0,<2
 # Security floor for the Hugging Face cache's transitive locking dependency.
 filelock==4.2.1
-pytest>=9.1.1
+pytest>=9.2.0
